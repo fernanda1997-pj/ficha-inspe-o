@@ -21,8 +21,8 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
     "arquivo": "insp_R13_2026-07.js",
-    "n_segmentos": 219,
-    "ext_km": 949.1
+    "n_segmentos": 246,
+    "ext_km": 1011.4
   }
 ];
 window.GRUPOS_INSPECAO = [
