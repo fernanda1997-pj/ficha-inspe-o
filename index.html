@@ -525,16 +525,36 @@ function montarPopup(props){
 function offsetMetros(geometry, metros){
   if(!metros) return geometry;
   try{
-    var linha = turf.lineString(geometry.coordinates);
+    var original = geometry.coordinates;
+    var linha = turf.lineString(original);
     var deslocada = turf.lineOffset(linha, metros, {units:'meters'});
     var coords = deslocada.geometry.coordinates;
+
+    // turf.lineOffset pode "explodir" numericamente em trechos muito curtos/quase
+    // retos e devolver um ponto tecnicamente finito, mas absurdamente longe (não
+    // pega no Number.isFinite). Sanidade: a área ocupada pelo resultado não pode
+    // crescer muito além da área original — o deslocamento devia ser de poucos
+    // metros, então uma folga de ~0.05° (~5 km) já é generosa o bastante.
+    var MARGEM = 0.05;
+    var bboxOrig = bboxDe(original);
     var valido = coords.length >= 2 && coords.every(function(c){
-      return Number.isFinite(c[0]) && Number.isFinite(c[1]);
+      return Number.isFinite(c[0]) && Number.isFinite(c[1]) &&
+        c[0] >= bboxOrig.minX - MARGEM && c[0] <= bboxOrig.maxX + MARGEM &&
+        c[1] >= bboxOrig.minY - MARGEM && c[1] <= bboxOrig.maxY + MARGEM;
     });
     return valido ? {type:'LineString', coordinates: coords} : geometry;
   }catch(e){
     return geometry; // linha curta/degenerada demais pra deslocar — mostra sem offset
   }
+}
+
+function bboxDe(coords){
+  var minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+  coords.forEach(function(c){
+    if(c[0]<minX) minX=c[0]; if(c[0]>maxX) maxX=c[0];
+    if(c[1]<minY) minY=c[1]; if(c[1]>maxY) maxY=c[1];
+  });
+  return {minX:minX, maxX:maxX, minY:minY, maxY:maxY};
 }
 
 function redesenharMapa(){
