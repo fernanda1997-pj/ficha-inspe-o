@@ -1,0 +1,7 @@
+# só o site vai pro ar: index.html, dados/*.js e logo/
+camadas/
+fichas/
+converter_fichas.py
+relatorio_qualidade.txt
+CLAUDE.md
+README.md

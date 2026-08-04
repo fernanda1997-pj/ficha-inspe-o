@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geoportal RTA-MSI — Inspeção do Pavimento</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --azul:#1E3A72; --azul-claro:#2d4f92; --cinza:#64748B; --fundo:#F1F5F9; --borda:#E2E8F0;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; font-family:'Segoe UI',system-ui,sans-serif;}
+  #app{display:flex; height:100%;}
+
+  /* ---------- Painel lateral ---------- */
+  #painel{
+    width:330px; min-width:330px; background:#fff; border-right:1px solid var(--borda);
+    display:flex; flex-direction:column; z-index:1100; box-shadow:2px 0 8px rgba(0,0,0,.08);
+  }
+  #painel header{
+    background:var(--azul); color:#fff; padding:12px 14px; display:flex; align-items:center; gap:10px;
+  }
+  #painel header .logos{display:flex; gap:6px;}
+  #painel header img{height:34px; background:#fff; border-radius:6px; padding:3px;}
+  #painel header h1{font-size:14px; line-height:1.25;}
+  #painel header small{font-weight:400; opacity:.85; font-size:11px; display:block;}
+  #painel .conteudo{flex:1; overflow-y:auto; padding:12px;}
+
+  label.rotulo{display:block; font-size:12px; font-weight:600; color:var(--azul); margin:10px 0 4px;}
+  label.rotulo:first-child{margin-top:0;}
+  select{
+    width:100%; padding:7px 8px; border:1px solid var(--borda); border-radius:6px;
+    font-size:13px; font-family:inherit; background:#fff;
+  }
+
+  #resumo{
+    margin-top:12px; background:var(--fundo); border:1px solid var(--borda); border-radius:8px;
+    padding:8px 10px; font-size:12px; color:#334155; display:flex; justify-content:space-between;
+  }
+  #resumo b{color:var(--azul); font-size:14px; display:block;}
+
+  .secao-camadas{margin-top:16px;}
+  .grupo-camada{
+    border:1px solid var(--borda); border-radius:8px; margin-bottom:8px; overflow:hidden;
+  }
+  .grupo-camada .cabeca{
+    display:flex; align-items:center; gap:8px; padding:9px 10px; cursor:pointer; user-select:none;
+    background:#fff;
+  }
+  .grupo-camada .cabeca:hover{background:var(--fundo);}
+  .grupo-camada input[type=checkbox]{width:16px; height:16px; accent-color:var(--azul); flex:none;}
+  .grupo-camada .nome{flex:1; font-size:13px; font-weight:600; color:#1e293b;}
+  .grupo-camada .seta{font-size:10px; color:var(--cinza); transition:transform .15s;}
+  .grupo-camada.aberto .seta{transform:rotate(90deg);}
+  .grupo-camada .legenda{
+    display:none; padding:2px 10px 10px 34px; font-size:12px; color:#475569;
+  }
+  .grupo-camada.aberto .legenda{display:block;}
+  .item-legenda{display:flex; align-items:center; gap:6px; padding:2px 0;}
+  .item-legenda .chip{width:13px; height:13px; border-radius:3px; border:1px solid rgba(0,0,0,.25); flex:none;}
+
+  .dica{font-size:11px; color:var(--cinza); margin-top:14px; line-height:1.5;}
+  .vazio{font-size:12px; color:var(--cinza); font-style:italic; padding:10px 2px;}
+
+  /* ---------- Mapa ---------- */
+  #map{flex:1; height:100%; z-index:1;}
+
+  .popup-insp{font-size:12.5px; min-width:230px;}
+  .popup-insp h3{color:var(--azul); font-size:13px; margin-bottom:4px;}
+  .popup-insp .km{color:var(--cinza); font-size:11.5px; margin-bottom:8px;}
+  .popup-insp table{width:100%; border-collapse:collapse;}
+  .popup-insp td{padding:3px 4px; border-top:1px solid var(--borda); vertical-align:top;}
+  .popup-insp td.rot{color:#475569; white-space:nowrap; font-weight:600;}
+  .popup-insp .badge{
+    display:inline-block; padding:1px 7px; border-radius:10px; color:#fff; font-size:11px;
+    font-weight:600;
+  }
+
+  .leaflet-control-layers{font-size:13px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="painel">
+    <header>
+      <div class="logos">
+        <img src="logo/LOGO RTA.png" alt="RTA">
+        <img src="logo/LOGO MSI.jpeg" alt="MSI">
+      </div>
+      <div>
+        <h1>Inspeção do Pavimento
+          <small>RTA Engenheiros Consultores + MSI Engenharia</small>
+        </h1>
+      </div>
+    </header>
+    <div class="conteudo">
+      <label class="rotulo" for="sel-regiao">Região</label>
+      <select id="sel-regiao"></select>
+
+      <label class="rotulo" for="sel-competencia">Competência (mês da ficha)</label>
+      <select id="sel-competencia"></select>
+
+      <div id="resumo">
+        <div><b id="resumo-ext">—</b>km inspecionados</div>
+        <div><b id="resumo-n">—</b>segmentos</div>
+      </div>
+
+      <div class="secao-camadas" id="lista-camadas"></div>
+
+      <div class="dica">
+        Marque uma ou mais camadas para colorir a rodovia pelo aspecto escolhido.
+        Com mais de uma marcada, os traços aparecem lado a lado (levemente deslocados)
+        pra dar pra comparar. Clique num trecho da rodovia pra ver o detalhe completo
+        (pavimento, vegetação, drenagem e sinalização) daquele km.
+      </div>
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+<script src="dados/manifest.js"></script>
+<script>
+(function(){
+'use strict';
+
+// ---------------------------------------------------------------------
+// Paleta de severidade: posição 0 = condição boa, cresce até a pior.
+// ---------------------------------------------------------------------
+var CORES_SEVERIDADE = ['#16A34A', '#EAB308', '#F97316', '#DC2626', '#7F1D1D'];
+
+// Rótulos "genéricos" pra montar a legenda antes dos dados carregarem
+// (o popup sempre mostra o texto exato da ficha, isso aqui é só a legenda).
+var LEGENDA_GRUPO = {
+  pavimento: ['Bom', 'Remendo isolado', 'Remendo em lâmina', 'Buraco isolado', 'Buraco em lâmina'],
+  vegetacao: ['Adequada', 'Inadequada'],
+  drenagem: ['Limpos', 'Sujos', 'Danificados'],
+  sinalizacao_horizontal: ['Bom', 'Regular', 'Inexistente'],
+  sinalizacao_vertical: ['Bom', 'Poucas', 'Inexistente'],
+};
+
+// ---------------------------------------------------------------------
+// Mapa base
+// ---------------------------------------------------------------------
+var map = L.map('map', {zoomControl:true}).setView([-10.3, -48.3], 7);
+
+var baseClaro = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; OpenStreetMap, &copy; CARTO', maxZoom:19,
+}).addTo(map);
+var baseSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution:'Esri, Maxar, Earthstar Geographics', maxZoom:19,
+});
+L.control.layers({'Padrão': baseClaro, 'Satélite': baseSatelite}, null, {position:'bottomleft'}).addTo(map);
+L.control.scale({imperial:false, position:'bottomright'}).addTo(map);
+
+// ---------------------------------------------------------------------
+// Estado
+// ---------------------------------------------------------------------
+var GRUPOS = window.GRUPOS_INSPECAO || [];
+var MANIFEST = window.MANIFEST_INSPECAO || [];
+var ativos = {};              // id do grupo -> bool (camada ligada)
+var abertos = {};             // id do grupo -> bool (legenda expandida)
+var camadasNoMapa = [];        // L.GeoJSON atualmente no mapa (pra limpar ao trocar seleção)
+var arquivosCarregados = {};   // arquivo -> true, evita <script> duplicado
+
+GRUPOS.forEach(function(g, i){ ativos[g.id] = (g.id === 'pavimento'); abertos[g.id] = (g.id === 'pavimento'); });
+
+// ---------------------------------------------------------------------
+// Monta os selects de Região / Competência a partir do manifest.js
+// ---------------------------------------------------------------------
+var selRegiao = document.getElementById('sel-regiao');
+var selCompetencia = document.getElementById('sel-competencia');
+
+function regioesDisponiveis(){
+  var vistas = {};
+  var lista = [];
+  MANIFEST.forEach(function(m){ if(!vistas[m.regiao]){ vistas[m.regiao]=true; lista.push(m.regiao); } });
+  lista.sort();
+  return lista;
+}
+
+function competenciasDe(regiao){
+  return MANIFEST.filter(function(m){ return m.regiao === regiao; })
+                 .sort(function(a,b){ return a.competencia < b.competencia ? 1 : -1; }); // mais recente primeiro
+}
+
+function montarSelects(){
+  var regioes = regioesDisponiveis();
+  if(regioes.length === 0){
+    document.getElementById('lista-camadas').innerHTML = '<div class="vazio">Nenhuma ficha convertida ainda. Rode <code>python converter_fichas.py</code> depois de colocar os arquivos em fichas/.</div>';
+    return;
+  }
+  selRegiao.innerHTML = regioes.map(function(r){ return '<option value="'+r+'">'+r+'</option>'; }).join('');
+  selRegiao.addEventListener('change', function(){ montarCompetencias(); });
+  montarCompetencias();
+}
+
+function montarCompetencias(){
+  var regiao = selRegiao.value;
+  var comps = competenciasDe(regiao);
+  selCompetencia.innerHTML = comps.map(function(m){
+    return '<option value="'+m.competencia+'">'+m.competencia_label+'</option>';
+  }).join('');
+  selCompetencia.onchange = carregarSelecionado;
+  carregarSelecionado();
+}
+
+function carregarSelecionado(){
+  var regiao = selRegiao.value;
+  var competencia = selCompetencia.value;
+  var item = MANIFEST.find(function(m){ return m.regiao===regiao && m.competencia===competencia; });
+  if(!item) return;
+
+  if(arquivosCarregados[item.arquivo]){
+    aoCarregarDados(item);
+    return;
+  }
+  var s = document.createElement('script');
+  s.src = 'dados/' + item.arquivo;
+  s.onload = function(){ arquivosCarregados[item.arquivo] = true; aoCarregarDados(item); };
+  document.body.appendChild(s);
+}
+
+function aoCarregarDados(item){
+  document.getElementById('resumo-ext').textContent = item.ext_km.toLocaleString('pt-BR');
+  document.getElementById('resumo-n').textContent = item.n_segmentos;
+  redesenharMapa();
+}
+
+// ---------------------------------------------------------------------
+// Painel de camadas (checkbox + legenda expansível)
+// ---------------------------------------------------------------------
+function montarPainelCamadas(){
+  var html = GRUPOS.map(function(g){
+    var itens = (LEGENDA_GRUPO[g.id] || []).map(function(lbl, i){
+      return '<div class="item-legenda"><span class="chip" style="background:'+CORES_SEVERIDADE[i]+'"></span>'+lbl+'</div>';
+    }).join('');
+    return (
+      '<div class="grupo-camada'+(abertos[g.id]?' aberto':'')+'" data-id="'+g.id+'">'+
+        '<div class="cabeca">'+
+          '<input type="checkbox" data-check="'+g.id+'" '+(ativos[g.id]?'checked':'')+'>'+
+          '<span class="nome" data-toggle="'+g.id+'">'+g.nome+'</span>'+
+          '<span class="seta" data-toggle="'+g.id+'">▶</span>'+
+        '</div>'+
+        '<div class="legenda">'+itens+'</div>'+
+      '</div>'
+    );
+  }).join('');
+  document.getElementById('lista-camadas').innerHTML = html;
+
+  document.querySelectorAll('[data-check]').forEach(function(el){
+    el.addEventListener('change', function(){
+      ativos[el.getAttribute('data-check')] = el.checked;
+      redesenharMapa();
+    });
+  });
+  document.querySelectorAll('[data-toggle]').forEach(function(el){
+    el.addEventListener('click', function(){
+      var id = el.getAttribute('data-toggle');
+      abertos[id] = !abertos[id];
+      document.querySelector('.grupo-camada[data-id="'+id+'"]').classList.toggle('aberto', abertos[id]);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------
+// Desenho das linhas no mapa
+// ---------------------------------------------------------------------
+function grupoAtivoLista(){
+  return GRUPOS.filter(function(g){ return ativos[g.id]; }).map(function(g){ return g.id; });
+}
+
+function corDoSegmento(props, grupoId){
+  var info = props[grupoId];
+  if(!info || info.severidade === null || info.severidade === undefined) return '#94A3B8';
+  return CORES_SEVERIDADE[Math.min(info.severidade, CORES_SEVERIDADE.length-1)];
+}
+
+function montarPopup(props){
+  var linhas = GRUPOS.map(function(g){
+    var info = props[g.id] || {};
+    var cor = corDoSegmento(props, g.id);
+    var texto = info.status || '—';
+    if(info.marcados && info.marcados.length > 1){ texto = info.marcados.join(' + '); }
+    return '<tr><td class="rot">'+g.nome+'</td><td><span class="badge" style="background:'+cor+'">'+texto+'</span></td></tr>';
+  }).join('');
+  return (
+    '<div class="popup-insp">'+
+      '<h3>'+(props.sre||'')+'</h3>'+
+      '<div class="km">'+(props.rodovia||'')+'<br>KM '+props.km_ini.toFixed(2).replace('.', ',')+
+        ' – '+props.km_fim.toFixed(2).replace('.', ',')+
+        (props.sentido ? ' · sentido '+props.sentido : '')+
+        '<br>Competência: '+props.competencia_label+
+      '</div>'+
+      '<table>'+linhas+'</table>'+
+    '</div>'
+  );
+}
+
+function offsetMetros(geometry, metros){
+  if(!metros) return geometry;
+  try{
+    var linha = turf.lineString(geometry.coordinates);
+    var deslocada = turf.lineOffset(linha, metros, {units:'meters'});
+    var coords = deslocada.geometry.coordinates;
+    var valido = coords.length >= 2 && coords.every(function(c){
+      return Number.isFinite(c[0]) && Number.isFinite(c[1]);
+    });
+    return valido ? {type:'LineString', coordinates: coords} : geometry;
+  }catch(e){
+    return geometry; // linha curta/degenerada demais pra deslocar — mostra sem offset
+  }
+}
+
+function redesenharMapa(){
+  camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
+  camadasNoMapa = [];
+
+  var regiao = selRegiao.value, competencia = selCompetencia.value;
+  var pacote = window.DADOS_INSPECAO && window.DADOS_INSPECAO[regiao] && window.DADOS_INSPECAO[regiao][competencia];
+  if(!pacote) return;
+
+  var ligados = grupoAtivoLista();
+  if(ligados.length === 0) return;
+
+  var ESPACAMENTO_M = 6;
+  var todosBounds = [];
+
+  ligados.forEach(function(grupoId, idx){
+    try{
+      var offset = (idx - (ligados.length-1)/2) * ESPACAMENTO_M;
+      var feats = pacote.features.map(function(f){
+        return {
+          type:'Feature',
+          properties: f.properties,
+          geometry: ligados.length > 1 ? offsetMetros(f.geometry, offset) : f.geometry,
+        };
+      });
+      var camada = L.geoJSON({type:'FeatureCollection', features:feats}, {
+        style: function(feat){ return {color: corDoSegmento(feat.properties, grupoId), weight:4, opacity:0.9}; },
+        onEachFeature: function(feat, layer){
+          layer.bindPopup(montarPopup(feat.properties));
+          layer.on('mouseover', function(){ layer.setStyle({weight:7}); });
+          layer.on('mouseout', function(){ layer.setStyle({weight:4}); });
+        },
+      }).addTo(map);
+      camadasNoMapa.push(camada);
+      var b = camada.getBounds();
+      if(b.isValid()) todosBounds.push(b);
+    }catch(e){
+      console.error('falha ao desenhar camada', grupoId, e);
+    }
+  });
+
+  if(!redesenharMapa._ajustouZoom && todosBounds.length){
+    var geral = todosBounds.reduce(function(acc,b){ return acc ? acc.extend(b) : b; }, null);
+    map.fitBounds(geral, {padding:[20,20]});
+    redesenharMapa._ajustouZoom = true;
+  }
+}
+
+// ---------------------------------------------------------------------
+// Início
+// ---------------------------------------------------------------------
+montarPainelCamadas();
+montarSelects();
+
+})();
+</script>
+</body>
+</html>
