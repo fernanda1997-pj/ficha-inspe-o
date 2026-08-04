@@ -59,6 +59,27 @@
   .grupo-camada.aberto .legenda{display:block;}
   .item-legenda{display:flex; align-items:center; gap:6px; padding:2px 0;}
   .item-legenda .chip{width:13px; height:13px; border-radius:3px; border:1px solid rgba(0,0,0,.25); flex:none;}
+  .grupo-camada .numero{
+    display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
+    border-radius:50%; background:var(--fundo); border:1px solid var(--borda); color:var(--azul);
+    font-size:10px; font-weight:700; flex:none; margin-right:2px;
+  }
+
+  /* ---------- Legenda "comparando camadas" (flutua sobre o mapa) ---------- */
+  #legenda-comparacao{
+    position:absolute; top:10px; right:10px; z-index:1000; background:rgba(255,255,255,.96);
+    border:1px solid var(--borda); border-radius:8px; padding:9px 12px; font-size:12px;
+    box-shadow:0 1px 6px rgba(0,0,0,.18); max-width:230px; display:none;
+  }
+  #legenda-comparacao.mostrar{display:block;}
+  #legenda-comparacao b{color:var(--azul); font-size:12.5px;}
+  #legenda-comparacao .item{display:flex; align-items:center; gap:6px; margin:5px 0 0;}
+  #legenda-comparacao .numero{
+    display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
+    border-radius:50%; background:var(--fundo); border:1px solid var(--borda); color:var(--azul);
+    font-size:10px; font-weight:700; flex:none;
+  }
+  #legenda-comparacao small{display:block; color:var(--cinza); margin-top:7px; line-height:1.4; font-size:10.5px;}
 
   .dica{font-size:11px; color:var(--cinza); margin-top:14px; line-height:1.5;}
   .vazio{font-size:12px; color:var(--cinza); font-style:italic; padding:10px 2px;}
@@ -151,14 +172,20 @@
       <div class="secao-camadas" id="lista-camadas"></div>
 
       <div class="dica">
-        Marque uma ou mais camadas para colorir a rodovia pelo aspecto escolhido.
-        Com mais de uma marcada, os traços aparecem lado a lado (levemente deslocados)
-        pra dar pra comparar. Clique num trecho da rodovia pra ver o detalhe completo
-        (pavimento, vegetação, drenagem e sinalização) daquele km.
+        Marque uma camada pra colorir a rodovia por aquele aspecto. Marcando mais de
+        uma, cada uma vira uma linha separada do lado da outra (na ordem numerada
+        ①②③... aqui do lado) — aparece uma legenda no canto do mapa lembrando qual
+        número é qual, e só fica visível de perto (zoom de rua). Clique num trecho
+        pra ver o detalhe completo de todos os aspectos daquele km.
       </div>
     </div>
   </div>
   <div id="map"></div>
+  <div id="legenda-comparacao">
+    <b>Comparando camadas</b>
+    <div id="legenda-comparacao-lista"></div>
+    <small>As linhas aparecem lado a lado (deslocadas) na ordem acima, seguindo o sentido da via.</small>
+  </div>
   <div id="drawer">
     <div class="cabeca-drawer">
       <div>
@@ -424,8 +451,10 @@ function fecharDrawer(){
 // ---------------------------------------------------------------------
 // Painel de camadas (checkbox + legenda expansível)
 // ---------------------------------------------------------------------
+var NUMEROS_CIRCULO = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨'];
+
 function montarPainelCamadas(){
-  var html = GRUPOS.map(function(g){
+  var html = GRUPOS.map(function(g, i){
     var itens = (LEGENDA_GRUPO[g.id] || []).map(function(lbl, i){
       return '<div class="item-legenda"><span class="chip" style="background:'+CORES_SEVERIDADE[i]+'"></span>'+lbl+'</div>';
     }).join('');
@@ -433,6 +462,7 @@ function montarPainelCamadas(){
       '<div class="grupo-camada'+(abertos[g.id]?' aberto':'')+'" data-id="'+g.id+'">'+
         '<div class="cabeca">'+
           '<input type="checkbox" data-check="'+g.id+'" '+(ativos[g.id]?'checked':'')+'>'+
+          '<span class="numero" title="Ordem quando comparando camadas">'+(NUMEROS_CIRCULO[i]||(i+1))+'</span>'+
           '<span class="nome" data-toggle="'+g.id+'">'+g.nome+'</span>'+
           '<span class="seta" data-toggle="'+g.id+'">▶</span>'+
         '</div>'+
@@ -550,7 +580,20 @@ function redesenharMapa(){
     }
   });
 
+  atualizarLegendaComparacao(ligados);
   destacarSre(); // reaplica o destaque do S.R.E. escolhido (se houver) por cima das camadas recém-redesenhadas
+}
+
+function atualizarLegendaComparacao(ligados){
+  var painel = document.getElementById('legenda-comparacao');
+  if(ligados.length < 2){ painel.classList.remove('mostrar'); return; }
+  var html = ligados.map(function(grupoId){
+    var g = GRUPOS.find(function(x){ return x.id === grupoId; });
+    var i = GRUPOS.findIndex(function(x){ return x.id === grupoId; });
+    return '<div class="item"><span class="numero">'+(NUMEROS_CIRCULO[i]||(i+1))+'</span>'+g.nome+'</div>';
+  }).join('');
+  document.getElementById('legenda-comparacao-lista').innerHTML = html;
+  painel.classList.add('mostrar');
 }
 
 // ---------------------------------------------------------------------
