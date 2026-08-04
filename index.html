@@ -190,6 +190,11 @@
         <div><b id="resumo-n">—</b>segmentos</div>
       </div>
 
+      <div class="donut-wrap" style="margin-top:8px;">
+        <div id="regiao-donut"></div>
+        <div class="donut-legenda" id="regiao-legenda"></div>
+      </div>
+
       <hr class="separador">
 
       <label class="rotulo" for="sel-tipo">Tipo de via</label>
@@ -280,6 +285,17 @@ var LEGENDA_GRUPO = {
 
 var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não pavimentada'};
 
+// Resultado geral (I.C.M./I.C.M.N.P.) — combinação normalizada de todos os
+// aspectos de cada segmento (ver converter_fichas.py::calcular_icm). Paleta
+// de status (não é a mesma escala verde→vinho da severidade, por isso fica
+// à parte, mas funciona como mais uma camada do funil, com sua legenda própria.
+var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
+var CORES_ICM = {
+  'Bom': '#0ca30c', 'Regular': '#fab219', 'Ruim': '#ec835a',
+  'Péssimo': '#d03b3b', 'Sem Informação': '#94A3B8',
+};
+LEGENDA_GRUPO.icm = CLASSES_ICM;
+
 // ---------------------------------------------------------------------
 // Mapa base
 // ---------------------------------------------------------------------
@@ -297,7 +313,9 @@ L.control.scale({imperial:false, position:'bottomright'}).addTo(map);
 // ---------------------------------------------------------------------
 // Estado
 // ---------------------------------------------------------------------
-var GRUPOS = window.GRUPOS_INSPECAO || [];
+var GRUPOS = (window.GRUPOS_INSPECAO || []).concat([
+  {id: 'icm', nome: 'Resultado Geral (I.C.M.)'},
+]);
 var MANIFEST = window.MANIFEST_INSPECAO || [];
 var REGIOES_GEOJSON = window.DADOS_REGIOES || {type:'FeatureCollection', features:[]};
 var ativos = {};              // id do grupo -> bool (camada ligada)
@@ -382,6 +400,12 @@ function carregarSelecionado(){
 function aoCarregarDados(item){
   document.getElementById('resumo-ext').textContent = item.ext_km.toLocaleString('pt-BR');
   document.getElementById('resumo-n').textContent = item.n_segmentos;
+  var pacote = pacoteAtual();
+  if(pacote){
+    var r = somaIcmDe(pacote.features);
+    montarDonut(r.somaPorClasse, r.total, 'regiao-donut');
+    montarLegendaIcm(r.somaPorClasse, r.total, 'regiao-legenda');
+  }
   redesenharMapa();
   montarTipos();
 }
@@ -509,7 +533,7 @@ function abrirDrawer(){
     var p = f.properties;
     var celulas = colunasGrupo.map(function(g){
       var info = p[g.id] || {};
-      var texto = info.status || '—';
+      var texto = (g.id === 'icm') ? (info.classe || '—') : (info.status || '—');
       if(info.marcados && info.marcados.length > 1){ texto = info.marcados.join(' + '); }
       return '<td><span class="badge-tab" style="background:'+corDoSegmento(p, g.id)+'">'+texto+'</span></td>';
     }).join('');
@@ -535,7 +559,8 @@ var NUMEROS_CIRCULO = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨'];
 function montarPainelCamadas(){
   var html = GRUPOS.map(function(g, i){
     var itens = (LEGENDA_GRUPO[g.id] || []).map(function(lbl, i){
-      return '<div class="item-legenda"><span class="chip" style="background:'+CORES_SEVERIDADE[i]+'"></span>'+lbl+'</div>';
+      var cor = (g.id === 'icm') ? (CORES_ICM[lbl] || '#94A3B8') : CORES_SEVERIDADE[i];
+      return '<div class="item-legenda"><span class="chip" style="background:'+cor+'"></span>'+lbl+'</div>';
     }).join('');
     return (
       '<div class="grupo-camada'+(abertos[g.id]?' aberto':'')+'" data-id="'+g.id+'">'+
@@ -574,13 +599,17 @@ function grupoAtivoLista(){
 }
 
 function corDoSegmento(props, grupoId){
+  if(grupoId === 'icm'){
+    var classe = props.icm && props.icm.classe;
+    return classe ? (CORES_ICM[classe] || '#94A3B8') : '#94A3B8';
+  }
   var info = props[grupoId];
   if(!info || info.severidade === null || info.severidade === undefined) return '#94A3B8';
   return CORES_SEVERIDADE[Math.min(info.severidade, CORES_SEVERIDADE.length-1)];
 }
 
 function montarPopup(props){
-  var linhas = GRUPOS.filter(function(g){ return props[g.id] !== undefined; }).map(function(g){
+  var linhas = GRUPOS.filter(function(g){ return g.id !== 'icm' && props[g.id] !== undefined; }).map(function(g){
     var info = props[g.id] || {};
     var cor = corDoSegmento(props, g.id);
     var texto = info.status || '—';
@@ -702,11 +731,6 @@ function atualizarLegendaComparacao(ligados){
 // Aba "Visão Geral" — soma tudo que já foi convertido (todas as regiões e
 // competências), independente do que está selecionado na aba "Por Região".
 // ---------------------------------------------------------------------
-var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
-var CORES_ICM = {
-  'Bom': '#0ca30c', 'Regular': '#fab219', 'Ruim': '#ec835a',
-  'Péssimo': '#d03b3b', 'Sem Informação': '#94A3B8',
-};
 var ativosIcm = {};
 CLASSES_ICM.forEach(function(c){ ativosIcm[c] = true; });
 var camadaGeral = null;
@@ -760,26 +784,31 @@ function todasAsFeatures(){
   return todas;
 }
 
-function desenharVisaoGeral(){
-  var todas = todasAsFeatures();
+function somaIcmDe(feats){
   var somaPorClasse = {};
   CLASSES_ICM.forEach(function(c){ somaPorClasse[c] = 0; });
-  todas.forEach(function(f){
+  feats.forEach(function(f){
     var classe = (f.properties.icm && f.properties.icm.classe) || 'Sem Informação';
     somaPorClasse[classe] += (f.properties.km_fim - f.properties.km_ini);
   });
   var total = CLASSES_ICM.reduce(function(s, c){ return s + somaPorClasse[c]; }, 0);
+  return {somaPorClasse: somaPorClasse, total: total};
+}
+
+function desenharVisaoGeral(){
+  var todas = todasAsFeatures();
+  var r = somaIcmDe(todas);
 
   document.getElementById('geral-total').textContent =
-    total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
+    r.total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
 
-  montarDonut(somaPorClasse, total);
-  montarLegendaIcm(somaPorClasse, total);
-  montarFiltrosIcm(somaPorClasse);
+  montarDonut(r.somaPorClasse, r.total, 'geral-donut');
+  montarLegendaIcm(r.somaPorClasse, r.total, 'geral-legenda');
+  montarFiltrosIcm(r.somaPorClasse);
   redesenharMapaGeral(todas);
 }
 
-function montarDonut(somaPorClasse, total){
+function montarDonut(somaPorClasse, total, idSvg){
   var cx = 60, cy = 60, r = 46, largura = 20;
   var circ = 2 * Math.PI * r;
   var acumulado = 0;
@@ -792,7 +821,7 @@ function montarDonut(somaPorClasse, total){
     acumulado += comprimento;
     return trecho;
   }).join('');
-  document.getElementById('geral-donut').innerHTML =
+  document.getElementById(idSvg).innerHTML =
     '<svg viewBox="0 0 120 120" width="120" height="120">' + partes +
     '<text x="60" y="57" text-anchor="middle" font-size="9" fill="#64748B">total</text>' +
     '<text x="60" y="71" text-anchor="middle" font-size="12" font-weight="700" fill="#1E3A72">' +
@@ -800,8 +829,8 @@ function montarDonut(somaPorClasse, total){
     '</svg>';
 }
 
-function montarLegendaIcm(somaPorClasse, total){
-  document.getElementById('geral-legenda').innerHTML = CLASSES_ICM.map(function(c){
+function montarLegendaIcm(somaPorClasse, total, idLegenda){
+  document.getElementById(idLegenda).innerHTML = CLASSES_ICM.map(function(c){
     var pct = total > 0 ? (100 * somaPorClasse[c] / total) : 0;
     return '<div class="item"><span class="chip" style="background:'+CORES_ICM[c]+'"></span>' +
       '<span class="nome">'+c+'</span>' +
