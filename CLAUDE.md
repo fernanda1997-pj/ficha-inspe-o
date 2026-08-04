@@ -1,7 +1,9 @@
 # Geoportal RTA-MSI — Inspeção do Pavimento
 
 WebGIS de página única (Leaflet) que mostra no mapa o resultado das fichas mensais de
-inspeção de rodovias pavimentadas do Tocantins. Usuária: Fernanda (RTA Engenheiros
+inspeção de rodovias do Tocantins — **pavimentadas e não pavimentadas (LEN)**. Todo mês
+saem **2 fichas por região × 6 regiões** (R1, R2, R3, R11, R12, R13): uma de trechos
+pavimentados, outra de não pavimentados. Usuária: Fernanda (RTA Engenheiros
 Consultores). Responder sempre em português.
 
 - **Site**: (ainda não publicado — ver seção "Publicar" abaixo)
@@ -43,22 +45,39 @@ vez de descartar pedaços. Se o vão entre duas partes for grande (>200 m), o
 `relatorio_qualidade.txt` avisa com "CONFERIR o shapefile" — pode ser um pedaço do
 traçado que falta digitalizar.
 
-## Os 5 grupos de condição
+## Os dois modelos de ficha e os 7 grupos de condição
+
+Existem **dois modelos de ficha**, com grupos de condição diferentes. O converter
+detecta automaticamente qual é (por sheet, procurando o cabeçalho do 1º grupo — não usa
+o nome do arquivo, que é livre): `TEMPLATES` em `converter_fichas.py`.
+
+| Modelo | S.R.E. tipo (SITUAÇÃO) | Grupos |
+|---|---|---|
+| Pavimentada | PPS/PSU/PDU/EOP... | `pavimento`, `vegetacao`, `drenagem`, `sinalizacao_horizontal`, `sinalizacao_vertical` |
+| Não pavimentada | `LEN` | `plataforma`, `drenagem_superficial` |
 
 Cada linha da ficha pode ter mais de uma marcação (X) dentro do mesmo grupo (ex.: um km
 com "Remendo em lâmina" **e** "Buraco em lâmina" ao mesmo tempo). Pra cor no mapa, vale a
 regra **pior marcação vence**: a severidade é a posição da coluna dentro do grupo
 (0 = melhor, a ficha sempre desenha da esquerda/melhor pra direita/pior) — por isso o
 converter não depende do texto exato do rótulo (tem, inclusive, um erro de digitação na
-ficha original: "INADED." em vez de "INADEQ.").
+ficha original de pavimentada: "INADED." em vez de "INADEQ.").
 
-| Grupo (`id`) | Severidades (0→pior) |
-|---|---|
-| `pavimento` | Bom · Remendo isolado · Remendo em lâmina · Buraco isolado · Buraco em lâmina |
-| `vegetacao` | Adequada · Inadequada |
-| `drenagem` | Limpos · Sujos · Danificados |
-| `sinalizacao_horizontal` | Bom · Regular · Inexistente |
-| `sinalizacao_vertical` | Bom · Poucas · Inexistente |
+| Grupo (`id`) | Severidades (0→pior) | Ficha |
+|---|---|---|
+| `pavimento` | Bom · Remendo isolado · Remendo em lâmina · Buraco isolado · Buraco em lâmina | Pavimentada |
+| `vegetacao` | Adequada · Inadequada | Pavimentada |
+| `drenagem` | Limpos · Sujos · Danificados | Pavimentada |
+| `sinalizacao_horizontal` | Bom · Regular · Inexistente | Pavimentada |
+| `sinalizacao_vertical` | Bom · Poucas · Inexistente | Pavimentada |
+| `plataforma` | Bom · Regular (até 10 irreg./km) · Ruim (+10 irreg./km) · Péssima (atoleiro/pto. crítico) | Não pavimentada |
+| `drenagem_superficial` | Limpa · Obstruída · Ausente | Não pavimentada |
+
+Cada segmento (feature do GeoJSON) só carrega as chaves do grupo do SEU modelo — um
+trecho pavimentado nunca tem `plataforma`/`drenagem_superficial` e vice-versa. O
+`index.html` filtra por isso: cada camada do painel só desenha as features que têm
+aquela chave em `properties` (`f.properties[grupoId] !== undefined`) — assim a camada
+"Condição da Plataforma" só pinta os trechos de leito natural, nunca o asfalto.
 
 No mapa, cada grupo é uma camada independente (checkbox próprio). Com mais de uma
 marcada ao mesmo tempo, as linhas aparecem deslocadas ~6 m uma da outra (via
@@ -70,12 +89,18 @@ sem lançar exceção para linhas muito curtas/degeneradas — por isso `offsetM
 isso).
 
 Clicar em qualquer trecho (não importa qual camada está colorindo) abre um popup com o
-detalhe completo dos 5 grupos daquele km.
+detalhe completo — só dos grupos que existem naquele segmento — e uma tag indicando
+"Pavimentada" ou "Não pavimentada".
 
 ## Fluxo de trabalho — ficha nova chegou
 
-1. Salvar o `.xlsx` em `fichas/` (nome livre, mas o padrão até agora é
-   `ficha de inspeção_rodovias pavimentadas_R.<região> - <MÊS>.xlsx`)
+Todo mês chegam **até 12 arquivos** (pavimentada + não pavimentada × 6 regiões), mas não
+precisa esperar todos — o converter processa o que tiver em `fichas/` e funde por
+região+competência (dá pra ir soltando os arquivos conforme chegam e rodar de novo).
+
+1. Salvar o(s) `.xlsx` em `fichas/` (nome livre, mas o padrão até agora é
+   `ficha de inspeção_rodovias pavimentadas_R.<região> - <MÊS>.xlsx` e
+   `ficha de inspeção_rodovias não pavimentadas _R.<região> - <MÊS>.xlsx`)
 2. Rodar `python converter_fichas.py`
 3. Checar `relatorio_qualidade.txt` — S.R.E. não encontrado, geometria com vão grande,
    extensão inspecionada muito diferente da extensão do shapefile
