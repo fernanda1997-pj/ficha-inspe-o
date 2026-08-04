@@ -92,6 +92,18 @@ Clicar em qualquer trecho (não importa qual camada está colorindo) abre um pop
 detalhe completo — só dos grupos que existem naquele segmento — e uma tag indicando
 "Pavimentada" ou "Não pavimentada".
 
+## Funil Região → Competência → Tipo de via → S.R.E.
+
+Além das camadas por aspecto, a sidebar tem um segundo jeito de navegar, pra achar um
+S.R.E. específico rápido: escolher Região (desenha o contorno tracejado da região —
+`camadas/R<n>_REGIÃO.shp` → `dados/regioes.js` — e dá fit nele), Competência, Tipo de
+via (lista só os tipos que existem naquele região+mês) e por fim o S.R.E. (lista só os
+da via escolhida). Ao escolher o S.R.E., o mapa dá zoom nele com um destaque (casing
+branco + cor pelo aspecto principal — `pavimento` pra via pavimentada, `plataforma`
+pra não pavimentada) e abre uma gaveta na parte de baixo do mapa com uma tabela de
+**todos** os sub-trechos de km daquele S.R.E. e as condições marcadas em cada um
+(só as colunas do modelo de ficha correspondente).
+
 ## Fluxo de trabalho — ficha nova chegou
 
 Todo mês chegam **até 12 arquivos** (pavimentada + não pavimentada × 6 regiões), mas não
