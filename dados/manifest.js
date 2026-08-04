@@ -7,6 +7,22 @@ window.MANIFEST_INSPECAO = [
     "arquivo": "insp_R11_2026-07.js",
     "n_segmentos": 277,
     "ext_km": 1104.7
+  },
+  {
+    "regiao": "R12",
+    "competencia": "2026-07",
+    "competencia_label": "Julho/2026",
+    "arquivo": "insp_R12_2026-07.js",
+    "n_segmentos": 262,
+    "ext_km": 1081.7
+  },
+  {
+    "regiao": "R13",
+    "competencia": "2026-07",
+    "competencia_label": "Julho/2026",
+    "arquivo": "insp_R13_2026-07.js",
+    "n_segmentos": 219,
+    "ext_km": 949.1
   }
 ];
 window.GRUPOS_INSPECAO = [

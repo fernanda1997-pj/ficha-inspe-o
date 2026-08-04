@@ -473,7 +473,9 @@ def gerar_regioes():
 def main():
     os.makedirs(DADOS_DIR, exist_ok=True)
     gerar_regioes()
-    arquivos = sorted(glob.glob(os.path.join(FICHAS_DIR, '*.xlsx')))
+    # recursivo: a usuária organiza em subpastas tipo fichas/LOTE 04/JULHO/...
+    arquivos = sorted(glob.glob(os.path.join(FICHAS_DIR, '**', '*.xlsx'), recursive=True))
+    arquivos = [a for a in arquivos if not os.path.basename(a).startswith('~$')]
     if not arquivos:
         print(f'Nenhuma ficha .xlsx encontrada em {FICHAS_DIR}')
         return
