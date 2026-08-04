@@ -400,8 +400,36 @@ def js_string(valor):
     return json.dumps(valor, ensure_ascii=False)
 
 
+def gerar_regioes():
+    """Lê camadas/R<n>_REGIÃO.shp (contorno de cada região) e escreve dados/regioes.js —
+    usado só pra desenhar o limite da região selecionada no mapa (contexto visual)."""
+    caminhos = sorted(glob.glob(os.path.join(CAMADAS_DIR, 'R*_REGIÃO.shp')))
+    if not caminhos:
+        qa('Nenhum shapefile R*_REGIÃO.shp encontrado em camadas/ — sem contorno de região no mapa')
+        return
+    features = []
+    for caminho in caminhos:
+        m = re.match(r'R(\d+)_', os.path.basename(caminho))
+        if not m:
+            continue
+        regiao = f'R{int(m.group(1))}'
+        gdf = gpd.read_file(caminho)
+        gdf = gdf.to_crs(4326) if gdf.crs else gdf.set_crs(4326)
+        for geom in gdf.geometry:
+            if geom is None or geom.is_empty:
+                continue
+            features.append({'type': 'Feature', 'properties': {'regiao': regiao},
+                              'geometry': mapping(geom)})
+    geojson = {'type': 'FeatureCollection', 'features': features}
+    with open(os.path.join(DADOS_DIR, 'regioes.js'), 'w', encoding='utf-8') as f:
+        f.write('// Gerado por converter_fichas.py — não editar à mão\n')
+        f.write(f'window.DADOS_REGIOES = {json.dumps(geojson, ensure_ascii=False)};\n')
+    print(f'dados/regioes.js escrito com {len(features)} região(ões).')
+
+
 def main():
     os.makedirs(DADOS_DIR, exist_ok=True)
+    gerar_regioes()
     arquivos = sorted(glob.glob(os.path.join(FICHAS_DIR, '*.xlsx')))
     if not arquivos:
         print(f'Nenhuma ficha .xlsx encontrada em {FICHAS_DIR}')

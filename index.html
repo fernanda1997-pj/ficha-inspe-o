@@ -11,7 +11,7 @@
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{height:100%; font-family:'Segoe UI',system-ui,sans-serif;}
-  #app{display:flex; height:100%;}
+  #app{display:flex; height:100%; position:relative;}
 
   /* ---------- Painel lateral ---------- */
   #painel{
@@ -63,8 +63,40 @@
   .dica{font-size:11px; color:var(--cinza); margin-top:14px; line-height:1.5;}
   .vazio{font-size:12px; color:var(--cinza); font-style:italic; padding:10px 2px;}
 
+  .separador{border:none; border-top:1px dashed var(--borda); margin:14px 0;}
+  select:disabled{background:var(--fundo); color:var(--cinza); cursor:not-allowed;}
+
   /* ---------- Mapa ---------- */
   #map{flex:1; height:100%; z-index:1;}
+
+  /* ---------- Gaveta de detalhe do S.R.E. ---------- */
+  #drawer{
+    position:absolute; left:330px; right:0; bottom:0; max-height:42%; background:#fff;
+    border-top:1px solid var(--borda); box-shadow:0 -2px 10px rgba(0,0,0,.15);
+    z-index:1000; display:none; flex-direction:column;
+  }
+  #drawer.aberta{display:flex;}
+  #drawer .cabeca-drawer{
+    display:flex; align-items:center; justify-content:space-between; padding:9px 14px;
+    border-bottom:1px solid var(--borda); background:var(--fundo); flex:none;
+  }
+  #drawer .cabeca-drawer h2{font-size:13.5px; color:var(--azul);}
+  #drawer .cabeca-drawer small{color:var(--cinza); font-size:11px; display:block; font-weight:400;}
+  #drawer .fechar{
+    border:none; background:none; font-size:18px; line-height:1; cursor:pointer;
+    color:var(--cinza); padding:2px 8px;
+  }
+  #drawer .fechar:hover{color:#1e293b;}
+  #drawer .corpo-drawer{overflow:auto; padding:0 14px 12px;}
+  #drawer table{width:100%; border-collapse:collapse; font-size:12px;}
+  #drawer th{
+    position:sticky; top:0; background:#fff; text-align:left; padding:7px 8px;
+    border-bottom:2px solid var(--borda); color:#334155; white-space:nowrap;
+  }
+  #drawer td{padding:5px 8px; border-bottom:1px solid var(--borda); white-space:nowrap;}
+  #drawer .badge-tab{
+    display:inline-block; padding:1px 7px; border-radius:10px; color:#fff; font-size:11px; font-weight:600;
+  }
 
   .popup-insp{font-size:12.5px; min-width:230px;}
   .popup-insp h3{color:var(--azul); font-size:13px; margin-bottom:4px;}
@@ -106,6 +138,16 @@
         <div><b id="resumo-n">—</b>segmentos</div>
       </div>
 
+      <hr class="separador">
+
+      <label class="rotulo" for="sel-tipo">Tipo de via</label>
+      <select id="sel-tipo"><option value="">Selecione…</option></select>
+
+      <label class="rotulo" for="sel-sre">S.R.E.</label>
+      <select id="sel-sre"><option value="">Selecione…</option></select>
+
+      <hr class="separador">
+
       <div class="secao-camadas" id="lista-camadas"></div>
 
       <div class="dica">
@@ -117,11 +159,22 @@
     </div>
   </div>
   <div id="map"></div>
+  <div id="drawer">
+    <div class="cabeca-drawer">
+      <div>
+        <h2 id="drawer-titulo">—</h2>
+        <small id="drawer-subtitulo"></small>
+      </div>
+      <button class="fechar" id="drawer-fechar" title="Fechar">✕</button>
+    </div>
+    <div class="corpo-drawer" id="drawer-corpo"></div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 <script src="dados/manifest.js"></script>
+<script src="dados/regioes.js"></script>
 <script>
 (function(){
 'use strict';
@@ -164,10 +217,13 @@ L.control.scale({imperial:false, position:'bottomright'}).addTo(map);
 // ---------------------------------------------------------------------
 var GRUPOS = window.GRUPOS_INSPECAO || [];
 var MANIFEST = window.MANIFEST_INSPECAO || [];
+var REGIOES_GEOJSON = window.DADOS_REGIOES || {type:'FeatureCollection', features:[]};
 var ativos = {};              // id do grupo -> bool (camada ligada)
 var abertos = {};             // id do grupo -> bool (legenda expandida)
 var camadasNoMapa = [];        // L.GeoJSON atualmente no mapa (pra limpar ao trocar seleção)
 var arquivosCarregados = {};   // arquivo -> true, evita <script> duplicado
+var camadaRegiao = null;       // contorno da região selecionada
+var camadasDestaque = [];      // casing + linha do S.R.E. escolhido no funil
 
 GRUPOS.forEach(function(g, i){ ativos[g.id] = (g.id === 'pavimento'); abertos[g.id] = (g.id === 'pavimento'); });
 
@@ -190,6 +246,19 @@ function competenciasDe(regiao){
                  .sort(function(a,b){ return a.competencia < b.competencia ? 1 : -1; }); // mais recente primeiro
 }
 
+function desenharRegiao(regiao){
+  if(camadaRegiao){ map.removeLayer(camadaRegiao); camadaRegiao = null; }
+  var feats = REGIOES_GEOJSON.features.filter(function(f){ return f.properties.regiao === regiao; });
+  if(feats.length === 0) return;
+  camadaRegiao = L.geoJSON({type:'FeatureCollection', features:feats}, {
+    style: {color:'#1E3A72', weight:2, dashArray:'6 4', fill:true, fillOpacity:0.03, opacity:0.85},
+    interactive:false,
+  }).addTo(map);
+  camadaRegiao.bringToBack();
+  var b = camadaRegiao.getBounds();
+  if(b.isValid()) map.fitBounds(b, {padding:[20,20]});
+}
+
 function montarSelects(){
   var regioes = regioesDisponiveis();
   if(regioes.length === 0){
@@ -197,7 +266,8 @@ function montarSelects(){
     return;
   }
   selRegiao.innerHTML = regioes.map(function(r){ return '<option value="'+r+'">'+r+'</option>'; }).join('');
-  selRegiao.addEventListener('change', function(){ montarCompetencias(); });
+  selRegiao.addEventListener('change', function(){ desenharRegiao(selRegiao.value); montarCompetencias(); });
+  desenharRegiao(selRegiao.value);
   montarCompetencias();
 }
 
@@ -231,6 +301,124 @@ function aoCarregarDados(item){
   document.getElementById('resumo-ext').textContent = item.ext_km.toLocaleString('pt-BR');
   document.getElementById('resumo-n').textContent = item.n_segmentos;
   redesenharMapa();
+  montarTipos();
+}
+
+// ---------------------------------------------------------------------
+// Funil Região → Competência → Tipo de via → S.R.E.
+// ---------------------------------------------------------------------
+var selTipo = document.getElementById('sel-tipo');
+var selSre = document.getElementById('sel-sre');
+
+function pacoteAtual(){
+  var regiao = selRegiao.value, competencia = selCompetencia.value;
+  return window.DADOS_INSPECAO && window.DADOS_INSPECAO[regiao] && window.DADOS_INSPECAO[regiao][competencia];
+}
+
+function rodoviaCurta(nome){
+  if(!nome) return '';
+  return nome.split(' - TRECHO')[0].split(' - trecho')[0];
+}
+
+function montarTipos(){
+  var pacote = pacoteAtual();
+  selSre.innerHTML = '<option value="">Selecione…</option>';
+  fecharDrawer();
+  if(!pacote){ selTipo.innerHTML = '<option value="">Selecione…</option>'; selTipo.disabled = true; return; }
+  var vistos = {};
+  pacote.features.forEach(function(f){ vistos[f.properties.tipo_via] = true; });
+  var tipos = Object.keys(vistos).filter(Boolean);
+  selTipo.disabled = false;
+  selTipo.innerHTML = '<option value="">Selecione…</option>' + tipos.map(function(t){
+    return '<option value="'+t+'">'+(NOME_TIPO_VIA[t]||t)+'</option>';
+  }).join('');
+  montarSres();
+}
+
+function montarSres(){
+  var pacote = pacoteAtual();
+  selSre.innerHTML = '<option value="">Selecione…</option>';
+  fecharDrawer();
+  var tipo = selTipo.value;
+  if(!pacote || !tipo){ selSre.disabled = true; return; }
+  var porSre = {};
+  pacote.features.filter(function(f){ return f.properties.tipo_via === tipo; }).forEach(function(f){
+    porSre[f.properties.sre] = f.properties.rodovia;
+  });
+  var sres = Object.keys(porSre).sort();
+  selSre.disabled = false;
+  selSre.innerHTML = '<option value="">Selecione…</option>' + sres.map(function(s){
+    return '<option value="'+s+'">'+s+' — '+rodoviaCurta(porSre[s])+'</option>';
+  }).join('');
+}
+
+selTipo.addEventListener('change', montarSres);
+selSre.addEventListener('change', function(){ destacarSre(); abrirDrawer(); });
+document.getElementById('drawer-fechar').addEventListener('click', function(){
+  selSre.value = '';
+  destacarSre();
+  fecharDrawer();
+});
+
+function destacarSre(){
+  camadasDestaque.forEach(function(l){ map.removeLayer(l); });
+  camadasDestaque = [];
+  var pacote = pacoteAtual();
+  var sre = selSre.value, tipo = selTipo.value;
+  if(!pacote || !sre) return;
+
+  var feats = pacote.features.filter(function(f){ return f.properties.sre === sre && f.properties.tipo_via === tipo; });
+  if(feats.length === 0) return;
+  var grupoPrincipal = (tipo === 'nao_pavimentada') ? 'plataforma' : 'pavimento';
+  var colecao = {type:'FeatureCollection', features:feats};
+
+  var casing = L.geoJSON(colecao, {style:{color:'#ffffff', weight:9, opacity:0.95}, interactive:false}).addTo(map);
+  var colorida = L.geoJSON(colecao, {
+    style: function(feat){ return {color: corDoSegmento(feat.properties, grupoPrincipal), weight:5, opacity:1}; },
+    onEachFeature: function(feat, layer){ layer.bindPopup(montarPopup(feat.properties)); },
+  }).addTo(map);
+  camadasDestaque = [casing, colorida];
+
+  var b = colorida.getBounds();
+  if(b.isValid()) map.fitBounds(b, {padding:[40,40], maxZoom:14});
+}
+
+function abrirDrawer(){
+  var pacote = pacoteAtual();
+  var sre = selSre.value, tipo = selTipo.value;
+  if(!pacote || !sre){ fecharDrawer(); return; }
+
+  var feats = pacote.features.filter(function(f){ return f.properties.sre === sre && f.properties.tipo_via === tipo; })
+                              .sort(function(a,b){ return a.properties.km_ini - b.properties.km_ini; });
+  if(feats.length === 0){ fecharDrawer(); return; }
+
+  var colunasGrupo = GRUPOS.filter(function(g){ return feats[0].properties[g.id] !== undefined; });
+  document.getElementById('drawer-titulo').textContent = sre + ' — ' + (NOME_TIPO_VIA[tipo]||tipo);
+  document.getElementById('drawer-subtitulo').textContent = rodoviaCurta(feats[0].properties.rodovia) +
+    ' · ' + feats[0].properties.competencia_label + ' · ' + feats.length + ' sub-trecho(s)';
+
+  var thead = '<tr><th>KM início</th><th>KM fim</th><th>Sentido</th>' +
+    colunasGrupo.map(function(g){ return '<th>'+g.nome+'</th>'; }).join('') + '</tr>';
+  var tbody = feats.map(function(f){
+    var p = f.properties;
+    var celulas = colunasGrupo.map(function(g){
+      var info = p[g.id] || {};
+      var texto = info.status || '—';
+      if(info.marcados && info.marcados.length > 1){ texto = info.marcados.join(' + '); }
+      return '<td><span class="badge-tab" style="background:'+corDoSegmento(p, g.id)+'">'+texto+'</span></td>';
+    }).join('');
+    return '<tr><td>'+p.km_ini.toFixed(2).replace('.', ',')+'</td><td>'+p.km_fim.toFixed(2).replace('.', ',')+
+      '</td><td>'+(p.sentido||'—')+'</td>'+celulas+'</tr>';
+  }).join('');
+
+  document.getElementById('drawer-corpo').innerHTML = '<table><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>';
+  document.getElementById('drawer').classList.add('aberta');
+}
+
+function fecharDrawer(){
+  document.getElementById('drawer').classList.remove('aberta');
+  camadasDestaque.forEach(function(l){ map.removeLayer(l); });
+  camadasDestaque = [];
 }
 
 // ---------------------------------------------------------------------
@@ -331,7 +519,6 @@ function redesenharMapa(){
   if(ligados.length === 0) return;
 
   var ESPACAMENTO_M = 6;
-  var todosBounds = [];
 
   ligados.forEach(function(grupoId, idx){
     try{
@@ -358,18 +545,12 @@ function redesenharMapa(){
         },
       }).addTo(map);
       camadasNoMapa.push(camada);
-      var b = camada.getBounds();
-      if(b.isValid()) todosBounds.push(b);
     }catch(e){
       console.error('falha ao desenhar camada', grupoId, e);
     }
   });
 
-  if(!redesenharMapa._ajustouZoom && todosBounds.length){
-    var geral = todosBounds.reduce(function(acc,b){ return acc ? acc.extend(b) : b; }, null);
-    map.fitBounds(geral, {padding:[20,20]});
-    redesenharMapa._ajustouZoom = true;
-  }
+  destacarSre(); // reaplica o destaque do S.R.E. escolhido (se houver) por cima das camadas recém-redesenhadas
 }
 
 // ---------------------------------------------------------------------
