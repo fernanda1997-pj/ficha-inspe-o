@@ -86,6 +86,37 @@ TEMPLATES = {
 # possíveis, na ordem em que devem aparecer no painel do mapa).
 GRUPOS_TODOS = TEMPLATES['pavimentada']['grupos'] + TEMPLATES['nao_pavimentada']['grupos']
 
+# Maior severidade possível de cada grupo (posição da última coluna) — usado
+# só pra normalizar 0–1 na hora de calcular o I.C.M./I.C.M.N.P. geral.
+MAX_SEVERIDADE = {
+    'pavimento': 4, 'vegetacao': 1, 'drenagem': 2,
+    'sinalizacao_horizontal': 2, 'sinalizacao_vertical': 2,
+    'plataforma': 3, 'drenagem_superficial': 2,
+}
+
+# Faixas do índice geral (média das severidades normalizadas dos grupos
+# presentes no segmento). Combinado com a usuária: 25% em 25%.
+FAIXAS_ICM = [(0.25, 'Bom'), (0.50, 'Regular'), (0.75, 'Ruim'), (1.01, 'Péssimo')]
+
+
+def calcular_icm(props):
+    """Índice geral (I.C.M./I.C.M.N.P.): média das severidades normalizadas
+    (0–1) dos grupos presentes no segmento, mapeada em Bom/Regular/Ruim/
+    Péssimo (25% em 25%). Sem nenhum grupo marcado -> 'Sem Informação'."""
+    valores = []
+    for grupo_id, maximo in MAX_SEVERIDADE.items():
+        info = props.get(grupo_id)
+        if info and info.get('severidade') is not None:
+            valores.append(info['severidade'] / maximo)
+    if not valores:
+        return {'classe': 'Sem Informação', 'valor': None}
+    media = sum(valores) / len(valores)
+    for limite, nome in FAIXAS_ICM:
+        if media <= limite:
+            return {'classe': nome, 'valor': round(media, 4)}
+    return {'classe': 'Péssimo', 'valor': round(media, 4)}
+
+
 qa_msgs = []
 
 
@@ -509,6 +540,7 @@ def main():
                     'severidade': info_g.get('severidade'),
                     'marcados': info_g.get('marcados', []),
                 }
+            props['icm'] = calcular_icm(props)
 
             features.append({
                 'type': 'Feature',

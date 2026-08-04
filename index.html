@@ -27,6 +27,33 @@
   #painel header small{font-weight:400; opacity:.85; font-size:11px; display:block;}
   #painel .conteudo{flex:1; overflow-y:auto; padding:12px;}
 
+  .abas{display:flex; border-bottom:1px solid var(--borda); flex:none;}
+  .aba-btn{
+    flex:1; padding:10px 6px; border:none; background:#fff; color:var(--cinza);
+    font-size:12.5px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;
+  }
+  .aba-btn:hover{background:var(--fundo);}
+  .aba-btn.ativa{color:var(--azul); border-bottom-color:var(--azul);}
+
+  .kpi-geral{
+    background:var(--fundo); border:1px solid var(--borda); border-radius:8px;
+    padding:14px 10px; text-align:center; margin-top:4px;
+  }
+  .kpi-geral b{font-size:26px; color:var(--azul); font-weight:800;}
+
+  .donut-wrap{display:flex; align-items:center; gap:10px; margin-top:6px;}
+  .donut-legenda{flex:1; font-size:12px;}
+  .donut-legenda .item{display:flex; align-items:center; gap:6px; padding:3px 0;}
+  .donut-legenda .chip{width:11px; height:11px; border-radius:3px; flex:none;}
+  .donut-legenda .nome{flex:1; color:#334155;}
+  .donut-legenda .valor{color:var(--cinza); font-variant-numeric:tabular-nums;}
+
+  .linha-filtro{display:flex; align-items:center; gap:8px; padding:5px 2px; font-size:13px;}
+  .linha-filtro input{width:16px; height:16px; accent-color:var(--azul); flex:none;}
+  .linha-filtro .chip{width:13px; height:13px; border-radius:3px; flex:none;}
+  .linha-filtro .nome{flex:1;}
+  .linha-filtro .valor{color:var(--cinza); font-size:11.5px;}
+
   label.rotulo{display:block; font-size:12px; font-weight:600; color:var(--azul); margin:10px 0 4px;}
   label.rotulo:first-child{margin-top:0;}
   select{
@@ -147,7 +174,11 @@
         </h1>
       </div>
     </header>
-    <div class="conteudo">
+    <div class="abas">
+      <button class="aba-btn ativa" data-aba="regiao">Por Região</button>
+      <button class="aba-btn" data-aba="geral">Visão Geral</button>
+    </div>
+    <div class="conteudo" id="painel-regiao">
       <label class="rotulo" for="sel-regiao">Região</label>
       <select id="sel-regiao"></select>
 
@@ -180,6 +211,27 @@
         ①②③... aqui do lado) — aparece uma legenda no canto do mapa lembrando qual
         número é qual, e só fica visível de perto (zoom de rua). Clique num trecho
         pra ver o detalhe completo de todos os aspectos daquele km.
+      </div>
+    </div>
+
+    <div class="conteudo" id="painel-geral" style="display:none;">
+      <label class="rotulo">Extensão total levantada no período</label>
+      <div class="kpi-geral"><b id="geral-total">—</b></div>
+
+      <label class="rotulo" style="margin-top:16px;">Resultado geral (I.C.M. / I.C.M.N.P.)</label>
+      <div class="donut-wrap">
+        <div id="geral-donut"></div>
+        <div class="donut-legenda" id="geral-legenda"></div>
+      </div>
+
+      <hr class="separador">
+
+      <label class="rotulo">Mostrar no mapa</label>
+      <div id="geral-filtros"></div>
+
+      <div class="dica">
+        Soma de todas as regiões e competências já convertidas. O gráfico mostra o
+        total sempre; os checkboxes acima só controlam o que aparece pintado no mapa.
       </div>
     </div>
   </div>
@@ -536,6 +588,8 @@ function montarPopup(props){
     return '<tr><td class="rot">'+g.nome+'</td><td><span class="badge" style="background:'+cor+'">'+texto+'</span></td></tr>';
   }).join('');
   var tipoVia = NOME_TIPO_VIA[props.tipo_via] || '';
+  var classeIcm = props.icm && props.icm.classe;
+  var corIcm = classeIcm ? (CORES_ICM[classeIcm] || '#94A3B8') : null;
   return (
     '<div class="popup-insp">'+
       '<h3>'+(props.sre||'')+(tipoVia ? ' <span style="font-size:10.5px; font-weight:600; color:#64748B;">· '+tipoVia+'</span>' : '')+'</h3>'+
@@ -544,6 +598,7 @@ function montarPopup(props){
         (props.sentido ? ' · sentido '+props.sentido : '')+
         '<br>Competência: '+props.competencia_label+
       '</div>'+
+      (classeIcm ? '<div style="margin-bottom:8px;">Resultado geral: <span class="badge" style="background:'+corIcm+'">'+classeIcm+'</span></div>' : '')+
       '<table>'+linhas+'</table>'+
     '</div>'
   );
@@ -641,6 +696,156 @@ function atualizarLegendaComparacao(ligados){
   }).join('');
   document.getElementById('legenda-comparacao-lista').innerHTML = html;
   painel.classList.add('mostrar');
+}
+
+// ---------------------------------------------------------------------
+// Aba "Visão Geral" — soma tudo que já foi convertido (todas as regiões e
+// competências), independente do que está selecionado na aba "Por Região".
+// ---------------------------------------------------------------------
+var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
+var CORES_ICM = {
+  'Bom': '#0ca30c', 'Regular': '#fab219', 'Ruim': '#ec835a',
+  'Péssimo': '#d03b3b', 'Sem Informação': '#94A3B8',
+};
+var ativosIcm = {};
+CLASSES_ICM.forEach(function(c){ ativosIcm[c] = true; });
+var camadaGeral = null;
+
+function trocarAba(aba){
+  document.querySelectorAll('.aba-btn').forEach(function(b){
+    b.classList.toggle('ativa', b.getAttribute('data-aba') === aba);
+  });
+  document.getElementById('painel-regiao').style.display = (aba === 'regiao') ? '' : 'none';
+  document.getElementById('painel-geral').style.display = (aba === 'geral') ? '' : 'none';
+  fecharDrawer();
+  document.getElementById('legenda-comparacao').classList.remove('mostrar');
+
+  if(aba === 'geral'){
+    camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
+    camadasNoMapa = [];
+    if(camadaRegiao){ map.removeLayer(camadaRegiao); camadaRegiao = null; }
+    carregarTodosOsDados(desenharVisaoGeral);
+  }else{
+    if(camadaGeral){ map.removeLayer(camadaGeral); camadaGeral = null; }
+    desenharRegiao(selRegiao.value);
+    redesenharMapa();
+  }
+}
+document.querySelectorAll('.aba-btn').forEach(function(b){
+  b.addEventListener('click', function(){ trocarAba(b.getAttribute('data-aba')); });
+});
+
+// Carrega (uma vez só) todos os dados/insp_*.js listados no manifest, mesmo
+// os de regiões/competências que a usuária não chegou a abrir na aba "Por
+// Região" — só assim dá pra somar "tudo que já foi levantado".
+function carregarTodosOsDados(callback){
+  var pendentes = MANIFEST.filter(function(m){ return !arquivosCarregados[m.arquivo]; });
+  if(pendentes.length === 0){ callback(); return; }
+  var restantes = pendentes.length;
+  pendentes.forEach(function(m){
+    var s = document.createElement('script');
+    s.src = 'dados/' + m.arquivo;
+    s.onload = function(){ arquivosCarregados[m.arquivo] = true; if(--restantes === 0) callback(); };
+    document.body.appendChild(s);
+  });
+}
+
+function todasAsFeatures(){
+  var todas = [];
+  Object.keys(window.DADOS_INSPECAO || {}).forEach(function(regiao){
+    Object.keys(window.DADOS_INSPECAO[regiao]).forEach(function(comp){
+      todas = todas.concat(window.DADOS_INSPECAO[regiao][comp].features);
+    });
+  });
+  return todas;
+}
+
+function desenharVisaoGeral(){
+  var todas = todasAsFeatures();
+  var somaPorClasse = {};
+  CLASSES_ICM.forEach(function(c){ somaPorClasse[c] = 0; });
+  todas.forEach(function(f){
+    var classe = (f.properties.icm && f.properties.icm.classe) || 'Sem Informação';
+    somaPorClasse[classe] += (f.properties.km_fim - f.properties.km_ini);
+  });
+  var total = CLASSES_ICM.reduce(function(s, c){ return s + somaPorClasse[c]; }, 0);
+
+  document.getElementById('geral-total').textContent =
+    total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
+
+  montarDonut(somaPorClasse, total);
+  montarLegendaIcm(somaPorClasse, total);
+  montarFiltrosIcm(somaPorClasse);
+  redesenharMapaGeral(todas);
+}
+
+function montarDonut(somaPorClasse, total){
+  var cx = 60, cy = 60, r = 46, largura = 20;
+  var circ = 2 * Math.PI * r;
+  var acumulado = 0;
+  var partes = CLASSES_ICM.map(function(c){
+    var frac = total > 0 ? somaPorClasse[c] / total : 0;
+    var comprimento = frac * circ;
+    var trecho = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+CORES_ICM[c]+
+      '" stroke-width="'+largura+'" stroke-dasharray="'+comprimento+' '+(circ - comprimento)+
+      '" stroke-dashoffset="'+(-acumulado)+'" transform="rotate(-90 '+cx+' '+cy+')"></circle>';
+    acumulado += comprimento;
+    return trecho;
+  }).join('');
+  document.getElementById('geral-donut').innerHTML =
+    '<svg viewBox="0 0 120 120" width="120" height="120">' + partes +
+    '<text x="60" y="57" text-anchor="middle" font-size="9" fill="#64748B">total</text>' +
+    '<text x="60" y="71" text-anchor="middle" font-size="12" font-weight="700" fill="#1E3A72">' +
+      Math.round(total).toLocaleString('pt-BR') + '</text>' +
+    '</svg>';
+}
+
+function montarLegendaIcm(somaPorClasse, total){
+  document.getElementById('geral-legenda').innerHTML = CLASSES_ICM.map(function(c){
+    var pct = total > 0 ? (100 * somaPorClasse[c] / total) : 0;
+    return '<div class="item"><span class="chip" style="background:'+CORES_ICM[c]+'"></span>' +
+      '<span class="nome">'+c+'</span>' +
+      '<span class="valor">'+somaPorClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km ('+pct.toFixed(0)+'%)</span></div>';
+  }).join('');
+}
+
+function montarFiltrosIcm(somaPorClasse){
+  document.getElementById('geral-filtros').innerHTML = CLASSES_ICM.map(function(c){
+    return '<label class="linha-filtro">' +
+      '<input type="checkbox" data-filtro-icm="'+c+'" '+(ativosIcm[c]?'checked':'')+'>' +
+      '<span class="chip" style="background:'+CORES_ICM[c]+'"></span>' +
+      '<span class="nome">'+c+'</span>' +
+      '<span class="valor">'+somaPorClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km</span>' +
+    '</label>';
+  }).join('');
+  document.querySelectorAll('[data-filtro-icm]').forEach(function(el){
+    el.addEventListener('change', function(){
+      ativosIcm[el.getAttribute('data-filtro-icm')] = el.checked;
+      redesenharMapaGeral(todasAsFeatures());
+    });
+  });
+}
+
+function redesenharMapaGeral(todas){
+  if(camadaGeral){ map.removeLayer(camadaGeral); camadaGeral = null; }
+  var feats = todas.filter(function(f){
+    var classe = (f.properties.icm && f.properties.icm.classe) || 'Sem Informação';
+    return ativosIcm[classe];
+  });
+  if(feats.length === 0) return;
+  camadaGeral = L.geoJSON({type:'FeatureCollection', features:feats}, {
+    style: function(feat){
+      var classe = (feat.properties.icm && feat.properties.icm.classe) || 'Sem Informação';
+      return {color: CORES_ICM[classe], weight:4, opacity:0.9};
+    },
+    onEachFeature: function(feat, layer){
+      layer.bindPopup(montarPopup(feat.properties));
+      layer.on('mouseover', function(){ layer.setStyle({weight:7}); });
+      layer.on('mouseout', function(){ layer.setStyle({weight:4}); });
+    },
+  }).addTo(map);
+  var b = camadaGeral.getBounds();
+  if(b.isValid()) map.fitBounds(b, {padding:[20,20]});
 }
 
 // ---------------------------------------------------------------------
