@@ -67,47 +67,6 @@
   }
   #resumo b{color:var(--azul); font-size:14px; display:block;}
 
-  .secao-camadas{margin-top:16px;}
-  .grupo-camada{
-    border:1px solid var(--borda); border-radius:8px; margin-bottom:8px; overflow:hidden;
-  }
-  .grupo-camada .cabeca{
-    display:flex; align-items:center; gap:8px; padding:9px 10px; cursor:pointer; user-select:none;
-    background:#fff;
-  }
-  .grupo-camada .cabeca:hover{background:var(--fundo);}
-  .grupo-camada input[type=checkbox]{width:16px; height:16px; accent-color:var(--azul); flex:none;}
-  .grupo-camada .nome{flex:1; font-size:13px; font-weight:600; color:#1e293b;}
-  .grupo-camada .seta{font-size:10px; color:var(--cinza); transition:transform .15s;}
-  .grupo-camada.aberto .seta{transform:rotate(90deg);}
-  .grupo-camada .legenda{
-    display:none; padding:2px 10px 10px 34px; font-size:12px; color:#475569;
-  }
-  .grupo-camada.aberto .legenda{display:block;}
-  .item-legenda{display:flex; align-items:center; gap:6px; padding:2px 0;}
-  .item-legenda .chip{width:13px; height:13px; border-radius:3px; border:1px solid rgba(0,0,0,.25); flex:none;}
-  .grupo-camada .numero{
-    display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
-    border-radius:50%; background:var(--fundo); border:1px solid var(--borda); color:var(--azul);
-    font-size:10px; font-weight:700; flex:none; margin-right:2px;
-  }
-
-  /* ---------- Legenda "comparando camadas" (flutua sobre o mapa) ---------- */
-  #legenda-comparacao{
-    position:absolute; top:10px; right:10px; z-index:1000; background:rgba(255,255,255,.96);
-    border:1px solid var(--borda); border-radius:8px; padding:9px 12px; font-size:12px;
-    box-shadow:0 1px 6px rgba(0,0,0,.18); max-width:230px; display:none;
-  }
-  #legenda-comparacao.mostrar{display:block;}
-  #legenda-comparacao b{color:var(--azul); font-size:12.5px;}
-  #legenda-comparacao .item{display:flex; align-items:center; gap:6px; margin:5px 0 0;}
-  #legenda-comparacao .numero{
-    display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
-    border-radius:50%; background:var(--fundo); border:1px solid var(--borda); color:var(--azul);
-    font-size:10px; font-weight:700; flex:none;
-  }
-  #legenda-comparacao small{display:block; color:var(--cinza); margin-top:7px; line-height:1.4; font-size:10.5px;}
-
   .dica{font-size:11px; color:var(--cinza); margin-top:14px; line-height:1.5;}
   .vazio{font-size:12px; color:var(--cinza); font-style:italic; padding:10px 2px;}
 
@@ -206,16 +165,10 @@
       <label class="rotulo" for="sel-sre">S.R.E.</label>
       <select id="sel-sre"><option value="">Selecione…</option></select>
 
-      <hr class="separador">
-
-      <div class="secao-camadas" id="lista-camadas"></div>
-
       <div class="dica">
-        Marque uma camada pra colorir a rodovia por aquele aspecto. Marcando mais de
-        uma, cada uma vira uma linha separada do lado da outra (na ordem numerada
-        ①②③... aqui do lado) — aparece uma legenda no canto do mapa lembrando qual
-        número é qual, e só fica visível de perto (zoom de rua). Clique num trecho
-        pra ver o detalhe completo de todos os aspectos daquele km.
+        O mapa mostra o Resultado Geral de cada trecho. Escolha um Trecho/S.R.E.
+        acima (ou "Todos") pra dar zoom nele e ver a tabela completa com pavimento,
+        vegetação, drenagem e sinalização — ou clique direto num trecho no mapa.
       </div>
     </div>
 
@@ -241,11 +194,6 @@
     </div>
   </div>
   <div id="map"></div>
-  <div id="legenda-comparacao">
-    <b>Comparando camadas</b>
-    <div id="legenda-comparacao-lista"></div>
-    <small>As linhas aparecem lado a lado (deslocadas) na ordem acima, seguindo o sentido da via.</small>
-  </div>
   <div id="drawer">
     <div class="cabeca-drawer">
       <div>
@@ -259,7 +207,6 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 <script src="dados/manifest.js"></script>
 <script src="dados/regioes.js"></script>
 <script>
@@ -271,30 +218,16 @@
 // ---------------------------------------------------------------------
 var CORES_SEVERIDADE = ['#16A34A', '#EAB308', '#F97316', '#DC2626', '#7F1D1D'];
 
-// Rótulos "genéricos" pra montar a legenda antes dos dados carregarem
-// (o popup sempre mostra o texto exato da ficha, isso aqui é só a legenda).
-var LEGENDA_GRUPO = {
-  pavimento: ['Bom', 'Remendo isolado', 'Remendo em lâmina', 'Buraco isolado', 'Buraco em lâmina'],
-  vegetacao: ['Adequada', 'Inadequada'],
-  drenagem: ['Limpos', 'Sujos', 'Danificados'],
-  sinalizacao_horizontal: ['Bom', 'Regular', 'Inexistente'],
-  sinalizacao_vertical: ['Bom', 'Poucas', 'Inexistente'],
-  plataforma: ['Bom', 'Regular (até 10 irreg./km)', 'Ruim (+10 irreg./km)', 'Péssima (atoleiro/pto. crítico)'],
-  drenagem_superficial: ['Limpa', 'Obstruída', 'Ausente'],
-};
-
 var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não pavimentada'};
 
 // Resultado geral (I.C.M./I.C.M.N.P.) — combinação normalizada de todos os
 // aspectos de cada segmento (ver converter_fichas.py::calcular_icm). Paleta
-// de status (não é a mesma escala verde→vinho da severidade, por isso fica
-// à parte, mas funciona como mais uma camada do funil, com sua legenda própria.
+// de status (não é a mesma escala verde→vinho da severidade).
 var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
 var CORES_ICM = {
   'Bom': '#0ca30c', 'Regular': '#fab219', 'Ruim': '#ec835a',
   'Péssimo': '#d03b3b', 'Sem Informação': '#94A3B8',
 };
-LEGENDA_GRUPO.icm = CLASSES_ICM;
 
 // ---------------------------------------------------------------------
 // Mapa base
@@ -318,14 +251,10 @@ var GRUPOS = (window.GRUPOS_INSPECAO || []).concat([
 ]);
 var MANIFEST = window.MANIFEST_INSPECAO || [];
 var REGIOES_GEOJSON = window.DADOS_REGIOES || {type:'FeatureCollection', features:[]};
-var ativos = {};              // id do grupo -> bool (camada ligada)
-var abertos = {};             // id do grupo -> bool (legenda expandida)
 var camadasNoMapa = [];        // L.GeoJSON atualmente no mapa (pra limpar ao trocar seleção)
 var arquivosCarregados = {};   // arquivo -> true, evita <script> duplicado
 var camadaRegiao = null;       // contorno da região selecionada
 var camadasDestaque = [];      // casing + linha do S.R.E. escolhido no funil
-
-GRUPOS.forEach(function(g, i){ ativos[g.id] = (g.id === 'pavimento'); abertos[g.id] = (g.id === 'pavimento'); });
 
 // ---------------------------------------------------------------------
 // Monta os selects de Região / Competência a partir do manifest.js
@@ -362,7 +291,7 @@ function desenharRegiao(regiao){
 function montarSelects(){
   var regioes = regioesDisponiveis();
   if(regioes.length === 0){
-    document.getElementById('lista-camadas').innerHTML = '<div class="vazio">Nenhuma ficha convertida ainda. Rode <code>python converter_fichas.py</code> depois de colocar os arquivos em fichas/.</div>';
+    document.getElementById('painel-regiao').innerHTML = '<div class="vazio">Nenhuma ficha convertida ainda. Rode <code>python converter_fichas.py</code> depois de colocar os arquivos em fichas/.</div>';
     return;
   }
   selRegiao.innerHTML = regioes.map(function(r){ return '<option value="'+r+'">'+r+'</option>'; }).join('');
@@ -587,52 +516,8 @@ function fecharDrawer(){
 }
 
 // ---------------------------------------------------------------------
-// Painel de camadas (checkbox + legenda expansível)
-// ---------------------------------------------------------------------
-var NUMEROS_CIRCULO = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨'];
-
-function montarPainelCamadas(){
-  var html = GRUPOS.map(function(g, i){
-    var itens = (LEGENDA_GRUPO[g.id] || []).map(function(lbl, i){
-      var cor = (g.id === 'icm') ? (CORES_ICM[lbl] || '#94A3B8') : CORES_SEVERIDADE[i];
-      return '<div class="item-legenda"><span class="chip" style="background:'+cor+'"></span>'+lbl+'</div>';
-    }).join('');
-    return (
-      '<div class="grupo-camada'+(abertos[g.id]?' aberto':'')+'" data-id="'+g.id+'">'+
-        '<div class="cabeca">'+
-          '<input type="checkbox" data-check="'+g.id+'" '+(ativos[g.id]?'checked':'')+'>'+
-          '<span class="numero" title="Ordem quando comparando camadas">'+(NUMEROS_CIRCULO[i]||(i+1))+'</span>'+
-          '<span class="nome" data-toggle="'+g.id+'">'+g.nome+'</span>'+
-          '<span class="seta" data-toggle="'+g.id+'">▶</span>'+
-        '</div>'+
-        '<div class="legenda">'+itens+'</div>'+
-      '</div>'
-    );
-  }).join('');
-  document.getElementById('lista-camadas').innerHTML = html;
-
-  document.querySelectorAll('[data-check]').forEach(function(el){
-    el.addEventListener('change', function(){
-      ativos[el.getAttribute('data-check')] = el.checked;
-      redesenharMapa();
-    });
-  });
-  document.querySelectorAll('[data-toggle]').forEach(function(el){
-    el.addEventListener('click', function(){
-      var id = el.getAttribute('data-toggle');
-      abertos[id] = !abertos[id];
-      document.querySelector('.grupo-camada[data-id="'+id+'"]').classList.toggle('aberto', abertos[id]);
-    });
-  });
-}
-
-// ---------------------------------------------------------------------
 // Desenho das linhas no mapa
 // ---------------------------------------------------------------------
-function grupoAtivoLista(){
-  return GRUPOS.filter(function(g){ return ativos[g.id]; }).map(function(g){ return g.id; });
-}
-
 function corDoSegmento(props, grupoId){
   if(grupoId === 'icm'){
     var classe = props.icm && props.icm.classe;
@@ -668,41 +553,10 @@ function montarPopup(props){
   );
 }
 
-function offsetMetros(geometry, metros){
-  if(!metros) return geometry;
-  try{
-    var original = geometry.coordinates;
-    var linha = turf.lineString(original);
-    var deslocada = turf.lineOffset(linha, metros, {units:'meters'});
-    var coords = deslocada.geometry.coordinates;
-
-    // turf.lineOffset pode "explodir" numericamente em trechos muito curtos/quase
-    // retos e devolver um ponto tecnicamente finito, mas absurdamente longe (não
-    // pega no Number.isFinite). Sanidade: a área ocupada pelo resultado não pode
-    // crescer muito além da área original — o deslocamento devia ser de poucos
-    // metros, então uma folga de ~0.05° (~5 km) já é generosa o bastante.
-    var MARGEM = 0.05;
-    var bboxOrig = bboxDe(original);
-    var valido = coords.length >= 2 && coords.every(function(c){
-      return Number.isFinite(c[0]) && Number.isFinite(c[1]) &&
-        c[0] >= bboxOrig.minX - MARGEM && c[0] <= bboxOrig.maxX + MARGEM &&
-        c[1] >= bboxOrig.minY - MARGEM && c[1] <= bboxOrig.maxY + MARGEM;
-    });
-    return valido ? {type:'LineString', coordinates: coords} : geometry;
-  }catch(e){
-    return geometry; // linha curta/degenerada demais pra deslocar — mostra sem offset
-  }
-}
-
-function bboxDe(coords){
-  var minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
-  coords.forEach(function(c){
-    if(c[0]<minX) minX=c[0]; if(c[0]>maxX) maxX=c[0];
-    if(c[1]<minY) minY=c[1]; if(c[1]>maxY) maxY=c[1];
-  });
-  return {minX:minX, maxX:maxX, minY:minY, maxY:maxY};
-}
-
+// Mapa da região sempre colorido pelo Resultado Geral (I.C.M.) — sem
+// checkbox de aspecto pra escolher: quem quiser o detalhe de pavimento,
+// vegetação, drenagem etc. usa o funil Trecho/S.R.E. (zoom + tabela) ou
+// clica direto no trecho (popup mostra tudo).
 function redesenharMapa(){
   camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
   camadasNoMapa = [];
@@ -711,55 +565,17 @@ function redesenharMapa(){
   var pacote = window.DADOS_INSPECAO && window.DADOS_INSPECAO[regiao] && window.DADOS_INSPECAO[regiao][competencia];
   if(!pacote) return;
 
-  var ligados = grupoAtivoLista();
-  if(ligados.length === 0) return;
+  var camada = L.geoJSON(pacote, {
+    style: function(feat){ return {color: corDoSegmento(feat.properties, 'icm'), weight:4, opacity:0.9}; },
+    onEachFeature: function(feat, layer){
+      layer.bindPopup(montarPopup(feat.properties));
+      layer.on('mouseover', function(){ layer.setStyle({weight:7}); });
+      layer.on('mouseout', function(){ layer.setStyle({weight:4}); });
+    },
+  }).addTo(map);
+  camadasNoMapa.push(camada);
 
-  var ESPACAMENTO_M = 6;
-
-  ligados.forEach(function(grupoId, idx){
-    try{
-      var offset = (idx - (ligados.length-1)/2) * ESPACAMENTO_M;
-      // só entra na camada quem tem esse grupo na ficha (pavimentada tem os
-      // 5 grupos de asfalto, não pavimentada tem plataforma/drenagem
-      // superficial — nunca os dois ao mesmo tempo no mesmo segmento).
-      var feats = pacote.features.filter(function(f){
-        return f.properties[grupoId] !== undefined;
-      }).map(function(f){
-        return {
-          type:'Feature',
-          properties: f.properties,
-          geometry: ligados.length > 1 ? offsetMetros(f.geometry, offset) : f.geometry,
-        };
-      });
-      if(feats.length === 0) return;
-      var camada = L.geoJSON({type:'FeatureCollection', features:feats}, {
-        style: function(feat){ return {color: corDoSegmento(feat.properties, grupoId), weight:4, opacity:0.9}; },
-        onEachFeature: function(feat, layer){
-          layer.bindPopup(montarPopup(feat.properties));
-          layer.on('mouseover', function(){ layer.setStyle({weight:7}); });
-          layer.on('mouseout', function(){ layer.setStyle({weight:4}); });
-        },
-      }).addTo(map);
-      camadasNoMapa.push(camada);
-    }catch(e){
-      console.error('falha ao desenhar camada', grupoId, e);
-    }
-  });
-
-  atualizarLegendaComparacao(ligados);
-  destacarSre(); // reaplica o destaque do S.R.E. escolhido (se houver) por cima das camadas recém-redesenhadas
-}
-
-function atualizarLegendaComparacao(ligados){
-  var painel = document.getElementById('legenda-comparacao');
-  if(ligados.length < 2){ painel.classList.remove('mostrar'); return; }
-  var html = ligados.map(function(grupoId){
-    var g = GRUPOS.find(function(x){ return x.id === grupoId; });
-    var i = GRUPOS.findIndex(function(x){ return x.id === grupoId; });
-    return '<div class="item"><span class="numero">'+(NUMEROS_CIRCULO[i]||(i+1))+'</span>'+g.nome+'</div>';
-  }).join('');
-  document.getElementById('legenda-comparacao-lista').innerHTML = html;
-  painel.classList.add('mostrar');
+  destacarSre(); // reaplica o destaque do S.R.E. escolhido (se houver) por cima da camada recém-redesenhada
 }
 
 // ---------------------------------------------------------------------
@@ -777,7 +593,6 @@ function trocarAba(aba){
   document.getElementById('painel-regiao').style.display = (aba === 'regiao') ? '' : 'none';
   document.getElementById('painel-geral').style.display = (aba === 'geral') ? '' : 'none';
   fecharDrawer();
-  document.getElementById('legenda-comparacao').classList.remove('mostrar');
 
   if(aba === 'geral'){
     camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
@@ -915,7 +730,6 @@ function redesenharMapaGeral(todas){
 // ---------------------------------------------------------------------
 // Início
 // ---------------------------------------------------------------------
-montarPainelCamadas();
 montarSelects();
 
 })();

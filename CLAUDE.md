@@ -74,35 +74,66 @@ ficha original de pavimentada: "INADED." em vez de "INADEQ.").
 | `drenagem_superficial` | Limpa · Obstruída · Ausente | Não pavimentada |
 
 Cada segmento (feature do GeoJSON) só carrega as chaves do grupo do SEU modelo — um
-trecho pavimentado nunca tem `plataforma`/`drenagem_superficial` e vice-versa. O
-`index.html` filtra por isso: cada camada do painel só desenha as features que têm
-aquela chave em `properties` (`f.properties[grupoId] !== undefined`) — assim a camada
-"Condição da Plataforma" só pinta os trechos de leito natural, nunca o asfalto.
+trecho pavimentado nunca tem `plataforma`/`drenagem_superficial` e vice-versa. Isso é
+usado pra filtrar colunas na tabela do funil (`f.properties[grupoId] !== undefined`).
 
-No mapa, cada grupo é uma camada independente (checkbox próprio). Com mais de uma
-marcada ao mesmo tempo, as linhas aparecem deslocadas ~6 m uma da outra (via
-`turf.lineOffset`) pra dar pra comparar lado a lado — só fica visível de perto (zoom de
-rua), o que é esperado. **Cuidado**: `turf.lineOffset` pode devolver coordenadas `NaN`
-sem lançar exceção para linhas muito curtas/degeneradas — por isso `offsetMetros()` no
-`index.html` valida cada coordenada e volta pra geometria original se der `NaN` (um
-único ponto inválido derruba a camada inteira no Leaflet, silenciosamente, se não tratar
-isso).
+**Histórico (revertido):** os 5/2 grupos já foram camadas independentes do mapa
+(checkbox por aspecto, com `turf.lineOffset` deslocando as linhas ~6m pra comparar
+lado a lado). A usuária achou confuso mesmo depois de numerar as camadas e explicar
+com exemplo — pediu pra tirar (2026-08-04). **Não recriar sem pedido explícito.** O
+mapa da região hoje é sempre colorido pelo Resultado Geral (I.C.M.) só; quem quer o
+detalhe por aspecto usa o popup (clique no trecho) ou a tabela do funil (que já mostra
+todas as colunas de uma vez). `turf.js` foi removido do projeto (só existia pro offset).
 
-Clicar em qualquer trecho (não importa qual camada está colorindo) abre um popup com o
-detalhe completo — só dos grupos que existem naquele segmento — e uma tag indicando
-"Pavimentada" ou "Não pavimentada".
+## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
-## Funil Região → Competência → Tipo de via → S.R.E.
+Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:
+severidade de cada grupo presente ÷ severidade máxima do grupo (normaliza 0–1), tira a
+média, enquadra em faixas de 25% (`calcular_icm()` em `converter_fichas.py`):
 
-Além das camadas por aspecto, a sidebar tem um segundo jeito de navegar, pra achar um
-S.R.E. específico rápido: escolher Região (desenha o contorno tracejado da região —
-`camadas/R<n>_REGIÃO.shp` → `dados/regioes.js` — e dá fit nele), Competência, Tipo de
-via (lista só os tipos que existem naquele região+mês) e por fim o S.R.E. (lista só os
-da via escolhida). Ao escolher o S.R.E., o mapa dá zoom nele com um destaque (casing
-branco + cor pelo aspecto principal — `pavimento` pra via pavimentada, `plataforma`
-pra não pavimentada) e abre uma gaveta na parte de baixo do mapa com uma tabela de
-**todos** os sub-trechos de km daquele S.R.E. e as condições marcadas em cada um
-(só as colunas do modelo de ficha correspondente).
+| Faixa da média | Classe |
+|---|---|
+| 0–25% | Bom |
+| 25–50% | Regular |
+| 50–75% | Ruim |
+| 75–100% | Péssimo |
+| nenhum grupo com marcação | Sem Informação |
+
+Guardado em `properties.icm = {classe, valor}` de cada feature. Cores fixas (paleta de
+status, não a escala verde→vinho de severidade): Bom `#0ca30c`, Regular `#fab219`, Ruim
+`#ec835a`, Péssimo `#d03b3b`, Sem Informação `#94A3B8` (`CORES_ICM` no `index.html`).
+
+Aparece em 3 lugares:
+- **Mapa da aba "Por Região"**: sempre colorido por `icm` (não tem seletor de aspecto).
+- **Rosca (donut) + KPI de extensão**: em "Por Região" (escopo região+competência
+  selecionadas) e na aba "Visão Geral" (escopo tudo que já foi convertido — carrega os
+  `insp_*.js` que faltarem via `carregarTodosOsDados()`). Mesmas funções
+  (`somaIcmDe`/`montarDonut`/`montarLegendaIcm`), só o conjunto de features muda.
+- **"Visão Geral"** tem também um filtro "Mostrar no mapa" por classe (Bom/Regular/
+  Ruim/Péssimo/Sem Informação) — independente do gráfico, que sempre mostra o total.
+
+Clicar em qualquer trecho abre um popup com "Resultado geral" em destaque + o detalhe
+dos grupos que existem naquele segmento + tag "Pavimentada"/"Não pavimentada".
+
+## Funil Região → Competência → Tipo de via → Trecho → S.R.E.
+
+Segundo jeito de navegar, pra achar um trecho específico (ou ver tudo de uma vez):
+Região (desenha o contorno tracejado — `camadas/R<n>_REGIÃO.shp` → `dados/regioes.js`
+— e dá fit nele) → Competência → Tipo de via (só os tipos que existem naquele
+região+mês) → **Trecho** (agrupa vários S.R.E. sob o mesmo lote/rodovia — equivale à
+coluna `Id` do shapefile `R<n>_TRECHOS.shp`, bate com o número da aba da ficha) →
+S.R.E. Tanto Trecho quanto S.R.E. têm uma opção **"Todos"** (`TODOS = '__todos__'`
+no JS) — escolher "Todos os trechos" já mostra tudo direto, sem precisar escolher o
+S.R.E. depois; escolher um trecho específico ainda oferece "Todos os S.R.E. deste
+trecho". `featuresDoFunil()` centraliza esse filtro (tipo é obrigatório; trecho/sre em
+"Todos" viram no-op).
+
+Ao escolher (S.R.E. ou "Todos"), o mapa dá zoom com destaque (casing branco + cor pelo
+aspecto principal — `pavimento` pra via pavimentada, `plataforma` pra não pavimentada)
+e abre uma gaveta embaixo do mapa com uma tabela de **todos** os sub-trechos de km e
+as condições marcadas em cada um (só as colunas do modelo de ficha correspondente,
+mais a coluna "Resultado Geral (I.C.M.)"). Quando mostra mais de um S.R.E. de uma vez
+("Todos"), a tabela ganha colunas extras de Trecho e S.R.E. no início.
 
 ## Fluxo de trabalho — ficha nova chegou
 
