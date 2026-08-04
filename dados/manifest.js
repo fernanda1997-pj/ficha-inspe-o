@@ -5,8 +5,8 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
     "arquivo": "insp_R11_2026-07.js",
-    "n_segmentos": 205,
-    "ext_km": 575.4
+    "n_segmentos": 277,
+    "ext_km": 1104.7
   }
 ];
 window.GRUPOS_INSPECAO = [
@@ -29,5 +29,13 @@ window.GRUPOS_INSPECAO = [
   {
     "id": "sinalizacao_vertical",
     "nome": "Sinalização Vertical"
+  },
+  {
+    "id": "plataforma",
+    "nome": "Condição da Plataforma"
+  },
+  {
+    "id": "drenagem_superficial",
+    "nome": "Drenagem Superficial"
   }
 ];

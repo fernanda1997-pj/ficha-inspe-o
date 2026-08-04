@@ -1,21 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-converter_fichas.py — Geoportal de Inspeção do Pavimento (RTA-MSI / Tocantins)
+converter_fichas.py — Geoportal de Inspeção Rodoviária (RTA-MSI / Tocantins)
 
-Lê as fichas de inspeção de rodovias pavimentadas (fichas/*.xlsx) e as linhas
-de referência de cada S.R.E. (camadas/R<região>_TRECHOS.shp — as mesmas
-usadas no geoportal principal em ../web) e gera, para cada região+competência
-encontrada, um GeoJSON com um segmento de linha por trecho de KM inspecionado,
-já cortado na extensão certa por referenciamento linear (km início/fim ao
-longo da linha do S.R.E.), com os 5 grupos de condição levantados em campo:
+Lê as fichas de inspeção — tanto de rodovias PAVIMENTADAS quanto NÃO
+PAVIMENTADAS (fichas/*.xlsx) — e as linhas de referência de cada S.R.E.
+(camadas/R<região>_TRECHOS.shp — as mesmas usadas no geoportal principal em
+../web) e gera, para cada região+competência encontrada, um GeoJSON com um
+segmento de linha por trecho de KM inspecionado, já cortado na extensão
+certa por referenciamento linear (km início/fim ao longo da linha do
+S.R.E.). Os dois modelos de ficha têm grupos de condição diferentes:
 
-    pavimento · vegetação · elementos de drenagem ·
-    sinalização horizontal · sinalização vertical
+    pavimentada     -> pavimento · vegetação · elementos de drenagem ·
+                        sinalização horizontal · sinalização vertical
+    não pavimentada -> condição da plataforma · drenagem superficial
 
-Cada grupo guarda os itens marcados (X) na ficha e um índice de severidade
-(posição da coluna dentro do grupo: a 1ª coluna do grupo é sempre a
-condição boa, as seguintes são progressivamente piores — é assim que a
-ficha template está desenhada, então não precisamos adivinhar o texto).
+O tipo de cada sheet é detectado automaticamente pelo cabeçalho do primeiro
+grupo de condição (não pelo nome do arquivo). Cada grupo guarda os itens
+marcados (X) na ficha e um índice de severidade (posição da coluna dentro
+do grupo: a 1ª coluna do grupo é sempre a condição boa, as seguintes são
+progressivamente piores — é assim que os dois templates são desenhados,
+então não precisamos adivinhar o texto exato do rótulo).
 
 Saída (tudo em dados/, consumido pelo index.html sem build):
     dados/insp_<REGIAO>_<AAAA-MM>.js   -- um por região+competência
@@ -51,14 +55,36 @@ MESES_PT = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio',
 
 # Grupos de condição, na ordem em que aparecem na ficha (esquerda->direita).
 # 'chave_topo' é o texto (normalizado) do cabeçalho mesclado que identifica
-# onde o grupo começa/termina na planilha.
-GRUPOS = [
-    {'id': 'pavimento', 'nome': 'Condição do Pavimento', 'chave_topo': 'CONDICAO DO PAVIMENTO'},
-    {'id': 'vegetacao', 'nome': 'Vegetação', 'chave_topo': 'VEGETACAO'},
-    {'id': 'drenagem', 'nome': 'Elementos de Drenagem', 'chave_topo': 'DRENAGEM'},
-    {'id': 'sinalizacao_horizontal', 'nome': 'Sinalização Horizontal', 'chave_topo': 'SIN. HOR'},
-    {'id': 'sinalizacao_vertical', 'nome': 'Sinalização Vertical', 'chave_topo': 'SIN. VERTICAL'},
-]
+# onde o grupo começa/termina na planilha. Cada modelo de ficha (pavimentada
+# / não pavimentada) tem o seu próprio conjunto — a chave precisa ser
+# específica o bastante pra não casar com o cabeçalho do outro modelo (por
+# isso "ELEM. DE DRENAGEM" e não só "DRENAGEM", que também aparece em
+# "DRENAGEM SUPERFICIAL" da ficha de não pavimentada).
+TEMPLATES = {
+    'pavimentada': {
+        'nome': 'Pavimentada',
+        'chave_deteccao': 'CONDICAO DO PAVIMENTO',
+        'grupos': [
+            {'id': 'pavimento', 'nome': 'Condição do Pavimento', 'chave_topo': 'CONDICAO DO PAVIMENTO'},
+            {'id': 'vegetacao', 'nome': 'Vegetação', 'chave_topo': 'VEGETACAO'},
+            {'id': 'drenagem', 'nome': 'Elementos de Drenagem', 'chave_topo': 'ELEM. DE DRENAGEM'},
+            {'id': 'sinalizacao_horizontal', 'nome': 'Sinalização Horizontal', 'chave_topo': 'SIN. HOR'},
+            {'id': 'sinalizacao_vertical', 'nome': 'Sinalização Vertical', 'chave_topo': 'SIN. VERTICAL'},
+        ],
+    },
+    'nao_pavimentada': {
+        'nome': 'Não pavimentada',
+        'chave_deteccao': 'CONDICAO DA PLATAFORMA',
+        'grupos': [
+            {'id': 'plataforma', 'nome': 'Condição da Plataforma', 'chave_topo': 'CONDICAO DA PLATAFORMA'},
+            {'id': 'drenagem_superficial', 'nome': 'Drenagem Superficial', 'chave_topo': 'DRENAGEM SUPERFICIAL'},
+        ],
+    },
+}
+
+# Lista combinada (usada só pra escrever o manifest.js com todos os grupos
+# possíveis, na ordem em que devem aparecer no painel do mapa).
+GRUPOS_TODOS = TEMPLATES['pavimentada']['grupos'] + TEMPLATES['nao_pavimentada']['grupos']
 
 qa_msgs = []
 
@@ -180,15 +206,26 @@ def parse_ficha(caminho):
         regiao = f'R{regiao_num}'
         competencia = f'{competencia_dt.year:04d}-{competencia_dt.month:02d}'
 
-        # --- localizar as colunas de cada grupo de condição ---
+        # --- qual modelo de ficha é essa aba? (pavimentada x não pavimentada) ---
         r_sre, c_sre = pos_sre
+        data_start_row_provisorio = _merged_range_de(ws, r_sre, c_sre)[2] + 1
+        tipo_via = None
+        for chave_tpl, tpl in TEMPLATES.items():
+            if _achar_cabecalho(ws, tpl['chave_deteccao'], linhas=range(1, data_start_row_provisorio)):
+                tipo_via = chave_tpl
+                break
+        if tipo_via is None:
+            print(f'  [aviso] aba "{nome_aba}": não reconheci o modelo da ficha (nem pavimentada nem não pavimentada) — pulando')
+            continue
+
+        # --- localizar as colunas de cada grupo de condição do modelo detectado ---
         _, c_sentido = pos_sentido
         _, c_inicio = pos_inicio
         _, c_fim = pos_fim
-        data_start_row = _merged_range_de(ws, r_sre, c_sre)[2] + 1  # linha após o cabeçalho de 2 linhas
+        data_start_row = data_start_row_provisorio  # linha após o cabeçalho de 2 linhas
 
         grupos_cols = []
-        for g in GRUPOS:
+        for g in TEMPLATES[tipo_via]['grupos']:
             pos = _achar_cabecalho(ws, g['chave_topo'], linhas=range(1, data_start_row))
             if not pos:
                 print(f'  [aviso] aba "{nome_aba}": grupo "{g["nome"]}" não encontrado')
@@ -197,7 +234,7 @@ def parse_ficha(caminho):
             r1, cc1, r2, cc2 = _merged_range_de(ws, r0, c0)
             cols = list(range(cc1, cc2 + 1))
             labels = [ws.cell(row=r2 + 1, column=cc).value for cc in cols]
-            labels = [(str(l).strip() if l else None) for l in labels]
+            labels = [(re.sub(r'\s+', ' ', str(l)).strip() if l else None) for l in labels]
             grupos_cols.append({**g, 'cols': cols, 'labels': labels})
 
         # --- ler as linhas de dados ---
@@ -223,6 +260,7 @@ def parse_ficha(caminho):
                 'sentido': sentido_atual,
                 'km_ini': round(float(v_ini), 3),
                 'km_fim': round(float(v_fim), 3),
+                'tipo_via': tipo_via,
             }
             for g in grupos_cols:
                 marcados = []
@@ -251,7 +289,7 @@ def parse_ficha(caminho):
     for regiao, por_comp in resultados_por_regiao.items():
         for competencia, segs in por_comp.items():
             saida.append({'regiao': regiao, 'competencia': competencia, 'segmentos': segs})
-    return saida, GRUPOS
+    return saida
 
 
 def carregar_linhas_regiao(regiao):
@@ -369,12 +407,11 @@ def main():
         print(f'Nenhuma ficha .xlsx encontrada em {FICHAS_DIR}')
         return
 
-    grupos_meta = None
     por_regiao_competencia = OrderedDict()  # (regiao,competencia) -> lista de segmentos crus
 
     for caminho in arquivos:
         try:
-            saida, grupos_meta = parse_ficha(caminho)
+            saida = parse_ficha(caminho)
         except Exception as e:
             qa(f'{os.path.basename(caminho)}: falha ao ler ({e}) — arquivo ignorado')
             continue
@@ -413,12 +450,18 @@ def main():
                 'competencia_label': f"{MESES_PT[int(competencia.split('-')[1])]}/{competencia.split('-')[0]}",
                 'sre': seg['sre'],
                 'sentido': seg['sentido'],
+                'tipo_via': seg.get('tipo_via'),
                 'rodovia': seg.get('rodovia'),
                 'km_ini': seg['km_ini'],
                 'km_fim': seg['km_fim'],
             }
-            for g in GRUPOS:
-                info_g = seg.get(g['id']) or {}
+            # só grava o grupo se ele existir na ficha dessa via (pavimentada
+            # tem 5 grupos, não pavimentada tem 2 — o mapa filtra cada camada
+            # pelas features que realmente têm aquela chave em properties).
+            for g in GRUPOS_TODOS:
+                info_g = seg.get(g['id'])
+                if info_g is None:
+                    continue
                 props[g['id']] = {
                     'status': info_g.get('status'),
                     'severidade': info_g.get('severidade'),
@@ -485,7 +528,7 @@ def main():
         })
 
     manifest.sort(key=lambda m: (m['regiao'], m['competencia']))
-    grupos_saida = [{'id': g['id'], 'nome': g['nome']} for g in GRUPOS]
+    grupos_saida = [{'id': g['id'], 'nome': g['nome']} for g in GRUPOS_TODOS]
     with open(os.path.join(DADOS_DIR, 'manifest.js'), 'w', encoding='utf-8') as f:
         f.write('// Gerado por converter_fichas.py — não editar à mão\n')
         f.write(f'window.MANIFEST_INSPECAO = {json.dumps(manifest, ensure_ascii=False, indent=2)};\n')

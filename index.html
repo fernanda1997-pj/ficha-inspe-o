@@ -139,7 +139,11 @@ var LEGENDA_GRUPO = {
   drenagem: ['Limpos', 'Sujos', 'Danificados'],
   sinalizacao_horizontal: ['Bom', 'Regular', 'Inexistente'],
   sinalizacao_vertical: ['Bom', 'Poucas', 'Inexistente'],
+  plataforma: ['Bom', 'Regular (até 10 irreg./km)', 'Ruim (+10 irreg./km)', 'Péssima (atoleiro/pto. crítico)'],
+  drenagem_superficial: ['Limpa', 'Obstruída', 'Ausente'],
 };
+
+var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não pavimentada'};
 
 // ---------------------------------------------------------------------
 // Mapa base
@@ -279,16 +283,17 @@ function corDoSegmento(props, grupoId){
 }
 
 function montarPopup(props){
-  var linhas = GRUPOS.map(function(g){
+  var linhas = GRUPOS.filter(function(g){ return props[g.id] !== undefined; }).map(function(g){
     var info = props[g.id] || {};
     var cor = corDoSegmento(props, g.id);
     var texto = info.status || '—';
     if(info.marcados && info.marcados.length > 1){ texto = info.marcados.join(' + '); }
     return '<tr><td class="rot">'+g.nome+'</td><td><span class="badge" style="background:'+cor+'">'+texto+'</span></td></tr>';
   }).join('');
+  var tipoVia = NOME_TIPO_VIA[props.tipo_via] || '';
   return (
     '<div class="popup-insp">'+
-      '<h3>'+(props.sre||'')+'</h3>'+
+      '<h3>'+(props.sre||'')+(tipoVia ? ' <span style="font-size:10.5px; font-weight:600; color:#64748B;">· '+tipoVia+'</span>' : '')+'</h3>'+
       '<div class="km">'+(props.rodovia||'')+'<br>KM '+props.km_ini.toFixed(2).replace('.', ',')+
         ' – '+props.km_fim.toFixed(2).replace('.', ',')+
         (props.sentido ? ' · sentido '+props.sentido : '')+
@@ -331,13 +336,19 @@ function redesenharMapa(){
   ligados.forEach(function(grupoId, idx){
     try{
       var offset = (idx - (ligados.length-1)/2) * ESPACAMENTO_M;
-      var feats = pacote.features.map(function(f){
+      // só entra na camada quem tem esse grupo na ficha (pavimentada tem os
+      // 5 grupos de asfalto, não pavimentada tem plataforma/drenagem
+      // superficial — nunca os dois ao mesmo tempo no mesmo segmento).
+      var feats = pacote.features.filter(function(f){
+        return f.properties[grupoId] !== undefined;
+      }).map(function(f){
         return {
           type:'Feature',
           properties: f.properties,
           geometry: ligados.length > 1 ? offsetMetros(f.geometry, offset) : f.geometry,
         };
       });
+      if(feats.length === 0) return;
       var camada = L.geoJSON({type:'FeatureCollection', features:feats}, {
         style: function(feat){ return {color: corDoSegmento(feat.properties, grupoId), weight:4, opacity:0.9}; },
         onEachFeature: function(feat, layer){
