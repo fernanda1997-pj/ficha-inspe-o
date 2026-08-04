@@ -445,6 +445,8 @@ function montarTipos(){
 
 // "Trecho" agrupa vários S.R.E. sob o mesmo lote/rodovia — equivale à coluna
 // Id da tabela de atributos do shapefile (bate com o número da aba da ficha).
+var TODOS = '__todos__';
+
 function montarTrechos(){
   var pacote = pacoteAtual();
   selSre.innerHTML = '<option value="">Selecione…</option>';
@@ -458,9 +460,11 @@ function montarTrechos(){
   });
   var trechos = Object.keys(porTrecho).sort(function(a,b){ return a.localeCompare(b, undefined, {numeric:true}); });
   selTrecho.disabled = false;
-  selTrecho.innerHTML = '<option value="">Selecione…</option>' + trechos.map(function(t){
-    return '<option value="'+t+'">'+t+' — '+rodoviaCurta(porTrecho[t])+'</option>';
-  }).join('');
+  selTrecho.innerHTML = '<option value="">Selecione…</option>' +
+    '<option value="'+TODOS+'">— Todos os trechos —</option>' +
+    trechos.map(function(t){
+      return '<option value="'+t+'">'+t+' — '+rodoviaCurta(porTrecho[t])+'</option>';
+    }).join('');
 }
 
 function montarSres(){
@@ -468,6 +472,17 @@ function montarSres(){
   fecharDrawer();
   var tipo = selTipo.value, trecho = selTrecho.value;
   if(!pacote || !tipo || !trecho){ selSre.disabled = true; selSre.innerHTML = '<option value="">Selecione…</option>'; return; }
+
+  // "Todos os trechos" já mostra tudo direto, sem precisar escolher um S.R.E.
+  if(trecho === TODOS){
+    selSre.disabled = true;
+    selSre.innerHTML = '<option value="'+TODOS+'">— Todos —</option>';
+    selSre.value = TODOS;
+    destacarSre();
+    abrirDrawer();
+    return;
+  }
+
   var porSre = {};
   pacote.features.filter(function(f){
     return f.properties.tipo_via === tipo && String(f.properties.trecho_num) === trecho;
@@ -476,9 +491,11 @@ function montarSres(){
   });
   var sres = Object.keys(porSre).sort();
   selSre.disabled = false;
-  selSre.innerHTML = '<option value="">Selecione…</option>' + sres.map(function(s){
-    return '<option value="'+s+'">'+s+' — '+rodoviaCurta(porSre[s])+'</option>';
-  }).join('');
+  selSre.innerHTML = '<option value="">Selecione…</option>' +
+    '<option value="'+TODOS+'">— Todos os S.R.E. deste trecho —</option>' +
+    sres.map(function(s){
+      return '<option value="'+s+'">'+s+' — '+rodoviaCurta(porSre[s])+'</option>';
+    }).join('');
 }
 
 selTipo.addEventListener('change', montarTrechos);
@@ -490,14 +507,26 @@ document.getElementById('drawer-fechar').addEventListener('click', function(){
   fecharDrawer();
 });
 
+// Filtra as features do pacote atual pelas escolhas do funil — trecho e/ou
+// S.R.E. em "Todos" simplesmente não filtram por aquele nível.
+function featuresDoFunil(){
+  var pacote = pacoteAtual();
+  var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
+  if(!pacote || !tipo || !sre) return [];
+  return pacote.features.filter(function(f){
+    var p = f.properties;
+    if(p.tipo_via !== tipo) return false;
+    if(trecho && trecho !== TODOS && String(p.trecho_num) !== trecho) return false;
+    if(sre !== TODOS && p.sre !== sre) return false;
+    return true;
+  });
+}
+
 function destacarSre(){
   camadasDestaque.forEach(function(l){ map.removeLayer(l); });
   camadasDestaque = [];
-  var pacote = pacoteAtual();
-  var sre = selSre.value, tipo = selTipo.value;
-  if(!pacote || !sre) return;
-
-  var feats = pacote.features.filter(function(f){ return f.properties.sre === sre && f.properties.tipo_via === tipo; });
+  var tipo = selTipo.value;
+  var feats = featuresDoFunil();
   if(feats.length === 0) return;
   var grupoPrincipal = (tipo === 'nao_pavimentada') ? 'plataforma' : 'pavimento';
   var colecao = {type:'FeatureCollection', features:feats};
@@ -514,20 +543,25 @@ function destacarSre(){
 }
 
 function abrirDrawer(){
-  var pacote = pacoteAtual();
-  var sre = selSre.value, tipo = selTipo.value;
-  if(!pacote || !sre){ fecharDrawer(); return; }
-
-  var feats = pacote.features.filter(function(f){ return f.properties.sre === sre && f.properties.tipo_via === tipo; })
-                              .sort(function(a,b){ return a.properties.km_ini - b.properties.km_ini; });
+  var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
+  var feats = featuresDoFunil().sort(function(a,b){
+    return (a.properties.trecho_num - b.properties.trecho_num) ||
+      a.properties.sre.localeCompare(b.properties.sre) || (a.properties.km_ini - b.properties.km_ini);
+  });
   if(feats.length === 0){ fecharDrawer(); return; }
 
+  var mostraTudo = (trecho === TODOS || sre === TODOS);
   var colunasGrupo = GRUPOS.filter(function(g){ return feats[0].properties[g.id] !== undefined; });
-  document.getElementById('drawer-titulo').textContent = sre + ' — ' + (NOME_TIPO_VIA[tipo]||tipo);
-  document.getElementById('drawer-subtitulo').textContent = rodoviaCurta(feats[0].properties.rodovia) +
-    ' · ' + feats[0].properties.competencia_label + ' · ' + feats.length + ' sub-trecho(s)';
 
-  var thead = '<tr><th>KM início</th><th>KM fim</th><th>Sentido</th>' +
+  document.getElementById('drawer-titulo').textContent =
+    (sre === TODOS ? (trecho === TODOS ? 'Todos os trechos' : (trecho+' — '+rodoviaCurta(feats[0].properties.trecho_nome))) : sre) +
+    ' — ' + (NOME_TIPO_VIA[tipo]||tipo);
+  document.getElementById('drawer-subtitulo').textContent =
+    (trecho === TODOS ? '' : (rodoviaCurta(feats[0].properties.rodovia) + ' · ')) +
+    feats[0].properties.competencia_label + ' · ' + feats.length + ' sub-trecho(s)';
+
+  var thead = '<tr>' + (mostraTudo ? '<th>Trecho</th><th>S.R.E.</th>' : '') +
+    '<th>KM início</th><th>KM fim</th><th>Sentido</th>' +
     colunasGrupo.map(function(g){ return '<th>'+g.nome+'</th>'; }).join('') + '</tr>';
   var tbody = feats.map(function(f){
     var p = f.properties;
@@ -537,7 +571,8 @@ function abrirDrawer(){
       if(info.marcados && info.marcados.length > 1){ texto = info.marcados.join(' + '); }
       return '<td><span class="badge-tab" style="background:'+corDoSegmento(p, g.id)+'">'+texto+'</span></td>';
     }).join('');
-    return '<tr><td>'+p.km_ini.toFixed(2).replace('.', ',')+'</td><td>'+p.km_fim.toFixed(2).replace('.', ',')+
+    return '<tr>' + (mostraTudo ? '<td>'+p.trecho_num+'</td><td>'+p.sre+'</td>' : '') +
+      '<td>'+p.km_ini.toFixed(2).replace('.', ',')+'</td><td>'+p.km_fim.toFixed(2).replace('.', ',')+
       '</td><td>'+(p.sentido||'—')+'</td>'+celulas+'</tr>';
   }).join('');
 
