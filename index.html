@@ -164,6 +164,9 @@
       <label class="rotulo" for="sel-tipo">Tipo de via</label>
       <select id="sel-tipo"><option value="">Selecione…</option></select>
 
+      <label class="rotulo" for="sel-trecho">Trecho</label>
+      <select id="sel-trecho"><option value="">Selecione…</option></select>
+
       <label class="rotulo" for="sel-sre">S.R.E.</label>
       <select id="sel-sre"><option value="">Selecione…</option></select>
 
@@ -332,9 +335,10 @@ function aoCarregarDados(item){
 }
 
 // ---------------------------------------------------------------------
-// Funil Região → Competência → Tipo de via → S.R.E.
+// Funil Região → Competência → Tipo de via → Trecho → S.R.E.
 // ---------------------------------------------------------------------
 var selTipo = document.getElementById('sel-tipo');
+var selTrecho = document.getElementById('sel-trecho');
 var selSre = document.getElementById('sel-sre');
 
 function pacoteAtual(){
@@ -349,6 +353,7 @@ function rodoviaCurta(nome){
 
 function montarTipos(){
   var pacote = pacoteAtual();
+  selTrecho.innerHTML = '<option value="">Selecione…</option>';
   selSre.innerHTML = '<option value="">Selecione…</option>';
   fecharDrawer();
   if(!pacote){ selTipo.innerHTML = '<option value="">Selecione…</option>'; selTipo.disabled = true; return; }
@@ -359,17 +364,38 @@ function montarTipos(){
   selTipo.innerHTML = '<option value="">Selecione…</option>' + tipos.map(function(t){
     return '<option value="'+t+'">'+(NOME_TIPO_VIA[t]||t)+'</option>';
   }).join('');
-  montarSres();
+  montarTrechos();
+}
+
+// "Trecho" agrupa vários S.R.E. sob o mesmo lote/rodovia — equivale à coluna
+// Id da tabela de atributos do shapefile (bate com o número da aba da ficha).
+function montarTrechos(){
+  var pacote = pacoteAtual();
+  selSre.innerHTML = '<option value="">Selecione…</option>';
+  selSre.disabled = true;
+  fecharDrawer();
+  var tipo = selTipo.value;
+  if(!pacote || !tipo){ selTrecho.disabled = true; selTrecho.innerHTML = '<option value="">Selecione…</option>'; return; }
+  var porTrecho = {};
+  pacote.features.filter(function(f){ return f.properties.tipo_via === tipo; }).forEach(function(f){
+    porTrecho[f.properties.trecho_num] = f.properties.trecho_nome;
+  });
+  var trechos = Object.keys(porTrecho).sort(function(a,b){ return a.localeCompare(b, undefined, {numeric:true}); });
+  selTrecho.disabled = false;
+  selTrecho.innerHTML = '<option value="">Selecione…</option>' + trechos.map(function(t){
+    return '<option value="'+t+'">'+t+' — '+rodoviaCurta(porTrecho[t])+'</option>';
+  }).join('');
 }
 
 function montarSres(){
   var pacote = pacoteAtual();
-  selSre.innerHTML = '<option value="">Selecione…</option>';
   fecharDrawer();
-  var tipo = selTipo.value;
-  if(!pacote || !tipo){ selSre.disabled = true; return; }
+  var tipo = selTipo.value, trecho = selTrecho.value;
+  if(!pacote || !tipo || !trecho){ selSre.disabled = true; selSre.innerHTML = '<option value="">Selecione…</option>'; return; }
   var porSre = {};
-  pacote.features.filter(function(f){ return f.properties.tipo_via === tipo; }).forEach(function(f){
+  pacote.features.filter(function(f){
+    return f.properties.tipo_via === tipo && String(f.properties.trecho_num) === trecho;
+  }).forEach(function(f){
     porSre[f.properties.sre] = f.properties.rodovia;
   });
   var sres = Object.keys(porSre).sort();
@@ -379,7 +405,8 @@ function montarSres(){
   }).join('');
 }
 
-selTipo.addEventListener('change', montarSres);
+selTipo.addEventListener('change', montarTrechos);
+selTrecho.addEventListener('change', montarSres);
 selSre.addEventListener('change', function(){ destacarSre(); abrirDrawer(); });
 document.getElementById('drawer-fechar').addEventListener('click', function(){
   selSre.value = '';

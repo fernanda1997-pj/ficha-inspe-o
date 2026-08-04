@@ -280,10 +280,22 @@ def parse_ficha(caminho):
         if not segmentos:
             continue
 
-        info = info_sre.get(_norm(rodovia_nome or '').replace(' ', ''))  # não usado diretamente, mantido p/ futuro
-        resultados_por_regiao.setdefault(regiao, {}).setdefault(competencia, []).extend([
-            {**s, 'rodovia': rodovia_nome, 'aba': nome_aba} for s in segmentos
-        ])
+        # 'trecho' agrupa vários S.R.E. sob o mesmo lote/rodovia — equivale à
+        # coluna Id da tabela de atributos do shapefile (R<n>_TRECHOS.shp) e
+        # bate com o número da aba da ficha ("202", "206"...). Prioriza o que
+        # vem da aba "Trechos" (autoritativo); cai pro nome da aba se faltar.
+        def _trecho_de(sre):
+            info = info_sre.get(_norm(sre).replace(' ', ''))
+            if info and info.get('trecho_num') is not None:
+                return info['trecho_num'], info.get('trecho_nome') or rodovia_nome
+            return nome_aba, rodovia_nome
+
+        segs_com_trecho = []
+        for s in segmentos:
+            trecho_num, trecho_nome = _trecho_de(s['sre'])
+            segs_com_trecho.append({**s, 'rodovia': rodovia_nome, 'aba': nome_aba,
+                                     'trecho_num': trecho_num, 'trecho_nome': trecho_nome})
+        resultados_por_regiao.setdefault(regiao, {}).setdefault(competencia, []).extend(segs_com_trecho)
 
     saida = []
     for regiao, por_comp in resultados_por_regiao.items():
@@ -480,6 +492,8 @@ def main():
                 'sentido': seg['sentido'],
                 'tipo_via': seg.get('tipo_via'),
                 'rodovia': seg.get('rodovia'),
+                'trecho_num': seg.get('trecho_num'),
+                'trecho_nome': seg.get('trecho_nome'),
                 'km_ini': seg['km_ini'],
                 'km_fim': seg['km_fim'],
             }
