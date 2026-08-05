@@ -549,29 +549,44 @@ def carregar_linhas_regiao(regiao):
         if geom_m is None or geom_m.is_empty:
             continue
         if geom_m.geom_type == 'MultiLineString':
-            # As partes não se tocam exatamente (emenda de digitalização) —
-            # concatena na ordem em que estão no shapefile (é assim que elas
-            # seguem o traçado da rodovia), invertendo cada parte se for
-            # preciso pra manter a continuidade com a parte anterior. Isso
-            # preserva o comprimento total (bate com EXT_REAL) em vez de
-            # descartar pedaços, mas se o vão entre duas partes for grande,
-            # o traço vira uma linha reta nesse trecho (por isso avisamos).
-            partes = list(geom_m.geoms)
+            # As partes não se tocam exatamente (emenda de digitalização, ou
+            # até ramos/duplicatas de digitalização). Concatenar "na ordem
+            # do arquivo" (jeito antigo) dava zigue-zague feio quando a ordem
+            # não seguia o traçado real — em vez disso, encadeia sempre pela
+            # PARTE MAIS PRÓXIMA de uma das pontas da linha já montada
+            # (guloso: começa pela parte mais longa, vai grudando a mais
+            # perto de qualquer ponta, invertendo se precisar), preservando
+            # o comprimento total. Se o vão de alguma emenda for grande,
+            # avisamos — pode faltar pedaço do traçado no shapefile.
+            partes_restantes = list(geom_m.geoms)
+            n_partes_original = len(partes_restantes)
+            partes_restantes.sort(key=lambda p: -p.length)
+            cadeia = list(partes_restantes.pop(0).coords)
             maior_vao = 0.0
-            coords = list(partes[0].coords)
-            for p in partes[1:]:
-                pc = list(p.coords)
-                ultimo = coords[-1]
-                d_ini = (ultimo[0] - pc[0][0]) ** 2 + (ultimo[1] - pc[0][1]) ** 2
-                d_fim = (ultimo[0] - pc[-1][0]) ** 2 + (ultimo[1] - pc[-1][1]) ** 2
-                if d_fim < d_ini:
-                    pc = pc[::-1]
-                vao = min(d_ini, d_fim) ** 0.5
-                maior_vao = max(maior_vao, vao)
-                coords.extend(pc)
-            geom_m = LineString(coords)
-            qa(f'{regiao}/{sre_raw}: geometria em {len(partes)} partes desconexas no shapefile — '
-               f'concatenadas na ordem original (maior vão entre partes: {round(maior_vao)} m'
+            while partes_restantes:
+                ponta_ini, ponta_fim = cadeia[0], cadeia[-1]
+                melhor = None  # (distancia, indice, 'ini'|'fim', coords_da_parte_no_sentido_certo)
+                for idx, p in enumerate(partes_restantes):
+                    pc = list(p.coords)
+                    candidatos = [
+                        (( (ponta_fim[0]-pc[0][0])**2 + (ponta_fim[1]-pc[0][1])**2 )**0.5, 'fim', pc),
+                        (( (ponta_fim[0]-pc[-1][0])**2 + (ponta_fim[1]-pc[-1][1])**2 )**0.5, 'fim', pc[::-1]),
+                        (( (ponta_ini[0]-pc[0][0])**2 + (ponta_ini[1]-pc[0][1])**2 )**0.5, 'ini', pc[::-1]),
+                        (( (ponta_ini[0]-pc[-1][0])**2 + (ponta_ini[1]-pc[-1][1])**2 )**0.5, 'ini', pc),
+                    ]
+                    for dist, lado, coords_certas in candidatos:
+                        if melhor is None or dist < melhor[0]:
+                            melhor = (dist, idx, lado, coords_certas)
+                dist, idx, lado, coords_certas = melhor
+                maior_vao = max(maior_vao, dist)
+                if lado == 'fim':
+                    cadeia.extend(coords_certas)
+                else:
+                    cadeia = coords_certas + cadeia
+                partes_restantes.pop(idx)
+            geom_m = LineString(cadeia)
+            qa(f'{regiao}/{sre_raw}: geometria em {n_partes_original} partes desconexas no shapefile — '
+               f'encadeadas pela parte mais próxima em cada ponta (maior vão entre partes: {round(maior_vao)} m'
                f'{" — CONFERIR o shapefile, pode estar faltando um pedaço do traçado" if maior_vao > 200 else ""})')
         if sre_key in linhas:
             qa(f'{regiao}: SRE {sre_raw!r} duplicado no shapefile — usando a primeira ocorrência')
