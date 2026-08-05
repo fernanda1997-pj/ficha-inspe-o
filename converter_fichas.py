@@ -153,6 +153,152 @@ def _achar_cabecalho(ws, texto_norm, linhas=range(1, 9)):
     return None
 
 
+def reconstruir_run_quebrado(sre_key, linhas_run, trecho_ordem, info_sre):
+    """Tenta corrigir um 'run' de linhas com o mesmo S.R.E. escrito cujo KM
+    ultrapassa muito a extensão oficial dele — sinal de que o código não foi
+    atualizado quando a estrada passou pro próximo S.R.E. oficial (comum em
+    fichas preenchidas em campo sem muita disciplina).
+
+    Ignora os números absolutos de KM escritos (alguns resetam a cada S.R.E.,
+    outros continuam — sem padrão): funde linhas consecutivas com KM
+    idêntico (mesma posição, 2 faixas/sentidos — fica com a PIOR marca de
+    cada grupo) e distribui a largura medida dentro do "orçamento" oficial
+    (esse S.R.E. + quantos seguintes do mesmo trecho forem precisos).
+
+    Só devolve resultado se sair uma leitura "limpa" — sem KM pra trás e sem
+    precisar espremer/esticar mais que ~80%. Senão devolve None (quem chamou
+    decide deixar como está + avisar que precisa revisão manual)."""
+    info = info_sre.get(sre_key)
+    if not info or info.get('trecho_num') is None:
+        return None
+    trecho_key = str(info['trecho_num']).strip()
+    lista_oficial = trecho_ordem.get(trecho_key)
+    if not lista_oficial:
+        return None
+    pos_inicio = next((i for i, (s, _) in enumerate(lista_oficial) if s == sre_key), None)
+    if pos_inicio is None:
+        return None
+
+    for l in linhas_run:
+        if l['km_fim'] < l['km_ini'] - 1e-6:
+            return None  # km pra trás dentro do run — não confiável
+
+    campos_fixos = ('sre', 'sentido', 'km_ini', 'km_fim', 'tipo_via')
+    grupos_ids = [k for k in linhas_run[0].keys() if k not in campos_fixos]
+
+    passos = []
+    i = 0
+    while i < len(linhas_run):
+        j = i + 1
+        while (j < len(linhas_run) and linhas_run[j]['km_ini'] == linhas_run[i]['km_ini']
+               and linhas_run[j]['km_fim'] == linhas_run[i]['km_fim']):
+            j += 1
+        grupo_dup = linhas_run[i:j]
+        largura = linhas_run[i]['km_fim'] - linhas_run[i]['km_ini']
+        if largura <= 0:
+            largura = 0.001
+        marcas_final = {}
+        for g in grupos_ids:
+            candidatos = [x[g] for x in grupo_dup if x.get(g) is not None]
+            marcas_final[g] = (max(candidatos, key=lambda ig: (ig.get('severidade') if ig.get('severidade') is not None else -1))
+                                if candidatos else None)
+        passos.append({'largura': largura, 'marcas': marcas_final})
+        i = j
+
+    largura_total = sum(p['largura'] for p in passos)
+    if largura_total <= 0:
+        return None
+
+    orcamento = []
+    soma = 0.0
+    for s, ext in lista_oficial[pos_inicio:]:
+        if len(orcamento) >= 5:
+            break  # sinal de que o run não tem nada a ver com esse trecho — não confiável
+        orcamento.append((s, ext))
+        soma += ext
+        if soma >= largura_total - 1e-9:
+            break
+    if soma <= 0:
+        return None
+    if soma >= largura_total - 1e-9:
+        # orçamento oficial dá conta (com folga ou justo) — não precisa
+        # comprimir nada, só sobra um pedacinho do último S.R.E. sem
+        # preencher (significa que aquele trecho não foi 100% inspecionado,
+        # o que é normal).
+        fator = 1.0
+    else:
+        # usou TODO o resto oficial do trecho e ainda faltou — só nesse
+        # caso precisa esticar (e só aceita até 80% de esticamento).
+        fator = largura_total / soma
+    if fator > 1.8:
+        return None  # precisaria esticar demais pra caber — não confiável
+
+    EPS = 1e-6
+    saida = []
+    idx_orc = 0
+    usado_no_sre = 0.0
+    sentido = linhas_run[0].get('sentido')
+    tipo_via = linhas_run[0].get('tipo_via')
+    for passo in passos:
+        restante = passo['largura'] * fator
+        while restante > EPS:
+            no_ultimo = idx_orc >= len(orcamento) - 1
+            sre_atual, ext_atual = orcamento[min(idx_orc, len(orcamento) - 1)]
+            espaco_livre = ext_atual - usado_no_sre
+            usar = restante if no_ultimo else min(restante, max(espaco_livre, 0.0))
+            if usar <= EPS and not no_ultimo:
+                idx_orc += 1
+                usado_no_sre = 0.0
+                continue
+            novo = {'sre': sre_atual, 'sentido': sentido, 'tipo_via': tipo_via,
+                    'km_ini': round(usado_no_sre, 3), 'km_fim': round(usado_no_sre + usar, 3)}
+            for g in grupos_ids:
+                novo[g] = passo['marcas'][g]
+            saida.append(novo)
+            usado_no_sre += usar
+            restante -= usar
+            if (not no_ultimo) and usado_no_sre >= ext_atual - EPS:
+                idx_orc += 1
+                usado_no_sre = 0.0
+    return saida
+
+
+def corrigir_sre_travado(segmentos, info_sre, trecho_ordem, regiao, nome_aba):
+    """Agrupa `segmentos` (de UMA aba) em 'runs' de S.R.E. repetido; pros
+    runs cujo KM passa muito da extensão oficial, tenta reconstruir (ver
+    `reconstruir_run_quebrado`) — só substitui se sair limpo, senão deixa
+    como estava e avisa que precisa revisão manual."""
+    if not segmentos:
+        return segmentos
+    runs = []
+    for s in segmentos:
+        if runs and runs[-1][0] == s['sre']:
+            runs[-1][1].append(s)
+        else:
+            runs.append((s['sre'], [s]))
+
+    saida = []
+    for sre_original, linhas_run in runs:
+        sre_key = _norm(sre_original).replace(' ', '')
+        info = info_sre.get(sre_key)
+        oficial = info.get('ext_km') if info else None
+        span = max(l['km_fim'] for l in linhas_run) - min(l['km_ini'] for l in linhas_run)
+        if oficial and isinstance(oficial, (int, float)) and span > oficial * 1.5 + 0.5:
+            corrigido = reconstruir_run_quebrado(sre_key, linhas_run, trecho_ordem, info_sre)
+            if corrigido is not None:
+                qa(f'{regiao}/{nome_aba}: SRE {sre_original!r} tinha KM até {span:.1f} km (oficial {oficial:.2f} km, '
+                   f'código não atualizado a tempo) — RECONSTRUÍDO automaticamente em {len(corrigido)} sub-trecho(s) '
+                   f'usando a ordem/extensão oficial da aba "Trechos"')
+                saida.extend(corrigido)
+                continue
+            else:
+                qa(f'{regiao}/{nome_aba}: SRE {sre_original!r} tinha KM até {span:.1f} km (oficial só {oficial:.2f} km) — '
+                   f'PENDENTE DE REVISÃO MANUAL (KM fora de ordem ou incompatível demais com o orçamento oficial do '
+                   f'trecho pra eu reconstruir com confiança) — mantido como estava na ficha')
+        saida.extend(linhas_run)
+    return saida
+
+
 def parse_ficha(caminho):
     """Lê um arquivo de ficha e devolve lista de dicts (uma por região encontrada)."""
     print(f'Lendo {os.path.basename(caminho)} ...')
@@ -160,8 +306,12 @@ def parse_ficha(caminho):
     resultados_por_regiao = OrderedDict()
 
     # aba "Trechos" é só um resumo (LOTE/N./TRECHO/SRE/SUBTRECHOS/EXT/TIPO) —
-    # usamos pra ter o nome bonito do trecho e do subtrecho por SRE.
+    # usamos pra ter o nome bonito do trecho e do subtrecho por SRE, e também
+    # a ORDEM oficial + extensão de cada S.R.E. dentro do trecho (usada pra
+    # reconstruir abas onde o código do S.R.E. não foi atualizado a tempo —
+    # ver `reconstruir_run_quebrado`).
     info_sre = {}
+    trecho_ordem = OrderedDict()  # trecho_num(str) -> [(sre_key, ext_km), ...]
     if 'Trechos' in wb.sheetnames:
         ws = wb['Trechos']
         header_row = None
@@ -180,10 +330,13 @@ def parse_ficha(caminho):
                 tipo = ws.cell(row=r, column=7).value
                 if not sre:
                     continue
-                info_sre[_norm(sre).replace(' ', '')] = {
+                sre_key = _norm(sre).replace(' ', '')
+                info_sre[sre_key] = {
                     'lote': lote, 'trecho_num': n_trecho, 'trecho_nome': trecho_nome,
                     'subtrecho': subtrecho, 'ext_km': ext, 'tipo': tipo,
                 }
+                if n_trecho is not None and isinstance(ext, (int, float)):
+                    trecho_ordem.setdefault(str(n_trecho).strip(), []).append((sre_key, float(ext)))
 
     for nome_aba in wb.sheetnames:
         if nome_aba in ('Trechos', 'TT'):
@@ -317,6 +470,8 @@ def parse_ficha(caminho):
 
         if not segmentos:
             continue
+
+        segmentos = corrigir_sre_travado(segmentos, info_sre, trecho_ordem, regiao, nome_aba)
 
         # 'trecho' agrupa vários S.R.E. sob o mesmo lote/rodovia — equivale à
         # coluna Id da tabela de atributos do shapefile (R<n>_TRECHOS.shp) e
