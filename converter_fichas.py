@@ -220,6 +220,13 @@ def parse_ficha(caminho):
                 if isinstance(v, (int, float)):
                     regiao_num = int(v)
                     break
+        if regiao_num is None:
+            # alguns modelos de ficha (ex.: LOTE 01) não têm célula "REGIÃO:" —
+            # cai pro número no nome do arquivo ("...R.01 - JULHO.xlsx").
+            m = re.search(r'R\.?\s*(\d{1,2})\b', os.path.basename(caminho), re.IGNORECASE)
+            if m:
+                regiao_num = int(m.group(1))
+                qa(f'aba "{nome_aba}": sem célula REGIÃO: na ficha — usei R{regiao_num} do nome do arquivo')
 
         rodovia_nome = None
         if pos_ficha:
@@ -353,6 +360,28 @@ def carregar_linhas_regiao(regiao):
         qa(f'{regiao}: shapefile sem coluna SRE reconhecível (colunas: {list(gdf_m.columns)})')
         return {}
 
+    # Os shapefiles R<n>_TRECHOS.shp NÃO seguem um esquema único — cada região
+    # foi digitalizada num lote/época diferente. R11/R12/R13 usam
+    # X_LONG/Y_LAT/X_FIM_LONG/Y_FIM_LAT/EXT_REAL; R1 usa START_X/START_Y/
+    # END_X/END_Y/EXTENSÃO; R2 usa X_INICIO/Y_INICIO/X_FINAL/Y_FINAL; R3 usa
+    # X_INICIO/Y_INICIO/X_FIM/Y_FIM. Resolve por nome normalizado (sem
+    # acento/maiúscula) em vez de depender de um esquema fixo.
+    def _achar_coluna(*candidatos):
+        candidatos_norm = [_norm(c) for c in candidatos]
+        for c in gdf_m.columns:
+            if _norm(c) in candidatos_norm:
+                return c
+        return None
+
+    col_x_ini = _achar_coluna('X_LONG', 'START_X', 'X_INICIO')
+    col_y_ini = _achar_coluna('Y_LAT', 'START_Y', 'Y_INICIO')
+    col_x_fim = _achar_coluna('X_FIM_LONG', 'END_X', 'X_FINAL', 'X_FIM')
+    col_y_fim = _achar_coluna('Y_FIM_LAT', 'END_Y', 'Y_FINAL', 'Y_FIM')
+    col_ext = _achar_coluna('EXT_REAL', 'EXTENSAO', 'EXTENSCAO')
+    if col_x_ini is None or col_y_ini is None or col_x_fim is None or col_y_fim is None:
+        qa(f'{regiao}: shapefile sem colunas de coordenada início/fim reconhecíveis '
+           f'(colunas: {list(gdf_m.columns)}) — não vai dar pra checar o sentido das linhas')
+
     linhas = {}
     for i in range(len(gdf_m)):
         sre_raw = gdf_m.iloc[i][col_sre]
@@ -399,8 +428,10 @@ def carregar_linhas_regiao(regiao):
         # Se estiver invertida, vira a linha antes de cortar, senão
         # km_ini/km_fim ficam trocados. Reprojeta só o 1º vértice (já
         # fundido/reduzido a LineString única) pra graus, na hora.
-        ini_lonlat = (gdf_m.iloc[i].get('X_LONG'), gdf_m.iloc[i].get('Y_LAT'))
-        fim_lonlat = (gdf_m.iloc[i].get('X_FIM_LONG'), gdf_m.iloc[i].get('Y_FIM_LAT'))
+        ini_lonlat = (gdf_m.iloc[i].get(col_x_ini) if col_x_ini else None,
+                      gdf_m.iloc[i].get(col_y_ini) if col_y_ini else None)
+        fim_lonlat = (gdf_m.iloc[i].get(col_x_fim) if col_x_fim else None,
+                      gdf_m.iloc[i].get(col_y_fim) if col_y_fim else None)
         geom_deg = gpd.GeoSeries([geom_m], crs=EPSG_METRICO).to_crs(4326).iloc[0]
         p0 = geom_deg.coords[0]
         d0 = _dist2(p0, ini_lonlat)
@@ -413,7 +444,7 @@ def carregar_linhas_regiao(regiao):
         linhas[sre_key] = {
             'geom_m': geom_m,
             'comprimento_m': geom_m.length,
-            'ext_real_km': gdf_m.iloc[i].get('EXT_REAL'),
+            'ext_real_km': (gdf_m.iloc[i].get(col_ext) if col_ext else None),
         }
     return linhas
 
