@@ -31,6 +31,7 @@ Requer: openpyxl, geopandas, shapely
 """
 import glob
 import json
+import math
 import os
 import re
 import sys
@@ -497,12 +498,62 @@ def parse_ficha(caminho):
     return saida
 
 
+BASE_RODS_2023 = os.path.join(CAMADAS_DIR, 'Base_Rods_2023.shp')
+_cache_base_rods_2023 = None
+
+
+def _carregar_base_rods_2023():
+    """Camada estadual complementar (todo o TO, feita pelo pessoal de campo em
+    2023 — ainda não é a versão oficial final). Usada só como FALLBACK: só
+    entra pros S.R.E. que faltarem no shapefile principal de cada região, sem
+    substituir o que já funciona. Carregada uma vez só (mesmo arquivo pras
+    6 regiões) e cacheada. Quando a versão oficial estiver pronta, a usuária
+    vai avisar pra trocar — ver CLAUDE.md."""
+    global _cache_base_rods_2023
+    if _cache_base_rods_2023 is None:
+        if os.path.exists(BASE_RODS_2023):
+            _cache_base_rods_2023 = _carregar_linhas_de_shapefile(BASE_RODS_2023, 'Base_Rods_2023 (fallback)')
+        else:
+            _cache_base_rods_2023 = {}
+    return _cache_base_rods_2023
+
+
 def carregar_linhas_regiao(regiao):
-    """Carrega camadas/<regiao>_TRECHOS.shp; devolve dict SRE(normalizado) -> dict com geometria."""
+    """Carrega camadas/<regiao>_TRECHOS.shp; devolve dict SRE(normalizado) ->
+    dict com geometria. Só os S.R.E. que a ficha realmente pedir e não
+    acharem aqui vão cair pro fallback Base_Rods_2023 (ver `linha_do_sre`)."""
     caminho = os.path.join(CAMADAS_DIR, f'{regiao}_TRECHOS.shp')
     if not os.path.exists(caminho):
-        qa(f'{regiao}: shapefile {os.path.basename(caminho)} não encontrado em camadas/ — segmentos dessa região foram ignorados')
+        qa(f'{regiao}: shapefile {os.path.basename(caminho)} não encontrado em camadas/ — usando só o fallback Base_Rods_2023')
         return {}
+    return _carregar_linhas_de_shapefile(caminho, regiao)
+
+
+_avisados_fallback = set()
+
+
+def linha_do_sre(linhas, sre_key, regiao):
+    """Busca sre_key no dict da região; se não achar, tenta no fallback
+    estadual Base_Rods_2023 (versão do pessoal de campo, ainda não oficial)
+    — só avisa quando esse fallback realmente é usado, não o arquivo todo
+    (e só uma vez por região+S.R.E., não por segmento de km)."""
+    info = linhas.get(sre_key)
+    if info is not None:
+        return info, False
+    fallback = _carregar_base_rods_2023()
+    info = fallback.get(sre_key)
+    if info is not None:
+        if (regiao, sre_key) not in _avisados_fallback:
+            _avisados_fallback.add((regiao, sre_key))
+            qa(f'{regiao}: S.R.E. {sre_key!r} não estava no shapefile da região — usado o fallback Base_Rods_2023 '
+               f'(versão do pessoal de campo, ainda não oficial)')
+        return info, True
+    return None, False
+
+
+def _carregar_linhas_de_shapefile(caminho, label):
+    """Lê UM shapefile de trechos (independente do esquema de colunas) e
+    devolve dict SRE(normalizado) -> {geom_m, comprimento_m, ext_real_km}."""
     gdf_m = gpd.read_file(caminho)
     if gdf_m.crs is None:
         gdf_m = gdf_m.set_crs(EPSG_METRICO)
@@ -510,9 +561,9 @@ def carregar_linhas_regiao(regiao):
         gdf_m = gdf_m.to_crs(EPSG_METRICO)
     gdf_deg = gdf_m.to_crs(4326)
 
-    col_sre = next((c for c in gdf_m.columns if _norm(c) in ('SRE',)), None)
+    col_sre = next((c for c in gdf_m.columns if _norm(c) in ('SRE', 'CODIGO')), None)
     if col_sre is None:
-        qa(f'{regiao}: shapefile sem coluna SRE reconhecível (colunas: {list(gdf_m.columns)})')
+        qa(f'{label}: shapefile sem coluna SRE/CODIGO reconhecível (colunas: {list(gdf_m.columns)})')
         return {}
 
     # Os shapefiles R<n>_TRECHOS.shp NÃO seguem um esquema único — cada região
@@ -532,15 +583,15 @@ def carregar_linhas_regiao(regiao):
     col_y_ini = _achar_coluna('Y_LAT', 'START_Y', 'Y_INICIO')
     col_x_fim = _achar_coluna('X_FIM_LONG', 'END_X', 'X_FINAL', 'X_FIM')
     col_y_fim = _achar_coluna('Y_FIM_LAT', 'END_Y', 'Y_FINAL', 'Y_FIM')
-    col_ext = _achar_coluna('EXT_REAL', 'EXTENSAO', 'EXTENSCAO')
+    col_ext = _achar_coluna('EXT_REAL', 'EXTENSAO', 'EXTENSCAO', 'EXT_KM')
     if col_x_ini is None or col_y_ini is None or col_x_fim is None or col_y_fim is None:
-        qa(f'{regiao}: shapefile sem colunas de coordenada início/fim reconhecíveis '
+        qa(f'{label}: shapefile sem colunas de coordenada início/fim reconhecíveis '
            f'(colunas: {list(gdf_m.columns)}) — não vai dar pra checar o sentido das linhas')
 
     linhas = {}
     for i in range(len(gdf_m)):
         sre_raw = gdf_m.iloc[i][col_sre]
-        if sre_raw is None:
+        if sre_raw is None or (isinstance(sre_raw, float) and math.isnan(sre_raw)):
             continue
         sre_key = _norm(sre_raw).replace(' ', '')
         if not sre_key:
@@ -585,11 +636,11 @@ def carregar_linhas_regiao(regiao):
                     cadeia = coords_certas + cadeia
                 partes_restantes.pop(idx)
             geom_m = LineString(cadeia)
-            qa(f'{regiao}/{sre_raw}: geometria em {n_partes_original} partes desconexas no shapefile — '
+            qa(f'{label}/{sre_raw}: geometria em {n_partes_original} partes desconexas no shapefile — '
                f'encadeadas pela parte mais próxima em cada ponta (maior vão entre partes: {round(maior_vao)} m'
                f'{" — CONFERIR o shapefile, pode estar faltando um pedaço do traçado" if maior_vao > 200 else ""})')
         if sre_key in linhas:
-            qa(f'{regiao}: SRE {sre_raw!r} duplicado no shapefile — usando a primeira ocorrência')
+            qa(f'{label}: SRE {sre_raw!r} duplicado no shapefile — usando a primeira ocorrência')
             continue
 
         # Descobre se o vértice inicial da linha corresponde ao km 0 (INÍCIO)
@@ -598,18 +649,19 @@ def carregar_linhas_regiao(regiao):
         # Se estiver invertida, vira a linha antes de cortar, senão
         # km_ini/km_fim ficam trocados. Reprojeta só o 1º vértice (já
         # fundido/reduzido a LineString única) pra graus, na hora.
-        ini_lonlat = (gdf_m.iloc[i].get(col_x_ini) if col_x_ini else None,
-                      gdf_m.iloc[i].get(col_y_ini) if col_y_ini else None)
-        fim_lonlat = (gdf_m.iloc[i].get(col_x_fim) if col_x_fim else None,
-                      gdf_m.iloc[i].get(col_y_fim) if col_y_fim else None)
-        geom_deg = gpd.GeoSeries([geom_m], crs=EPSG_METRICO).to_crs(4326).iloc[0]
-        p0 = geom_deg.coords[0]
-        d0 = _dist2(p0, ini_lonlat)
-        d1 = _dist2(p0, fim_lonlat)
-        if d0 is not None and d1 is not None and d1 < d0:
-            geom_m = LineString(list(geom_m.coords)[::-1])
-        elif d0 is None:
-            qa(f'{regiao}/{sre_raw}: sem X_LONG/Y_LAT no shapefile pra checar o sentido da linha — assumindo a ordem original')
+        if col_x_ini and col_y_ini and col_x_fim and col_y_fim:
+            ini_lonlat = (gdf_m.iloc[i].get(col_x_ini), gdf_m.iloc[i].get(col_y_ini))
+            fim_lonlat = (gdf_m.iloc[i].get(col_x_fim), gdf_m.iloc[i].get(col_y_fim))
+            geom_deg = gpd.GeoSeries([geom_m], crs=EPSG_METRICO).to_crs(4326).iloc[0]
+            p0 = geom_deg.coords[0]
+            d0 = _dist2(p0, ini_lonlat)
+            d1 = _dist2(p0, fim_lonlat)
+            if d0 is not None and d1 is not None and d1 < d0:
+                geom_m = LineString(list(geom_m.coords)[::-1])
+            elif d0 is None:
+                qa(f'{label}/{sre_raw}: sem X_LONG/Y_LAT preenchido nessa linha pra checar o sentido — assumindo a ordem original')
+        # se o shapefile inteiro não tem essas colunas (ex.: Base_Rods_2023),
+        # já avisamos uma vez só lá em cima — não repete por feição.
 
         linhas[sre_key] = {
             'geom_m': geom_m,
@@ -708,7 +760,7 @@ def main():
 
         for seg in segmentos:
             sre_key = _norm(seg['sre']).replace(' ', '')
-            linha_info = linhas.get(sre_key)
+            linha_info, _veio_do_fallback = linha_do_sre(linhas, sre_key, regiao)
             if linha_info is None:
                 sre_nao_achados.add(seg['sre'])
                 continue

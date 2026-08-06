@@ -16,7 +16,29 @@ Consultores). Responder sempre em português.
 | `index.html` | O app inteiro (HTML+CSS+JS, sem build). CDN: Leaflet 1.9.4, Turf.js 6 (só usado pra `lineOffset`, o deslocamento visual quando >1 camada está ligada) |
 | `converter_fichas.py` | Lê `fichas/*.xlsx` + `camadas/R*_TRECHOS.shp`, corta a geometria de cada S.R.E. no km início/fim de cada linha da ficha (referenciamento linear) e escreve `dados/` |
 | `fichas/` | Fichas de inspeção mensais, uma por região+mês, como chegam do campo (`ficha de inspeção_rodovias pavimentadas_R.<região> - <MÊS>.xlsx`) — **não editar**, só adicionar arquivos novos aqui |
-| `camadas/` | Cópia de `R<região>_TRECHOS.shp` (uma linha por S.R.E., com `EXT_REAL` em km) — vem do geoportal principal em `../web/camadas/`. Se um S.R.E. novo aparecer numa ficha e não achar o shapefile, é só copiar a versão atualizada de lá |
+| `camadas/` | Cópia de `R<região>_TRECHOS.shp` (uma linha por S.R.E., com `EXT_REAL` em km) — vem do geoportal principal em `../web/camadas/`. Se um S.R.E. novo aparecer numa ficha e não achar o shapefile, é só copiar a versão atualizada de lá. Tem também `Base_Rods_2023.shp` — ver seção própria abaixo |
+
+## Fallback Base_Rods_2023.shp (provisório — trocar quando sair a versão oficial)
+
+`camadas/Base_Rods_2023.shp` é uma camada **estadual** (o Tocantins inteiro, 1063
+trechos) que a usuária pegou de `C:\2. Banco de Dados\Banco de Dados - Shapes\
+2023_RODOVIA\` — é o que o **pessoal de campo está produzindo agora**, ainda **não é
+a versão oficial final**. Usado só como **fallback**: `linha_do_sre()` em
+`converter_fichas.py` busca primeiro no shapefile da própria região
+(`R<n>_TRECHOS.shp`) e só cai pro Base_Rods_2023 se o S.R.E. não estiver lá — nunca
+substitui o que já funciona. Cobre 9 dos 13 S.R.E. que faltavam nos shapefiles
+regionais (`relatorio_qualidade.txt` avisa quando um S.R.E. veio do fallback).
+
+Esquema de colunas diferente dos `R<n>_TRECHOS.shp`: `CODIGO` (não `SRE`) e `Ext_Km`
+(não `EXT_REAL`) — já cobertos pelos candidatos de `_achar_coluna()`/detecção de coluna
+SRE em `_carregar_linhas_de_shapefile()`. Não tem colunas de coordenada início/fim
+(tipo `X_LONG`/`Y_LAT`), então não dá pra checar o sentido da linha nos S.R.E. que vêm
+de lá — assume a ordem original do shapefile (aviso único, não por feição).
+
+**Quando a usuária avisar que o pessoal de campo já está usando a versão oficial**:
+substituir `camadas/Base_Rods_2023.shp` pela nova (mesmo nome de arquivo, ou trocar o
+caminho em `BASE_RODS_2023` no `converter_fichas.py`) e rodar `python converter_fichas.py`
+de novo — não precisa mexer em mais nada.
 | `dados/insp_<REGIAO>_<AAAA-MM>.js` | Um GeoJSON (dentro de `window.DADOS_INSPECAO[regiao][competencia]`) por região+competência, gerado pelo converter — **não editar à mão** |
 | `dados/manifest.js` | Lista de todas as combinações região/competência disponíveis (`window.MANIFEST_INSPECAO`) + os 5 grupos de condição (`window.GRUPOS_INSPECAO`) — o `index.html` usa isso pra montar os selects e injetar os `<script>` dos arquivos `insp_*.js` sob demanda |
 | `logo/` | Logos RTA + MSI (copiados de `web - Mapas/logo/`) |
