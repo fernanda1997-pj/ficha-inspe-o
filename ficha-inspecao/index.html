@@ -78,7 +78,7 @@
 
   /* ---------- Gaveta de detalhe do S.R.E. ---------- */
   #drawer{
-    position:absolute; left:330px; right:0; bottom:0; max-height:42%; background:#fff;
+    position:absolute; left:330px; right:0; bottom:0; max-height:55%; background:#fff;
     border-top:1px solid var(--borda); box-shadow:0 -2px 10px rgba(0,0,0,.15);
     z-index:1000; display:none; flex-direction:column;
   }
@@ -124,8 +124,8 @@
   <div id="painel">
     <header>
       <div class="logos">
-        <img src="logo/LOGO RTA.png" alt="RTA">
-        <img src="logo/LOGO MSI.jpeg" alt="MSI">
+        <img src="../logo/LOGO RTA.png" alt="RTA">
+        <img src="../logo/LOGO MSI.jpeg" alt="MSI">
       </div>
       <div>
         <h1>Inspeção do Pavimento
@@ -505,7 +505,8 @@ function abrirDrawer(){
       '</td><td>'+(p.sentido||'—')+'</td>'+celulas+'</tr>';
   }).join('');
 
-  document.getElementById('drawer-corpo').innerHTML = '<table><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>';
+  document.getElementById('drawer-corpo').innerHTML =
+    '<table><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>';
   document.getElementById('drawer').classList.add('aberta');
 }
 
@@ -593,6 +594,8 @@ function trocarAba(aba){
   document.getElementById('painel-regiao').style.display = (aba === 'regiao') ? '' : 'none';
   document.getElementById('painel-geral').style.display = (aba === 'geral') ? '' : 'none';
   fecharDrawer();
+  camadasDestaque.forEach(function(l){ map.removeLayer(l); });
+  camadasDestaque = [];
 
   if(aba === 'geral'){
     camadasNoMapa.forEach(function(l){ map.removeLayer(l); });

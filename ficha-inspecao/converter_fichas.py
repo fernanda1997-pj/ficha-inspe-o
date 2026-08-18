@@ -46,13 +46,17 @@ from shapely.ops import substring
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 FICHAS_DIR = os.path.join(BASE, 'fichas')
-CAMADAS_DIR = os.path.join(BASE, 'camadas')
+CAMADAS_DIR = os.path.join(BASE, '..', 'camadas')  # compartilhado com ordens-servico/
 DADOS_DIR = os.path.join(BASE, 'dados')
 EPSG_METRICO = 31982  # SIRGAS 2000 / UTM 22S — mesmo do geoportal principal
 
 MESES_PT = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio',
             6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro',
             10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
+# nome (maiúsculo, sem acento) -> número — usado no fallback de competência
+# a partir do nome do arquivo, quando a ficha não tem a célula DATA: preenchida.
+NUM_DO_MES_PT = {unicodedata.normalize('NFKD', v).encode('ascii', 'ignore').decode('ascii').upper(): k
+                 for k, v in MESES_PT.items()}
 
 # Grupos de condição, na ordem em que aparecem na ficha (esquerda->direita).
 # 'chave_topo' é o texto (normalizado) do cabeçalho mesclado que identifica
@@ -144,12 +148,19 @@ def _merged_range_de(ws, row, col):
     return row, col, row, col
 
 
-def _achar_cabecalho(ws, texto_norm, linhas=range(1, 9)):
-    """Acha a célula cujo valor normalizado contém `texto_norm`; devolve (row,col) ou None."""
+def _achar_cabecalho(ws, texto_norm, linhas=range(1, 9), exato=False):
+    """Acha a célula cujo valor normalizado contém `texto_norm`; devolve (row,col) ou None.
+    `exato=True` exige igualdade (não só conter) — usado pro rótulo "S.R.E."
+    da coluna, que senão casa de propósito errado com a frase "...· 5 S.R.E."
+    da linha de descrição do trecho (modelo novo, jul/2026)."""
     for r in linhas:
         for c in range(1, ws.max_column + 1):
             v = ws.cell(row=r, column=c).value
-            if v and texto_norm in _norm(v):
+            if not v:
+                continue
+            v_norm = _norm(v)
+            casou = (v_norm == texto_norm) if exato else (texto_norm in v_norm)
+            if casou:
                 return r, c
     return None
 
@@ -344,10 +355,18 @@ def parse_ficha(caminho):
             continue
         ws = wb[nome_aba]
 
-        pos_sre = _achar_cabecalho(ws, 'S.R.E')
-        pos_sentido = _achar_cabecalho(ws, 'SENTIDO')
-        pos_inicio = _achar_cabecalho(ws, 'INICIO')
-        pos_fim = _achar_cabecalho(ws, 'FIM')
+        pos_sre = _achar_cabecalho(ws, 'S.R.E.', exato=True)
+        # Restringe SENTIDO/INÍCIO/FIM à MESMA linha do "S.R.E." (quando achado)
+        # — senão "FIM" casa de propósito errado com o texto de instrução
+        # ("...até o FIM de CADA S.R.E...") que vem ANTES do cabeçalho de
+        # verdade no modelo novo (jul/2026). Sem pos_sre, cai pro range
+        # amplo de antes (aba provavelmente não é de trecho mesmo).
+        linhas_cab = [pos_sre[0]] if pos_sre else range(1, 9)
+        # 'SENTIDO' no modelo antigo, 'SENT.' no modelo novo — aceita os dois.
+        pos_sentido = (_achar_cabecalho(ws, 'SENTIDO', linhas=linhas_cab)
+                       or _achar_cabecalho(ws, 'SENT.', linhas=linhas_cab))
+        pos_inicio = _achar_cabecalho(ws, 'INICIO', linhas=linhas_cab)
+        pos_fim = _achar_cabecalho(ws, 'FIM', linhas=linhas_cab)
         if not (pos_sre and pos_sentido and pos_inicio and pos_fim):
             print(f'  [aviso] aba "{nome_aba}" não parece uma aba de trecho (sem cabeçalho S.R.E/SENTIDO/INICIO/FIM) — pulando')
             continue
@@ -365,6 +384,19 @@ def parse_ficha(caminho):
                 if isinstance(v, datetime):
                     competencia_dt = v
                     break
+        if competencia_dt is None:
+            # modelo novo (jul/2026): a célula "DATA:" existe mas veio em
+            # branco — cai pro mês/ano no nome do arquivo
+            # ("..._JULHO2026_...xlsx"), igual já fazíamos pra REGIÃO:.
+            m = re.search(
+                r'(JANEIRO|FEVEREIRO|MAR[CÇ]O|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)\s*(\d{4})',
+                os.path.basename(caminho), re.IGNORECASE,
+            )
+            if m:
+                mes_num = NUM_DO_MES_PT.get(_norm(m.group(1)))
+                if mes_num:
+                    competencia_dt = datetime(int(m.group(2)), mes_num, 1)
+                    qa(f'aba "{nome_aba}": sem célula DATA: preenchida na ficha — usei {m.group(1).upper()}/{m.group(2)} do nome do arquivo')
 
         regiao_num = None
         if pos_regiao:
@@ -376,8 +408,11 @@ def parse_ficha(caminho):
                     break
         if regiao_num is None:
             # alguns modelos de ficha (ex.: LOTE 01) não têm célula "REGIÃO:" —
-            # cai pro número no nome do arquivo ("...R.01 - JULHO.xlsx").
-            m = re.search(r'R\.?\s*(\d{1,2})\b', os.path.basename(caminho), re.IGNORECASE)
+            # cai pro número no nome do arquivo ("...R.01 - JULHO.xlsx" no
+            # modelo antigo, "..._R13_PAVIMENTADAS.xlsx" no novo). Usa
+            # negative lookahead em vez de \b: '_' é caractere de palavra,
+            # então \b não marca fronteira entre "13" e "_" no nome novo.
+            m = re.search(r'R\.?\s*(\d{1,2})(?!\d)', os.path.basename(caminho), re.IGNORECASE)
             if m:
                 regiao_num = int(m.group(1))
                 qa(f'aba "{nome_aba}": sem célula REGIÃO: na ficha — usei R{regiao_num} do nome do arquivo')
@@ -482,7 +517,16 @@ def parse_ficha(caminho):
             info = info_sre.get(_norm(sre).replace(' ', ''))
             if info and info.get('trecho_num') is not None:
                 return info['trecho_num'], info.get('trecho_nome') or rodovia_nome
-            return nome_aba, rodovia_nome
+            # modelo novo (jul/2026) não tem a aba "Trechos" — info_sre fica
+            # vazio e cai aqui pro nome da aba, que o openpyxl sempre lê como
+            # STRING (mesmo quando é só "225"). Sem isso o trecho_num sai
+            # inconsistente (string aqui, número quando vem de info_sre) e
+            # quebra comparação estrita (===) no index.html — ex.: a aba
+            # "Ordens de Serviço" parava de achar a geometria do trecho.
+            try:
+                return int(nome_aba), rodovia_nome
+            except (TypeError, ValueError):
+                return nome_aba, rodovia_nome
 
         segs_com_trecho = []
         for s in segmentos:

@@ -1,4 +1,10 @@
 __pycache__/
 *.pyc
 relatorio_qualidade.txt
+relatorio_qualidade_os.txt
 ~$*.xlsx
+~$*.xlsm
+
+# Ordens de Serviço virou repo próprio (C:\1. Projetos\RTA\web - OS) —
+# não mais compartilhado aqui, pasta fica só como cópia de trabalho local.
+/ordens-servico/

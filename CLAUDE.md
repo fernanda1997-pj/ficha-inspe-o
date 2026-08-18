@@ -1,22 +1,33 @@
 # Geoportal RTA-MSI — Inspeção do Pavimento
 
-WebGIS de página única (Leaflet) que mostra no mapa o resultado das fichas mensais de
-inspeção de rodovias do Tocantins — **pavimentadas e não pavimentadas (LEN)**. Todo mês
-saem **2 fichas por região × 6 regiões** (R1, R2, R3, R11, R12, R13): uma de trechos
-pavimentados, outra de não pavimentados. Usuária: Fernanda (RTA Engenheiros
-Consultores). Responder sempre em português.
+**Este repo hoje tem só UM app: `ficha-inspecao/`** (WebGIS Leaflet com o resultado
+das fichas mensais de inspeção de rodovias do Tocantins — pavimentadas e não
+pavimentadas/LEN). Todo mês saem **2 fichas por região × 6 regiões** (R1, R2, R3,
+R11, R12, R13): uma de trechos pavimentados, outra de não pavimentados.
+
+`camadas/` e `logo/` ficam na RAIZ do projeto — usados pelo `ficha-inspecao/`
+(`../camadas`/`../logo/...`).
+
+**Existiu um segundo app aqui, `ordens-servico/`** (as O.S.P. da planilha de
+Controle), pasta separada, zero ligação com a ficha — em 2026-08-18 virou **repo
+próprio** (`C:\1. Projetos\RTA\web - OS`, a usuária pediu explicitamente "vou criar
+[repo] só para as OS"), com cópia própria de `camadas/`/`logo/` (não depende mais
+deste repo). Ver `CLAUDE.md` de lá pra detalhes da arquitetura/histórico daquele
+app — não duplicar aqui.
+
+Usuária: Fernanda (RTA Engenheiros Consultores). Responder sempre em português.
 
 - **Site**: (ainda não publicado — ver seção "Publicar" abaixo)
 - **Repo**: (ainda não publicado)
 
-## Arquitetura
+## Arquitetura — ficha de inspeção (`ficha-inspecao/`)
 
 | Arquivo/pasta | Papel |
 |---|---|
-| `index.html` | O app inteiro (HTML+CSS+JS, sem build). CDN: Leaflet 1.9.4, Turf.js 6 (só usado pra `lineOffset`, o deslocamento visual quando >1 camada está ligada) |
-| `converter_fichas.py` | Lê `fichas/*.xlsx` + `camadas/R*_TRECHOS.shp`, corta a geometria de cada S.R.E. no km início/fim de cada linha da ficha (referenciamento linear) e escreve `dados/` |
-| `fichas/` | Fichas de inspeção mensais, uma por região+mês, como chegam do campo (`ficha de inspeção_rodovias pavimentadas_R.<região> - <MÊS>.xlsx`) — **não editar**, só adicionar arquivos novos aqui |
-| `camadas/` | Cópia de `R<região>_TRECHOS.shp` (uma linha por S.R.E., com `EXT_REAL` em km) — vem do geoportal principal em `../web/camadas/`. Se um S.R.E. novo aparecer numa ficha e não achar o shapefile, é só copiar a versão atualizada de lá. Tem também `Base_Rods_2023.shp` — ver seção própria abaixo |
+| `ficha-inspecao/index.html` | App da ficha (HTML+CSS+JS, sem build). CDN: Leaflet 1.9.4 |
+| `ficha-inspecao/converter_fichas.py` | Lê `fichas/*.xlsx` (dentro de `ficha-inspecao/`) + `../camadas/R*_TRECHOS.shp` (raiz, compartilhado), corta a geometria de cada S.R.E. no km início/fim de cada linha da ficha (referenciamento linear) e escreve em `ficha-inspecao/dados/` |
+| `ficha-inspecao/fichas/` | Fichas de inspeção mensais, uma por região+mês, como chegam do campo (`ficha de inspeção_rodovias pavimentadas_R.<região> - <MÊS>.xlsx`) — **não editar**, só adicionar arquivos novos aqui |
+| `camadas/` (raiz, compartilhado) | Cópia de `R<região>_TRECHOS.shp` (uma linha por S.R.E., com `EXT_REAL` em km) — vem do geoportal principal em `../web/camadas/`. Se um S.R.E. novo aparecer numa ficha e não achar o shapefile, é só copiar a versão atualizada de lá. Tem também `Base_Rods_2023.shp` — ver seção própria abaixo |
 
 ## Fallback Base_Rods_2023.shp (provisório — trocar quando sair a versão oficial)
 
@@ -39,10 +50,10 @@ de lá — assume a ordem original do shapefile (aviso único, não por feição
 substituir `camadas/Base_Rods_2023.shp` pela nova (mesmo nome de arquivo, ou trocar o
 caminho em `BASE_RODS_2023` no `converter_fichas.py`) e rodar `python converter_fichas.py`
 de novo — não precisa mexer em mais nada.
-| `dados/insp_<REGIAO>_<AAAA-MM>.js` | Um GeoJSON (dentro de `window.DADOS_INSPECAO[regiao][competencia]`) por região+competência, gerado pelo converter — **não editar à mão** |
-| `dados/manifest.js` | Lista de todas as combinações região/competência disponíveis (`window.MANIFEST_INSPECAO`) + os 5 grupos de condição (`window.GRUPOS_INSPECAO`) — o `index.html` usa isso pra montar os selects e injetar os `<script>` dos arquivos `insp_*.js` sob demanda |
-| `logo/` | Logos RTA + MSI (copiados de `web - Mapas/logo/`) |
-| `relatorio_qualidade.txt` | Gerado a cada rodada do converter (gitignored) — aponta S.R.E. da ficha que não bateu com o shapefile, geometrias em partes desconexas, extensão inspecionada muito diferente da extensão real etc. |
+| `ficha-inspecao/dados/insp_<REGIAO>_<AAAA-MM>.js` | Um GeoJSON (dentro de `window.DADOS_INSPECAO[regiao][competencia]`) por região+competência, gerado pelo converter — **não editar à mão** |
+| `ficha-inspecao/dados/manifest.js` | Lista de todas as combinações região/competência disponíveis (`window.MANIFEST_INSPECAO`) + os 5 grupos de condição (`window.GRUPOS_INSPECAO`) — o `index.html` usa isso pra montar os selects e injetar os `<script>` dos arquivos `insp_*.js` sob demanda |
+| `logo/` (raiz, compartilhado) | Logos RTA + MSI (copiados de `web - Mapas/logo/`) |
+| `ficha-inspecao/relatorio_qualidade.txt` | Gerado a cada rodada do converter (gitignored) — aponta S.R.E. da ficha que não bateu com o shapefile, geometrias em partes desconexas, extensão inspecionada muito diferente da extensão real etc. |
 
 ## Como funciona o referenciamento linear (o coração do projeto)
 
@@ -163,12 +174,12 @@ Todo mês chegam **até 12 arquivos** (pavimentada + não pavimentada × 6 regi�
 precisa esperar todos — o converter processa o que tiver em `fichas/` e funde por
 região+competência (dá pra ir soltando os arquivos conforme chegam e rodar de novo).
 
-1. Salvar o(s) `.xlsx` em `fichas/` (nome livre, mas o padrão até agora é
-   `ficha de inspeção_rodovias pavimentadas_R.<região> - <MÊS>.xlsx` e
+1. Salvar o(s) `.xlsx` em `ficha-inspecao/fichas/` (nome livre, mas o padrão até
+   agora é `ficha de inspeção_rodovias pavimentadas_R.<região> - <MÊS>.xlsx` e
    `ficha de inspeção_rodovias não pavimentadas _R.<região> - <MÊS>.xlsx`)
-2. Rodar `python converter_fichas.py`
-3. Checar `relatorio_qualidade.txt` — S.R.E. não encontrado, geometria com vão grande,
-   extensão inspecionada muito diferente da extensão do shapefile
+2. Rodar `python converter_fichas.py` de dentro de `ficha-inspecao/`
+3. Checar `ficha-inspecao/relatorio_qualidade.txt` — S.R.E. não encontrado, geometria
+   com vão grande, extensão inspecionada muito diferente da extensão do shapefile
 4. `git add -A && git commit && git push`
 
 Região e competência (mês/ano) são lidos de **dentro da planilha** (célula "REGIÃO:" e
@@ -177,8 +188,10 @@ pode variar sem quebrar nada.
 
 ## Testar local
 
-Servidor `python -m http.server 8768 --directory .` — há config `inspecao-pavimento`
-no `.claude/launch.json` do projeto `web` vizinho (`C:\1. Projetos\RTA\web\.claude\launch.json`).
+Servidor `python -m http.server 8768 --directory .` na RAIZ do projeto — há config
+`inspecao-pavimento` no `.claude/launch.json` do projeto `web` vizinho
+(`C:\1. Projetos\RTA\web\.claude\launch.json`). URL:
+`http://localhost:8768/ficha-inspecao/index.html`.
 
 ## Publicar
 
@@ -190,6 +203,26 @@ Ainda não publicado. Passos (mesmo fluxo do [[geoportal-levantamento]] em `web 
 3. Importar o repo no Vercel (vercel.com → Add New Project → escolher o repo) — deploy
    automático a cada push na `main`, igual aos outros dois projetos
 
+## Histórico de tentativas de ligar ficha × O.S. (não repetir sem pedido explícito)
+
+Quando `ordens-servico/` ainda vivia dentro deste repo (antes de virar
+`C:\1. Projetos\RTA\web - OS`), a usuária pediu pra ligar as duas fontes de dados
+mais de uma vez e desistiu toda vez:
+1. Mostrar O.S. dentro do popup/gaveta da ficha (bloco stacked) — achou confuso os
+   dois conteúdos juntos na mesma gaveta pequena.
+2. Link cruzado (botão "N O.S.P. neste trecho → ver", chip de filtro, selo
+   "📋 ficha: classe" na lista de O.S., histórico de competências da ficha na gaveta
+   da O.S.) — ainda achou confuso / gerava dúvida tipo "por que O.S. concluída e
+   ficha negativa" (resposta: ficha é mensal, O.S. não tem periodicidade fixa, então
+   uma piora depois do "Concluída" é desgaste normal, não erro — mas mesmo com essa
+   explicação preferiu não ligar).
+3. Duas páginas HTML na mesma pasta, depois duas PASTAS separadas, e por fim
+   **repositórios separados** — cada nível de separação foi pedido explicitamente.
+**Se um dia pedir de novo pra ligar as duas**, agora é cross-repo (não dá mais pra
+só referenciar um `window.DADOS_*` do outro app — teria que ser via API/arquivo
+publicado) — vale confirmar bem o que ela quer antes de reimplementar algo do
+histórico acima.
+
 ## Relação com outros projetos
 
 - `C:\1. Projetos\RTA\web` = geoportal principal (Folium), site
@@ -197,5 +230,8 @@ Ainda não publicado. Passos (mesmo fluxo do [[geoportal-levantamento]] em `web 
   (copiados pra `camadas/` aqui).
 - `C:\1. Projetos\RTA\web - Mapas` = Geoportal RTA-MSI — Levantamento de Trechos
   (`mapa-levantamento.vercel.app`). Repo/site diferente, mesma família de produtos.
-- Este projeto (`web - fichas`) é o terceiro da família: **inspeção de campo do
-  pavimento**, separado dos outros dois por pedido da usuária (repo próprio).
+- `C:\1. Projetos\RTA\web - OS` = Geoportal RTA-MSI — Ordens de Serviço. Repo/site
+  próprio desde 2026-08-18 (era `ordens-servico/` aqui dentro) — ver `CLAUDE.md` de
+  lá.
+- Este projeto (`web - fichas`) é o quarto da família: **inspeção de campo do
+  pavimento**, repo próprio.
