@@ -372,14 +372,14 @@ var map = L.map('map', {zoomControl:true, preferCanvas:true}).setView([-10.3, -4
 var MALHA_CONTEXTO = window.MALHA_CONTEXTO || {type:'FeatureCollection', features:[]};
 
 // CARTO (basemaps.cartocdn.com) passou a exigir API key (marca d'água "API
-// KEY REQUIRED"). O Esri World_Street_Map ficou carregado/colorido demais.
-// O Esri Light Gray Canvas em 2 camadas (base + rótulos) sobrecarregou o
-// carregamento inicial (tiles levando 10s+ cada, provável limite de rajada
-// de pedidos simultâneos do serviço). OpenStreetMap padrão: uma única
-// camada só, sem chave, historicamente o provedor mais estável pra esse
-// tipo de uso.
-var baseClaro = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution:'&copy; OpenStreetMap', maxZoom:19,
+// KEY REQUIRED"). Esri World_Street_Map ficou carregado/colorido demais.
+// OpenStreetMap padrão mostra rio/estrada de terra/contorno de propriedade
+// junto — poluído demais em cima dos trechos coloridos. Esri Light Gray
+// Canvas SÓ a camada base (sem a de rótulos — foi a combinação das duas
+// juntas que sobrecarregou antes, gerando tiles de 10s+): cinza-claro
+// minimalista, uma única camada, sem chave.
+var baseClaro = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  attribution:'Esri, HERE, Garmin, FAO, NOAA, USGS', maxZoom:19, maxNativeZoom:16,
 }).addTo(map);
 var baseSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution:'Esri, Maxar, Earthstar Geographics', maxZoom:19,
