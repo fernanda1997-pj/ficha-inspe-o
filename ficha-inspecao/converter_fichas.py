@@ -683,8 +683,20 @@ def _carregar_linhas_de_shapefile(caminho, label):
             # perto de qualquer ponta, invertendo se precisar), preservando
             # o comprimento total. Se o vão de alguma emenda for grande,
             # avisamos — pode faltar pedaço do traçado no shapefile.
-            partes_restantes = list(geom_m.geoms)
-            n_partes_original = len(partes_restantes)
+            partes_todas = list(geom_m.geoms)
+            n_partes_original = len(partes_todas)
+            # Parte minúscula (<=50m) é vértice solto/duplicado — ruído de
+            # digitalização, não estrada de verdade. Descarta ANTES de
+            # encadear: se entrar na linha, o algoritmo guloso desenha um
+            # "espeto" reto até ela (às vezes vários km de distância) e volta
+            # — cria um laço sem sentido no mapa, mesmo o comprimento
+            # descartado sendo desprezível. Mantém pelo menos a parte mais
+            # longa mesmo que só sobre lixo (SRE praticamente todo ruído).
+            partes_restantes = sorted(partes_todas, key=lambda p: -p.length)
+            maior = partes_restantes[0]
+            partes_significativas = [maior] + [p for p in partes_restantes[1:] if p.length > 50]
+            n_descartadas = n_partes_original - len(partes_significativas)
+            partes_restantes = list(partes_significativas)
             partes_restantes.sort(key=lambda p: -p.length)
             cadeia = list(partes_restantes.pop(0).coords)
             maior_vao = 0.0
@@ -703,21 +715,15 @@ def _carregar_linhas_de_shapefile(caminho, label):
                         if melhor is None or dist < melhor[0]:
                             melhor = (dist, idx, lado, coords_certas)
                 dist, idx, lado, coords_certas = melhor
-                # Só conta pro "maior vão" se a parte que tá entrando é
-                # significativa (>50m) — parte minúscula é vértice solto/
-                # duplicado (ruído de digitalização), não estrada de verdade.
-                # Sem isso o aviso "CONFERIR" dispara com o vão até um
-                # pontinho perdido, mesmo quando as partes reais da estrada
-                # já se encontram exatas entre si (falso alarme).
-                if partes_restantes[idx].length > 50:
-                    maior_vao = max(maior_vao, dist)
+                maior_vao = max(maior_vao, dist)
                 if lado == 'fim':
                     cadeia.extend(coords_certas)
                 else:
                     cadeia = coords_certas + cadeia
                 partes_restantes.pop(idx)
             geom_m = LineString(cadeia)
-            qa(f'{label}/{sre_raw}: geometria em {n_partes_original} partes desconexas no shapefile — '
+            descartadas_msg = f' ({n_descartadas} minúscula(s) <=50m descartada(s), provável ruído de digitalização)' if n_descartadas else ''
+            qa(f'{label}/{sre_raw}: geometria em {n_partes_original} partes desconexas no shapefile{descartadas_msg} — '
                f'encadeadas pela parte mais próxima em cada ponta (maior vão entre partes: {round(maior_vao)} m'
                f'{" — CONFERIR o shapefile, pode estar faltando um pedaço do traçado" if maior_vao > 200 else ""})')
         if sre_key in linhas:

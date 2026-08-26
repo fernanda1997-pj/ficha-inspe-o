@@ -13,8 +13,8 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
     "arquivo": "insp_R11_2026-07.js",
-    "n_segmentos": 1105,
-    "ext_km": 1093.3
+    "n_segmentos": 1103,
+    "ext_km": 1092.7
   },
   {
     "regiao": "R12",
@@ -37,16 +37,16 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
     "arquivo": "insp_R2_2026-07.js",
-    "n_segmentos": 1081,
-    "ext_km": 1057.3
+    "n_segmentos": 1080,
+    "ext_km": 1056.3
   },
   {
     "regiao": "R3",
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
     "arquivo": "insp_R3_2026-07.js",
-    "n_segmentos": 876,
-    "ext_km": 862.9
+    "n_segmentos": 851,
+    "ext_km": 837.9
   }
 ];
 window.GRUPOS_INSPECAO = [
