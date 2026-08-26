@@ -35,24 +35,22 @@
   .aba-btn:hover{background:var(--fundo);}
   .aba-btn.ativa{color:var(--azul); border-bottom-color:var(--azul);}
 
-  .kpi-geral{
-    background:var(--fundo); border:1px solid var(--borda); border-radius:8px;
-    padding:14px 10px; text-align:center; margin-top:4px;
+
+  /* Resultado geral (Visão Geral) e Por Região: donut centralizado, legenda
+     embaixo em largura cheia — linhas enxutas, sem cartão/borda, só um traço
+     fino separando cada uma. Na Visão Geral cada linha também tem checkbox
+     e dobra de filtro do mapa; em Por Região é só leitura. */
+  .donut-wrap-central{display:flex; justify-content:center; margin-top:6px;}
+  .legenda-filtro{margin-top:8px;}
+  .legenda-filtro .linha{
+    display:flex; align-items:center; gap:8px; padding:7px 2px;
+    border-bottom:1px solid var(--borda); font-size:12.5px;
   }
-  .kpi-geral b{font-size:26px; color:var(--azul); font-weight:800;}
-
-  .donut-wrap{display:flex; align-items:center; gap:10px; margin-top:6px;}
-  .donut-legenda{flex:1; font-size:12px;}
-  .donut-legenda .item{display:flex; align-items:center; gap:6px; padding:3px 0;}
-  .donut-legenda .chip{width:11px; height:11px; border-radius:3px; flex:none;}
-  .donut-legenda .nome{flex:1; color:#334155;}
-  .donut-legenda .valor{color:var(--cinza); font-variant-numeric:tabular-nums;}
-
-  .linha-filtro{display:flex; align-items:center; gap:8px; padding:5px 2px; font-size:13px;}
-  .linha-filtro input{width:16px; height:16px; accent-color:var(--azul); flex:none;}
-  .linha-filtro .chip{width:13px; height:13px; border-radius:3px; flex:none;}
-  .linha-filtro .nome{flex:1;}
-  .linha-filtro .valor{color:var(--cinza); font-size:11.5px;}
+  .legenda-filtro .linha:last-child{border-bottom:none;}
+  .legenda-filtro input{width:15px; height:15px; accent-color:var(--azul); flex:none;}
+  .legenda-filtro .chip{width:9px; height:9px; border-radius:50%; flex:none;}
+  .legenda-filtro .nome{flex:1; color:#334155;}
+  .legenda-filtro .valor{color:var(--cinza); font-size:11.5px; font-variant-numeric:tabular-nums;}
 
   label.rotulo{display:block; font-size:12px; font-weight:600; color:var(--azul); margin:10px 0 4px;}
   label.rotulo:first-child{margin-top:0;}
@@ -61,8 +59,9 @@
     font-size:13px; font-family:inherit; background:#fff;
   }
 
+  #resumo-escopo{font-size:11px; color:var(--cinza); font-weight:600; margin-top:12px;}
   #resumo{
-    margin-top:12px; background:var(--fundo); border:1px solid var(--borda); border-radius:8px;
+    margin-top:4px; background:var(--fundo); border:1px solid var(--borda); border-radius:8px;
     padding:8px 10px; font-size:12px; color:#334155; display:flex; justify-content:space-between;
   }
   #resumo b{color:var(--azul); font-size:14px; display:block;}
@@ -117,9 +116,104 @@
   }
 
   .leaflet-control-layers{font-size:13px;}
+
+  /* ---------- Legenda fixa no mapa (I.C.M.) ---------- */
+  .legenda-mapa{
+    background:#fff; border-radius:8px; padding:8px 10px; box-shadow:0 1px 4px rgba(0,0,0,.3);
+    font-size:11.5px; line-height:1.6; color:#334155;
+  }
+  .legenda-mapa .item{display:flex; align-items:center; gap:6px;}
+  .legenda-mapa .chip{width:12px; height:12px; border-radius:3px; flex:none;}
+  .legenda-mapa .chip.tracejado{
+    background:none; border:2px dashed #64748B; width:10px; height:10px;
+  }
+  .legenda-mapa .chip.linha-contexto{
+    background:#94A3B8; width:14px; height:2px; border-radius:0;
+  }
+
+  /* Marcador dos Pontos Críticos — bolinha colorida com borda branca,
+     mesma paleta (por classe de situação) usada no popup. */
+  .icone-ponto-critico span{
+    display:block; width:16px; height:16px; border-radius:50%;
+    border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.5);
+  }
+
+  /* ---------- Busca por S.R.E. / rodovia ---------- */
+  #busca-wrap{position:relative; padding:10px 12px 8px; border-bottom:1px solid var(--borda);}
+  #busca-input{
+    width:100%; padding:8px 30px 8px 10px; border:1px solid var(--borda); border-radius:6px;
+    font-size:13px; font-family:inherit;
+  }
+  #busca-limpar{
+    position:absolute; right:20px; top:18px; border:none; background:none; cursor:pointer;
+    color:var(--cinza); font-size:14px; display:none;
+  }
+  #busca-resultados{
+    position:absolute; left:12px; right:12px; top:100%; background:#fff; border:1px solid var(--borda);
+    border-radius:0 0 8px 8px; box-shadow:0 6px 14px rgba(0,0,0,.15); max-height:280px; overflow-y:auto;
+    z-index:1200; display:none;
+  }
+  #busca-resultados.aberta{display:block;}
+  #busca-resultados button{
+    display:block; width:100%; text-align:left; padding:8px 10px; border:none; background:none;
+    border-bottom:1px solid var(--borda); cursor:pointer; font-family:inherit; font-size:12.5px;
+  }
+  #busca-resultados button:hover{background:var(--fundo);}
+  #busca-resultados button:last-child{border-bottom:none;}
+  #busca-resultados .sre{font-weight:600; color:var(--azul);}
+  #busca-resultados .nome{color:var(--cinza); font-size:11px; display:block; margin-top:1px;}
+  #busca-resultados .vazio{padding:10px; font-size:12px; color:var(--cinza); font-style:italic;}
+
+  /* ---------- Comparativo por região (Visão Geral) ---------- */
+  /* ---------- Cartões de KPI (grade), estilo "painel" ---------- */
+  .kpis-grade{display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:4px;}
+  .kpis-grade-4{grid-template-columns:repeat(2, 1fr);}
+  .kpi-mini{
+    background:var(--fundo); border:1px solid var(--borda); border-radius:8px;
+    padding:10px 6px; text-align:center;
+  }
+  .kpi-mini b{display:block; font-size:19px; color:var(--azul); font-weight:800; white-space:nowrap;}
+  .kpi-mini span{font-size:10px; color:var(--cinza); line-height:1.3;}
+
+  .comp-regiao{
+    margin-bottom:8px; font-size:11.5px; cursor:pointer; background:#fff; border:1px solid var(--borda);
+    border-left:3px solid var(--azul); border-radius:6px; padding:8px 10px;
+  }
+  .comp-regiao:hover{background:var(--fundo);}
+  .comp-regiao .topo{display:flex; justify-content:space-between; margin-bottom:5px; color:#334155;}
+  .comp-regiao .topo b{color:var(--azul);}
+  .comp-regiao .barra{display:flex; height:14px; border-radius:4px; overflow:hidden; background:var(--fundo);}
+  .comp-regiao .barra span{height:100%;}
+
+  /* ---------- Botões utilitários (gaveta) ---------- */
+  .btn-utilitario{
+    border:1px solid var(--borda); background:#fff; border-radius:6px; padding:4px 9px;
+    font-size:11.5px; cursor:pointer; color:#334155; font-family:inherit; white-space:nowrap;
+  }
+  .btn-utilitario:hover{background:var(--fundo);}
+
+  /* ---------- Botão hamburguer (mobile) ---------- */
+  #btn-menu{
+    display:none; position:absolute; top:10px; left:10px; z-index:1300; width:38px; height:38px;
+    border:none; border-radius:8px; background:#fff; box-shadow:0 1px 6px rgba(0,0,0,.3);
+    font-size:18px; cursor:pointer;
+  }
+
+  /* ---------- Responsivo (celular/tablet) ---------- */
+  @media (max-width: 768px){
+    #btn-menu{display:block;}
+    #painel{
+      position:absolute; top:0; bottom:0; left:0; width:85%; max-width:340px; min-width:0;
+      transform:translateX(-100%); transition:transform .2s ease; z-index:1250;
+    }
+    #painel.aberto{transform:translateX(0);}
+    #drawer{left:0 !important;}
+  }
+
 </style>
 </head>
 <body>
+<button id="btn-menu" title="Abrir painel">☰</button>
 <div id="app">
   <div id="painel">
     <header>
@@ -133,26 +227,32 @@
         </h1>
       </div>
     </header>
-    <div class="abas">
-      <button class="aba-btn ativa" data-aba="regiao">Por Região</button>
-      <button class="aba-btn" data-aba="geral">Visão Geral</button>
+    <div id="busca-wrap">
+      <input type="text" id="busca-input" placeholder="Buscar S.R.E. ou rodovia (ex.: 010ETO0650, TO-280)…" autocomplete="off">
+      <button id="busca-limpar" title="Limpar">✕</button>
+      <div id="busca-resultados"></div>
     </div>
-    <div class="conteudo" id="painel-regiao">
+    <div class="abas">
+      <button class="aba-btn ativa" data-aba="geral">Visão Geral</button>
+      <button class="aba-btn" data-aba="regiao">Por Região</button>
+    </div>
+    <div class="conteudo" id="painel-regiao" style="display:none;">
       <label class="rotulo" for="sel-regiao">Região</label>
       <select id="sel-regiao"></select>
 
       <label class="rotulo" for="sel-competencia">Competência (mês da ficha)</label>
       <select id="sel-competencia"></select>
 
+      <div id="resumo-escopo">Região inteira</div>
       <div id="resumo">
         <div><b id="resumo-ext">—</b>km inspecionados</div>
         <div><b id="resumo-n">—</b>segmentos</div>
       </div>
 
-      <div class="donut-wrap" style="margin-top:8px;">
+      <div class="donut-wrap-central" style="margin-top:8px;">
         <div id="regiao-donut"></div>
-        <div class="donut-legenda" id="regiao-legenda"></div>
       </div>
+      <div class="legenda-filtro" id="regiao-legenda"></div>
 
       <hr class="separador">
 
@@ -166,30 +266,36 @@
       <select id="sel-sre"><option value="">Selecione…</option></select>
 
       <div class="dica">
-        O mapa mostra o Resultado Geral de cada trecho. Escolha um Trecho/S.R.E.
-        acima (ou "Todos") pra dar zoom nele e ver a tabela completa com pavimento,
-        vegetação, drenagem e sinalização — ou clique direto num trecho no mapa.
+        O mapa mostra o Resultado Geral de cada trecho — desmarque uma classe na
+        legenda acima (Bom, Regular, Ruim...) pra tirá-la do mapa e do gráfico.
+        Escolha um Trecho/S.R.E. acima (ou "Todos") pra dar zoom nele e ver a
+        tabela completa com pavimento, vegetação, drenagem e sinalização — ou
+        clique direto num trecho no mapa.
       </div>
     </div>
 
-    <div class="conteudo" id="painel-geral" style="display:none;">
-      <label class="rotulo">Extensão total levantada no período</label>
-      <div class="kpi-geral"><b id="geral-total">—</b></div>
-
-      <label class="rotulo" style="margin-top:16px;">Resultado geral (I.C.M. / I.C.M.N.P.)</label>
-      <div class="donut-wrap">
-        <div id="geral-donut"></div>
-        <div class="donut-legenda" id="geral-legenda"></div>
+    <div class="conteudo" id="painel-geral">
+      <div class="kpis-grade kpis-grade-4">
+        <div class="kpi-mini"><b id="geral-total">—</b><span>km levantados</span></div>
+        <div class="kpi-mini"><b id="geral-n-trechos">—</b><span>trechos</span></div>
+        <div class="kpi-mini"><b id="geral-n-sre">—</b><span>S.R.E.</span></div>
+        <div class="kpi-mini"><b id="geral-pct-pav">—</b><span>pavimentada</span></div>
       </div>
+
+      <label class="rotulo" style="margin-top:16px;">Resultado geral</label>
+      <div class="donut-wrap-central">
+        <div id="geral-donut"></div>
+      </div>
+      <div class="legenda-filtro" id="geral-legenda"></div>
 
       <hr class="separador">
 
-      <label class="rotulo">Mostrar no mapa</label>
-      <div id="geral-filtros"></div>
+      <label class="rotulo">Comparativo por região (km por classe)</label>
+      <div id="comparativo-regioes"></div>
 
       <div class="dica">
         Soma de todas as regiões e competências já convertidas. O gráfico mostra o
-        total sempre; os checkboxes acima só controlam o que aparece pintado no mapa.
+        total sempre; desmarque uma classe na legenda acima pra tirá-la do mapa.
       </div>
     </div>
   </div>
@@ -200,7 +306,11 @@
         <h2 id="drawer-titulo">—</h2>
         <small id="drawer-subtitulo"></small>
       </div>
-      <button class="fechar" id="drawer-fechar" title="Fechar">✕</button>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="btn-utilitario" id="drawer-compartilhar" title="Copiar link direto pra esse trecho">🔗 Link</button>
+        <button class="btn-utilitario" id="drawer-csv" title="Baixar esta tabela como CSV">⬇️ CSV</button>
+        <button class="fechar" id="drawer-fechar" title="Fechar">✕</button>
+      </div>
     </div>
     <div class="corpo-drawer" id="drawer-corpo"></div>
   </div>
@@ -209,6 +319,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados/manifest.js"></script>
 <script src="dados/regioes.js"></script>
+<script src="dados/malha_contexto.js"></script>
+<script src="dados/limites_municipais.js"></script>
+<script src="dados/pontos_criticos.js"></script>
 <script>
 (function(){
 'use strict';
@@ -229,10 +342,19 @@ var CORES_ICM = {
   'Péssimo': '#d03b3b', 'Sem Informação': '#94A3B8',
 };
 
+// Pontos Críticos (erosão, bueiro, talude etc. — dados/pontos_criticos.js,
+// gerado a partir da planilha "Controle Pontos Críticos"). Mesma ideia de
+// paleta por classe, só que pra situação do ponto em vez do I.C.M.
+var CORES_PONTO_CRITICO = {
+  'Crítico': '#d03b3b', 'Em execução': '#fab219', 'Resolvido': '#0ca30c',
+  'Sem atualização': '#94A3B8', 'Outro': '#64748B',
+};
+
 // ---------------------------------------------------------------------
 // Mapa base
 // ---------------------------------------------------------------------
 var map = L.map('map', {zoomControl:true}).setView([-10.3, -48.3], 7);
+var MALHA_CONTEXTO = window.MALHA_CONTEXTO || {type:'FeatureCollection', features:[]};
 
 var baseClaro = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   attribution:'&copy; OpenStreetMap, &copy; CARTO', maxZoom:19,
@@ -240,21 +362,139 @@ var baseClaro = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyag
 var baseSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution:'Esri, Maxar, Earthstar Geographics', maxZoom:19,
 });
-L.control.layers({'Padrão': baseClaro, 'Satélite': baseSatelite}, null, {position:'bottomleft'}).addTo(map);
+
+// Pontos Críticos — camada opcional (desligada por padrão), liga pelo
+// controle de camadas no canto superior direito, junto com o basemap.
+var PONTOS_CRITICOS = window.PONTOS_CRITICOS || {type:'FeatureCollection', features:[]};
+
+function iconePontoCritico(classe){
+  var cor = CORES_PONTO_CRITICO[classe] || CORES_PONTO_CRITICO['Outro'];
+  return L.divIcon({
+    className: 'icone-ponto-critico',
+    html: '<span style="background:'+cor+';"></span>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+}
+
+function montarPopupPontoCritico(p){
+  var cor = CORES_PONTO_CRITICO[p.situacao_classe] || CORES_PONTO_CRITICO['Outro'];
+  // "Ver mapa" abre, em outra aba, a ficha do mês em PDF (mapa de localização
+  // + fotos) hospedada no Drive da usuária.
+  var historico = (p.historico || []).map(function(h){
+    return '<tr><td class="rot">'+h.mes+'</td><td>'+h.status+
+      (h.mapa_url ? ' <a href="'+h.mapa_url+'" target="_blank" rel="noopener" style="font-size:10.5px; font-weight:600; color:#1E3A72;">Ver mapa</a>' : '') +
+      '</td></tr>';
+  }).join('');
+  return (
+    '<div class="popup-insp">' +
+      '<h3>Ponto crítico '+p.id+' <span style="font-size:10.5px; font-weight:600; color:#64748B;">· '+nomeRegiao(p.regiao)+'</span></h3>' +
+      '<div class="km">'+(p.rodovia||'—')+(p.trecho ? ' — '+p.trecho : '')+'</div>' +
+      '<div style="margin-bottom:8px;">Situação: <span class="badge" style="background:'+cor+'">'+(p.situacao_bruta && p.situacao_bruta !== '-' ? p.situacao_bruta : p.situacao_classe)+'</span></div>' +
+      (p.descricao ? '<div style="font-size:12px; color:#334155; margin-bottom:8px; line-height:1.4;">'+p.descricao+'</div>' : '') +
+      (historico ? '<table>'+historico+'</table>' : '') +
+    '</div>'
+  );
+}
+
+var camadaPontosCriticos = PONTOS_CRITICOS.features.length > 0 ? L.geoJSON(PONTOS_CRITICOS, {
+  pointToLayer: function(feat, latlng){
+    return L.marker(latlng, {icon: iconePontoCritico(feat.properties.situacao_classe)});
+  },
+  onEachFeature: function(feat, layer){
+    layer.bindPopup(montarPopupPontoCritico(feat.properties));
+  },
+}) : null;
+
+// Limites municipais — camada opcional (desligada por padrão) igual a
+// Pontos Críticos. Só contorno (sem preenchimento visível) + nome do
+// município ao passar o mouse; ajuda a localizar "esse trecho é em qual
+// cidade" sem precisar abrir o popup do trecho.
+var LIMITES_MUNICIPAIS = window.LIMITES_MUNICIPAIS || {type:'FeatureCollection', features:[]};
+var camadaLimitesMunicipais = LIMITES_MUNICIPAIS.features.length > 0 ? L.geoJSON(LIMITES_MUNICIPAIS, {
+  style: {color:'#7C6FAD', weight:1, opacity:0.7, fill:true, fillOpacity:0.02, fillColor:'#7C6FAD'},
+  onEachFeature: function(feat, layer){
+    if(feat.properties.nome) layer.bindTooltip(feat.properties.nome, {sticky:true});
+  },
+}) : null;
+
+var overlaysMapa = {};
+if(camadaLimitesMunicipais) overlaysMapa['🏘️ Limites municipais'] = camadaLimitesMunicipais;
+if(camadaPontosCriticos) overlaysMapa['⚠️ Pontos Críticos'] = camadaPontosCriticos;
+L.control.layers({'Padrão': baseClaro, 'Satélite': baseSatelite}, overlaysMapa, {position:'topright', collapsed:false}).addTo(map);
 L.control.scale({imperial:false, position:'bottomright'}).addTo(map);
+
+// Malha viária de contexto (Base_Rods_2023, TO inteiro) — cinza clarinho,
+// sempre no fundo, nas duas abas. Pane próprio com z-index abaixo do
+// overlayPane padrão (400), então fica sempre atrás de tudo (trechos,
+// contorno de região, destaque), sem precisar de bringToBack a cada redraw.
+map.createPane('paneMalhaContexto');
+map.getPane('paneMalhaContexto').style.zIndex = 350;
+if(MALHA_CONTEXTO.features.length > 0){
+  L.geoJSON(MALHA_CONTEXTO, {
+    pane: 'paneMalhaContexto',
+    style: {color:'#94A3B8', weight:1, opacity:0.6},
+    interactive: false,
+  }).addTo(map);
+}
+
+// Legenda fixa (sempre visível, mesmo sem clicar em nada) — hoje só indica
+// a malha viária de contexto (cinza fino, ao fundo).
+var ControleLegenda = L.Control.extend({
+  options: {position: 'topright'},
+  onAdd: function(){
+    var div = L.DomUtil.create('div', 'legenda-mapa');
+    div.innerHTML = '<div class="item"><span class="chip linha-contexto"></span>malha viária (contexto)</div>';
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  },
+});
+if(MALHA_CONTEXTO.features.length > 0) map.addControl(new ControleLegenda());
+
+// Botão de GPS — mostra onde a usuária está (útil em campo).
+var ControleGps = L.Control.extend({
+  options: {position: 'topleft'},
+  onAdd: function(){
+    var btn = L.DomUtil.create('button', 'leaflet-bar');
+    btn.innerHTML = '📍';
+    btn.title = 'Minha localização';
+    btn.style.width = '30px'; btn.style.height = '30px'; btn.style.cursor = 'pointer';
+    btn.style.fontSize = '15px'; btn.style.background = '#fff'; btn.style.border = 'none';
+    L.DomEvent.disableClickPropagation(btn);
+    var marcador = null;
+    L.DomEvent.on(btn, 'click', function(){
+      if(!navigator.geolocation){ alert('Este navegador não suporta geolocalização.'); return; }
+      navigator.geolocation.getCurrentPosition(function(pos){
+        var ll = [pos.coords.latitude, pos.coords.longitude];
+        if(marcador) map.removeLayer(marcador);
+        marcador = L.circleMarker(ll, {radius:8, color:'#fff', weight:2, fillColor:'#2563EB', fillOpacity:1}).addTo(map);
+        map.setView(ll, 14);
+      }, function(){
+        alert('Não consegui achar sua localização — verifique a permissão de GPS do navegador.');
+      });
+    });
+    return btn;
+  },
+});
+map.addControl(new ControleGps());
 
 // ---------------------------------------------------------------------
 // Estado
 // ---------------------------------------------------------------------
 var GRUPOS = (window.GRUPOS_INSPECAO || []).concat([
-  {id: 'icm', nome: 'Resultado Geral (I.C.M.)'},
+  {id: 'icm', nome: 'Resultado Geral'},
 ]);
 var MANIFEST = window.MANIFEST_INSPECAO || [];
 var REGIOES_GEOJSON = window.DADOS_REGIOES || {type:'FeatureCollection', features:[]};
 var camadasNoMapa = [];        // L.GeoJSON atualmente no mapa (pra limpar ao trocar seleção)
 var arquivosCarregados = {};   // arquivo -> true, evita <script> duplicado
-var camadaRegiao = null;       // contorno da região selecionada
+var camadaRegiao = null;       // contorno da região selecionada (aba "Por Região")
+var camadaRegioesGeral = null; // contorno de todas as regiões (aba "Visão Geral")
 var camadasDestaque = [];      // casing + linha do S.R.E. escolhido no funil
+// Classes I.C.M. marcadas na legenda da aba "Por Região" — controla o que
+// aparece pintado no mapa da região e no gráfico de rosca, igual à Visão Geral.
+var ativosIcmRegiao = {};
+CLASSES_ICM.forEach(function(c){ ativosIcmRegiao[c] = true; });
 
 // ---------------------------------------------------------------------
 // Monta os selects de Região / Competência a partir do manifest.js
@@ -262,11 +502,22 @@ var camadasDestaque = [];      // casing + linha do S.R.E. escolhido no funil
 var selRegiao = document.getElementById('sel-regiao');
 var selCompetencia = document.getElementById('sel-competencia');
 
+// Nome por extenso da região (R1 → "Região 1") — usado no select e em
+// qualquer lugar que precise exibir a região pro usuário.
+function nomeRegiao(regiao){
+  var n = String(regiao || '').replace(/^R/i, '');
+  return n ? 'Região ' + n : (regiao || '');
+}
+
 function regioesDisponiveis(){
   var vistas = {};
   var lista = [];
   MANIFEST.forEach(function(m){ if(!vistas[m.regiao]){ vistas[m.regiao]=true; lista.push(m.regiao); } });
-  lista.sort();
+  // Ordena numericamente pelo número da região (R1, R2, R3, R11, R12, R13),
+  // não alfabeticamente (que daria R1, R11, R12, R13, R2, R3).
+  lista.sort(function(a, b){
+    return parseInt(a.replace(/^R/i, ''), 10) - parseInt(b.replace(/^R/i, ''), 10);
+  });
   return lista;
 }
 
@@ -288,13 +539,25 @@ function desenharRegiao(regiao){
   if(b.isValid()) map.fitBounds(b, {padding:[20,20]});
 }
 
+// Contorno de TODAS as regiões — usado na aba "Visão Geral" pra marcar a
+// divisão entre elas no mapa (sem preencher, só a linha tracejada).
+function desenharTodasAsRegioes(){
+  if(camadaRegioesGeral){ map.removeLayer(camadaRegioesGeral); camadaRegioesGeral = null; }
+  if(!REGIOES_GEOJSON.features || REGIOES_GEOJSON.features.length === 0) return;
+  camadaRegioesGeral = L.geoJSON(REGIOES_GEOJSON, {
+    style: {color:'#1E3A72', weight:1.5, dashArray:'6 4', fill:false, opacity:0.5},
+    interactive:false,
+  }).addTo(map);
+  camadaRegioesGeral.bringToBack();
+}
+
 function montarSelects(){
   var regioes = regioesDisponiveis();
   if(regioes.length === 0){
     document.getElementById('painel-regiao').innerHTML = '<div class="vazio">Nenhuma ficha convertida ainda. Rode <code>python converter_fichas.py</code> depois de colocar os arquivos em fichas/.</div>';
     return;
   }
-  selRegiao.innerHTML = regioes.map(function(r){ return '<option value="'+r+'">'+r+'</option>'; }).join('');
+  selRegiao.innerHTML = regioes.map(function(r){ return '<option value="'+r+'">'+nomeRegiao(r)+'</option>'; }).join('');
   selRegiao.addEventListener('change', function(){ desenharRegiao(selRegiao.value); montarCompetencias(); });
   desenharRegiao(selRegiao.value);
   montarCompetencias();
@@ -327,15 +590,10 @@ function carregarSelecionado(){
 }
 
 function aoCarregarDados(item){
-  document.getElementById('resumo-ext').textContent = item.ext_km.toLocaleString('pt-BR');
-  document.getElementById('resumo-n').textContent = item.n_segmentos;
-  var pacote = pacoteAtual();
-  if(pacote){
-    var r = somaIcmDe(pacote.features);
-    montarDonut(r.somaPorClasse, r.total, 'regiao-donut');
-    montarLegendaIcm(r.somaPorClasse, r.total, 'regiao-legenda');
-  }
   redesenharMapa();
+  // Reseta o funil (Tipo → Trecho → S.R.E.) e já deixa o resumo/gráfico
+  // mostrando o total da região — a cascata abaixo estreita pro trecho/
+  // S.R.E. escolhido conforme o usuário avança no funil.
   montarTipos();
 }
 
@@ -354,6 +612,80 @@ function pacoteAtual(){
 function rodoviaCurta(nome){
   if(!nome) return '';
   return nome.split(' - TRECHO')[0].split(' - trecho')[0];
+}
+
+// Filtra o pacote da região/competência atual pelo que já foi escolhido no
+// funil (Tipo/Trecho/S.R.E.) — cada nível ainda vazio simplesmente não filtra,
+// então sem nada escolhido isso é a região inteira.
+function featuresParaResumo(){
+  var pacote = pacoteAtual();
+  if(!pacote) return [];
+  var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
+  return pacote.features.filter(function(f){
+    var p = f.properties;
+    if(tipo && p.tipo_via !== tipo) return false;
+    if(trecho && trecho !== TODOS && String(p.trecho_num) !== trecho) return false;
+    if(sre && sre !== TODOS && p.sre !== sre) return false;
+    return true;
+  });
+}
+
+// Resumo/gráfico de rosca do painel "Por Região" — atualiza pra refletir o
+// nível do funil que estiver selecionado no momento (região inteira, só um
+// tipo de via, um trecho, ou um S.R.E. específico).
+function atualizarResumoRegiao(){
+  var feats = featuresParaResumo();
+  var extKm = feats.reduce(function(soma, f){ return soma + (f.properties.km_fim - f.properties.km_ini); }, 0);
+  document.getElementById('resumo-ext').textContent = extKm.toLocaleString('pt-BR', {maximumFractionDigits: 1});
+  document.getElementById('resumo-n').textContent = feats.length;
+  var r = somaIcmDe(feats);
+  atualizarDonutRegiao(r.somaPorClasse, r.total);
+  montarLegendaFiltroIcmRegiao(r.somaPorClasse, r.total);
+
+  var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
+  var escopo = 'Região inteira';
+  if(sre && sre !== TODOS){
+    escopo = 'S.R.E. ' + sre;
+  }else if(trecho && trecho !== TODOS){
+    escopo = 'Trecho ' + trecho + (sre === TODOS ? ' (todos os S.R.E.)' : '');
+  }else if(trecho === TODOS){
+    escopo = 'Todos os trechos' + (tipo ? ' — ' + (NOME_TIPO_VIA[tipo] || tipo) : '');
+  }else if(tipo){
+    escopo = NOME_TIPO_VIA[tipo] || tipo;
+  }
+  document.getElementById('resumo-escopo').textContent = escopo;
+}
+
+// Redesenha só o donut de "Por Região" considerando as classes (des)marcadas
+// na legenda — a fatia de uma classe desmarcada some do gráfico, igual some
+// do mapa. somaPorClasse/total aqui já vêm do escopo atual do funil.
+function atualizarDonutRegiao(somaPorClasse, total){
+  var somaFiltrada = {};
+  CLASSES_ICM.forEach(function(c){ somaFiltrada[c] = ativosIcmRegiao[c] ? somaPorClasse[c] : 0; });
+  var totalFiltrado = CLASSES_ICM.reduce(function(s, c){ return s + somaFiltrada[c]; }, 0);
+  montarDonut(somaFiltrada, totalFiltrado, 'regiao-donut');
+}
+
+// Legenda de "Por Região" com checkbox — mesmo padrão da Visão Geral: dobra
+// de filtro do que aparece no mapa da região e no gráfico de rosca.
+function montarLegendaFiltroIcmRegiao(somaPorClasse, total){
+  document.getElementById('regiao-legenda').innerHTML = CLASSES_ICM.map(function(c){
+    var pct = total > 0 ? (100 * somaPorClasse[c] / total) : 0;
+    return '<label class="linha">' +
+      '<input type="checkbox" data-filtro-icm-regiao="'+c+'" '+(ativosIcmRegiao[c]?'checked':'')+'>' +
+      '<span class="chip" style="background:'+CORES_ICM[c]+'"></span>' +
+      '<span class="nome">'+c+'</span>' +
+      '<span class="valor">'+somaPorClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km · '+pct.toFixed(0)+'%</span>' +
+    '</label>';
+  }).join('');
+  document.querySelectorAll('[data-filtro-icm-regiao]').forEach(function(el){
+    el.addEventListener('change', function(){
+      ativosIcmRegiao[el.getAttribute('data-filtro-icm-regiao')] = el.checked;
+      redesenharMapa();
+      var r = somaIcmDe(featuresParaResumo());
+      atualizarDonutRegiao(r.somaPorClasse, r.total);
+    });
+  });
 }
 
 function montarTipos(){
@@ -382,7 +714,12 @@ function montarTrechos(){
   selSre.disabled = true;
   fecharDrawer();
   var tipo = selTipo.value;
-  if(!pacote || !tipo){ selTrecho.disabled = true; selTrecho.innerHTML = '<option value="">Selecione…</option>'; return; }
+  if(!pacote || !tipo){
+    selTrecho.disabled = true; selTrecho.innerHTML = '<option value="">Selecione…</option>';
+    atualizarResumoRegiao();
+    redesenharMapa();
+    return;
+  }
   var porTrecho = {};
   pacote.features.filter(function(f){ return f.properties.tipo_via === tipo; }).forEach(function(f){
     porTrecho[f.properties.trecho_num] = f.properties.trecho_nome;
@@ -394,13 +731,19 @@ function montarTrechos(){
     trechos.map(function(t){
       return '<option value="'+t+'">'+t+' — '+rodoviaCurta(porTrecho[t])+'</option>';
     }).join('');
+  atualizarResumoRegiao();
+  redesenharMapa(); // mapa passa a mostrar só o tipo de via escolhido
 }
 
 function montarSres(){
   var pacote = pacoteAtual();
   fecharDrawer();
   var tipo = selTipo.value, trecho = selTrecho.value;
-  if(!pacote || !tipo || !trecho){ selSre.disabled = true; selSre.innerHTML = '<option value="">Selecione…</option>'; return; }
+  if(!pacote || !tipo || !trecho){
+    selSre.disabled = true; selSre.innerHTML = '<option value="">Selecione…</option>';
+    atualizarResumoRegiao();
+    return;
+  }
 
   // "Todos os trechos" já mostra tudo direto, sem precisar escolher um S.R.E.
   if(trecho === TODOS){
@@ -409,6 +752,8 @@ function montarSres(){
     selSre.value = TODOS;
     destacarSre();
     abrirDrawer();
+    atualizarURL();
+    atualizarResumoRegiao();
     return;
   }
 
@@ -425,15 +770,19 @@ function montarSres(){
     sres.map(function(s){
       return '<option value="'+s+'">'+s+' — '+rodoviaCurta(porSre[s])+'</option>';
     }).join('');
+  // Trecho já escolhido (mas ainda sem S.R.E. específico) — o resumo/gráfico
+  // já estreita pro trecho inteiro.
+  atualizarResumoRegiao();
 }
 
 selTipo.addEventListener('change', montarTrechos);
 selTrecho.addEventListener('change', montarSres);
-selSre.addEventListener('change', function(){ destacarSre(); abrirDrawer(); });
+selSre.addEventListener('change', function(){ destacarSre(); abrirDrawer(); atualizarURL(); atualizarResumoRegiao(); });
 document.getElementById('drawer-fechar').addEventListener('click', function(){
   selSre.value = '';
   destacarSre();
   fecharDrawer();
+  atualizarResumoRegiao();
 });
 
 // Filtra as features do pacote atual pelas escolhas do funil — trecho e/ou
@@ -462,7 +811,7 @@ function destacarSre(){
 
   var casing = L.geoJSON(colecao, {style:{color:'#ffffff', weight:9, opacity:0.95}, interactive:false}).addTo(map);
   var colorida = L.geoJSON(colecao, {
-    style: function(feat){ return {color: corDoSegmento(feat.properties, grupoPrincipal), weight:5, opacity:1}; },
+    style: function(feat){ return estiloDoSegmento(feat.properties, grupoPrincipal, 5); },
     onEachFeature: function(feat, layer){ layer.bindPopup(montarPopup(feat.properties)); },
   }).addTo(map);
   camadasDestaque = [casing, colorida];
@@ -505,9 +854,45 @@ function abrirDrawer(){
       '</td><td>'+(p.sentido||'—')+'</td>'+celulas+'</tr>';
   }).join('');
 
+  // Evolução deste S.R.E. nas competências já carregadas — só faz sentido
+  // quando é um S.R.E. específico (não em "Todos") e já tem mais de 1 mês.
+  var historicoHtml = '';
+  if(sre !== TODOS){
+    var historico = historicoDoSre(selRegiao.value, sre);
+    if(historico.length > 1){
+      historicoHtml =
+        '<div class="rotulo" style="margin-top:12px;">Evolução deste S.R.E.</div>' +
+        '<table><thead><tr><th>Competência</th><th>Resultado geral</th></tr></thead><tbody>' +
+        historico.map(function(h){
+          return '<tr><td>'+h.competencia_label+'</td><td><span class="badge-tab" style="background:'+CORES_ICM[h.classe]+'">'+h.classe+'</span></td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+  }
+
   document.getElementById('drawer-corpo').innerHTML =
-    '<table><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>';
+    '<table><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>' + historicoHtml;
   document.getElementById('drawer').classList.add('aberta');
+}
+
+// Todas as competências já carregadas em que esse S.R.E. aparece, com a
+// pior classe de I.C.M. de cada mês — dá pra ver se melhorou ou piorou.
+function historicoDoSre(regiao, sre){
+  var porComp = window.DADOS_INSPECAO && window.DADOS_INSPECAO[regiao];
+  if(!porComp) return [];
+  var ordem = {'Péssimo':3, 'Ruim':2, 'Regular':1, 'Bom':0};
+  var out = [];
+  Object.keys(porComp).sort().forEach(function(comp){
+    var feats = porComp[comp].features.filter(function(f){ return f.properties.sre === sre; });
+    if(!feats.length) return;
+    var pior = null, piorPos = -1;
+    feats.forEach(function(f){
+      var classe = f.properties.icm && f.properties.icm.classe;
+      var pos = ordem[classe];
+      if(pos !== undefined && pos > piorPos){ piorPos = pos; pior = classe; }
+    });
+    if(pior){ out.push({competencia_label: feats[0].properties.competencia_label, classe: pior}); }
+  });
+  return out;
 }
 
 function fecharDrawer(){
@@ -527,6 +912,14 @@ function corDoSegmento(props, grupoId){
   var info = props[grupoId];
   if(!info || info.severidade === null || info.severidade === undefined) return '#94A3B8';
   return CORES_SEVERIDADE[Math.min(info.severidade, CORES_SEVERIDADE.length-1)];
+}
+
+// Estilo padrão de linha, com traço tracejado quando o segmento vem do
+// shapefile fallback Base_Rods_2023 (ainda não oficial — ver legenda fixa).
+function estiloDoSegmento(props, grupoId, peso){
+  var estilo = {color: corDoSegmento(props, grupoId), weight: peso, opacity: 1};
+  if(props.fallback) estilo.dashArray = '2 6';
+  return estilo;
 }
 
 function montarPopup(props){
@@ -554,10 +947,10 @@ function montarPopup(props){
   );
 }
 
-// Mapa da região sempre colorido pelo Resultado Geral (I.C.M.) — sem
-// checkbox de aspecto pra escolher: quem quiser o detalhe de pavimento,
-// vegetação, drenagem etc. usa o funil Trecho/S.R.E. (zoom + tabela) ou
-// clica direto no trecho (popup mostra tudo).
+// Mapa da região colorido pelo Resultado Geral (I.C.M.) — a legenda embaixo
+// do gráfico de rosca (ativosIcmRegiao) filtra quais classes aparecem aqui.
+// Quem quiser o detalhe de pavimento, vegetação, drenagem etc. usa o funil
+// Trecho/S.R.E. (zoom + tabela) ou clica direto no trecho (popup mostra tudo).
 function redesenharMapa(){
   camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
   camadasNoMapa = [];
@@ -566,8 +959,16 @@ function redesenharMapa(){
   var pacote = window.DADOS_INSPECAO && window.DADOS_INSPECAO[regiao] && window.DADOS_INSPECAO[regiao][competencia];
   if(!pacote) return;
 
-  var camada = L.geoJSON(pacote, {
-    style: function(feat){ return {color: corDoSegmento(feat.properties, 'icm'), weight:4, opacity:0.9}; },
+  var tipo = selTipo.value;
+  var feats = pacote.features.filter(function(f){
+    var classe = (f.properties.icm && f.properties.icm.classe) || 'Sem Informação';
+    if(!ativosIcmRegiao[classe]) return false;
+    if(tipo && f.properties.tipo_via !== tipo) return false;
+    return true;
+  });
+
+  var camada = L.geoJSON({type:'FeatureCollection', features:feats}, {
+    style: function(feat){ return estiloDoSegmento(feat.properties, 'icm', 4); },
     onEachFeature: function(feat, layer){
       layer.bindPopup(montarPopup(feat.properties));
       layer.on('mouseover', function(){ layer.setStyle({weight:7}); });
@@ -586,6 +987,9 @@ function redesenharMapa(){
 var ativosIcm = {};
 CLASSES_ICM.forEach(function(c){ ativosIcm[c] = true; });
 var camadaGeral = null;
+// Guarda a última soma/total calculados pra Visão Geral, pra poder redesenhar
+// só o donut (sem recalcular tudo) quando o usuário (des)marca uma classe.
+var geralSomaPorClasse = null, geralTotal = 0;
 
 function trocarAba(aba){
   document.querySelectorAll('.aba-btn').forEach(function(b){
@@ -601,9 +1005,10 @@ function trocarAba(aba){
     camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
     camadasNoMapa = [];
     if(camadaRegiao){ map.removeLayer(camadaRegiao); camadaRegiao = null; }
-    carregarTodosOsDados(desenharVisaoGeral);
+    carregarTodosOsDados(function(){ desenharVisaoGeral(); });
   }else{
     if(camadaGeral){ map.removeLayer(camadaGeral); camadaGeral = null; }
+    if(camadaRegioesGeral){ map.removeLayer(camadaRegioesGeral); camadaRegioesGeral = null; }
     desenharRegiao(selRegiao.value);
     redesenharMapa();
   }
@@ -651,14 +1056,76 @@ function somaIcmDe(feats){
 function desenharVisaoGeral(){
   var todas = todasAsFeatures();
   var r = somaIcmDe(todas);
+  geralSomaPorClasse = r.somaPorClasse;
+  geralTotal = r.total;
 
   document.getElementById('geral-total').textContent =
     r.total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
 
-  montarDonut(r.somaPorClasse, r.total, 'geral-donut');
-  montarLegendaIcm(r.somaPorClasse, r.total, 'geral-legenda');
-  montarFiltrosIcm(r.somaPorClasse);
+  atualizarDonutGeralFiltrado();
+  montarLegendaFiltroIcm(r.somaPorClasse, r.total);
+  desenharTodasAsRegioes();
   redesenharMapaGeral(todas);
+
+  // KPIs extras: nº de trechos/S.R.E. distintos e % pavimentada x não
+  // pavimentada (em km) — conta uma vez só por (região, trecho)/(região, sre).
+  var trechosVistos = {}, sresVistos = {};
+  var kmPav = 0, kmNaoPav = 0;
+  todas.forEach(function(f){
+    var p = f.properties;
+    trechosVistos[p.regiao + '|' + p.trecho_num] = true;
+    sresVistos[p.regiao + '|' + p.sre] = true;
+    var km = p.km_fim - p.km_ini;
+    if(p.tipo_via === 'nao_pavimentada') kmNaoPav += km; else kmPav += km;
+  });
+  document.getElementById('geral-n-trechos').textContent = Object.keys(trechosVistos).length;
+  document.getElementById('geral-n-sre').textContent = Object.keys(sresVistos).length;
+  var kmTotalTipo = kmPav + kmNaoPav;
+  document.getElementById('geral-pct-pav').textContent =
+    kmTotalTipo > 0 ? Math.round(100 * kmPav / kmTotalTipo) + '%' : '—';
+
+  montarComparativoRegioes(todas);
+}
+
+// Compara as regiões lado a lado — km total e a mesma barra de classes do
+// I.C.M. que já existe no resto do site, só que uma por região.
+function montarComparativoRegioes(todas){
+  var porRegiao = {};
+  todas.forEach(function(f){
+    var p = f.properties;
+    var r = porRegiao[p.regiao] || (porRegiao[p.regiao] = {});
+    CLASSES_ICM.forEach(function(c){ if(r[c] === undefined) r[c] = 0; });
+    var classe = (p.icm && p.icm.classe) || 'Sem Informação';
+    r[classe] += (p.km_fim - p.km_ini);
+  });
+
+  var regioes = Object.keys(porRegiao).sort(function(a, b){
+    return parseInt(a.replace(/^R/i, ''), 10) - parseInt(b.replace(/^R/i, ''), 10);
+  });
+  document.getElementById('comparativo-regioes').innerHTML = regioes.map(function(regiao){
+    var porClasse = porRegiao[regiao];
+    var total = CLASSES_ICM.reduce(function(s, c){ return s + porClasse[c]; }, 0);
+    // classe que domina a região (maior km) — cor da borda esquerda do cartão,
+    // pra dar um "estado geral" num piscar de olhos, igual às O.S.P.
+    var classeDominante = CLASSES_ICM.reduce(function(a, b){ return porClasse[b] > porClasse[a] ? b : a; });
+    var segmentos = CLASSES_ICM.map(function(c){
+      var pct = total > 0 ? (100 * porClasse[c] / total) : 0;
+      return pct > 0 ? '<span style="width:'+pct+'%; background:'+CORES_ICM[c]+'" title="'+c+': '+porClasse[c].toFixed(1)+' km"></span>' : '';
+    }).join('');
+    return '<div class="comp-regiao" style="border-left-color:'+CORES_ICM[classeDominante]+'" data-regiao="'+regiao+'">' +
+      '<div class="topo"><b>'+nomeRegiao(regiao)+'</b><span>'+total.toLocaleString('pt-BR', {maximumFractionDigits:1})+' km</span></div>' +
+      '<div class="barra">'+segmentos+'</div>' +
+    '</div>';
+  }).join('') || '<div class="vazio">Nenhum dado ainda.</div>';
+
+  document.querySelectorAll('#comparativo-regioes .comp-regiao').forEach(function(el){
+    el.addEventListener('click', function(){
+      trocarAba('regiao');
+      selRegiao.value = el.getAttribute('data-regiao');
+      desenharRegiao(selRegiao.value);
+      montarCompetencias();
+    });
+  });
 }
 
 function montarDonut(somaPorClasse, total, idSvg){
@@ -682,30 +1149,36 @@ function montarDonut(somaPorClasse, total, idSvg){
     '</svg>';
 }
 
-function montarLegendaIcm(somaPorClasse, total, idLegenda){
-  document.getElementById(idLegenda).innerHTML = CLASSES_ICM.map(function(c){
+// Legenda da Visão Geral: mesma info de "Resultado geral" (chip, nome, km e %)
+// mas com checkbox — dobra como filtro do que aparece pintado no mapa, então
+// não precisa mais de uma seção "Mostrar no mapa" separada e repetida.
+function montarLegendaFiltroIcm(somaPorClasse, total){
+  document.getElementById('geral-legenda').innerHTML = CLASSES_ICM.map(function(c){
     var pct = total > 0 ? (100 * somaPorClasse[c] / total) : 0;
-    return '<div class="item"><span class="chip" style="background:'+CORES_ICM[c]+'"></span>' +
-      '<span class="nome">'+c+'</span>' +
-      '<span class="valor">'+somaPorClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km ('+pct.toFixed(0)+'%)</span></div>';
-  }).join('');
-}
-
-function montarFiltrosIcm(somaPorClasse){
-  document.getElementById('geral-filtros').innerHTML = CLASSES_ICM.map(function(c){
-    return '<label class="linha-filtro">' +
+    return '<label class="linha">' +
       '<input type="checkbox" data-filtro-icm="'+c+'" '+(ativosIcm[c]?'checked':'')+'>' +
       '<span class="chip" style="background:'+CORES_ICM[c]+'"></span>' +
       '<span class="nome">'+c+'</span>' +
-      '<span class="valor">'+somaPorClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km</span>' +
+      '<span class="valor">'+somaPorClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km · '+pct.toFixed(0)+'%</span>' +
     '</label>';
   }).join('');
   document.querySelectorAll('[data-filtro-icm]').forEach(function(el){
     el.addEventListener('change', function(){
       ativosIcm[el.getAttribute('data-filtro-icm')] = el.checked;
       redesenharMapaGeral(todasAsFeatures());
+      atualizarDonutGeralFiltrado();
     });
   });
+}
+
+// Redesenha só o donut da Visão Geral considerando as classes (des)marcadas —
+// a fatia de uma classe desmarcada some do gráfico, igual já sumia do mapa.
+function atualizarDonutGeralFiltrado(){
+  if(!geralSomaPorClasse) return;
+  var somaFiltrada = {};
+  CLASSES_ICM.forEach(function(c){ somaFiltrada[c] = ativosIcm[c] ? geralSomaPorClasse[c] : 0; });
+  var totalFiltrado = CLASSES_ICM.reduce(function(s, c){ return s + somaFiltrada[c]; }, 0);
+  montarDonut(somaFiltrada, totalFiltrado, 'geral-donut');
 }
 
 function redesenharMapaGeral(todas){
@@ -716,10 +1189,7 @@ function redesenharMapaGeral(todas){
   });
   if(feats.length === 0) return;
   camadaGeral = L.geoJSON({type:'FeatureCollection', features:feats}, {
-    style: function(feat){
-      var classe = (feat.properties.icm && feat.properties.icm.classe) || 'Sem Informação';
-      return {color: CORES_ICM[classe], weight:4, opacity:0.9};
-    },
+    style: function(feat){ return estiloDoSegmento(feat.properties, 'icm', 4); },
     onEachFeature: function(feat, layer){
       layer.bindPopup(montarPopup(feat.properties));
       layer.on('mouseover', function(){ layer.setStyle({weight:7}); });
@@ -731,9 +1201,174 @@ function redesenharMapaGeral(todas){
 }
 
 // ---------------------------------------------------------------------
+// Busca por S.R.E. / rodovia — precisa de TODAS as regiões carregadas
+// (não só a selecionada), por isso só liga depois do carregamento eager.
+// ---------------------------------------------------------------------
+function _normBusca(s){
+  return (s || '').toString().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function buscarFeatures(termo){
+  termo = _normBusca(termo);
+  if(!termo) return [];
+  var vistos = {};
+  var resultados = [];
+  todasAsFeatures().forEach(function(f){
+    var p = f.properties;
+    var chave = p.regiao + '|' + p.sre;
+    if(vistos[chave]) return;
+    var alvo = _normBusca(p.sre + ' ' + (p.rodovia||'') + ' ' + (p.trecho_nome||''));
+    if(alvo.indexOf(termo) === -1) return;
+    vistos[chave] = true;
+    resultados.push(p);
+  });
+  return resultados.slice(0, 25);
+}
+
+var buscaInput = document.getElementById('busca-input');
+var buscaResultados = document.getElementById('busca-resultados');
+var buscaLimpar = document.getElementById('busca-limpar');
+
+function fecharBusca(){
+  buscaResultados.classList.remove('aberta');
+}
+
+buscaInput.addEventListener('input', function(){
+  var termo = buscaInput.value;
+  buscaLimpar.style.display = termo ? 'block' : 'none';
+  if(termo.length < 2){ fecharBusca(); return; }
+  var res = buscarFeatures(termo);
+  buscaResultados.innerHTML = res.length ? res.map(function(p){
+    return '<button data-regiao="'+p.regiao+'" data-competencia="'+p.competencia+'" data-tipo="'+p.tipo_via+
+      '" data-trecho="'+p.trecho_num+'" data-sre="'+p.sre+'">'+
+      '<span class="sre">'+p.sre+'</span><span class="nome">'+p.regiao+' · '+rodoviaCurta(p.rodovia)+'</span></button>';
+  }).join('') : '<div class="vazio">Nada encontrado.</div>';
+  buscaResultados.classList.add('aberta');
+  buscaResultados.querySelectorAll('button[data-sre]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      irParaTrecho(btn.getAttribute('data-regiao'), btn.getAttribute('data-competencia'),
+        btn.getAttribute('data-tipo'), btn.getAttribute('data-trecho'), btn.getAttribute('data-sre'));
+      buscaInput.value = '';
+      buscaLimpar.style.display = 'none';
+      fecharBusca();
+      document.getElementById('painel').classList.remove('aberto'); // fecha o painel no celular
+    });
+  });
+});
+buscaLimpar.addEventListener('click', function(){
+  buscaInput.value = '';
+  buscaLimpar.style.display = 'none';
+  fecharBusca();
+});
+document.addEventListener('click', function(e){
+  if(!document.getElementById('busca-wrap').contains(e.target)) fecharBusca();
+});
+
+// Navega direto pra um trecho/S.R.E. — usado pela busca e pelo link
+// compartilhado (?regiao=...&sre=...).
+function irParaTrecho(regiao, competencia, tipo, trechoNum, sre){
+  trocarAba('regiao');
+  selRegiao.value = regiao;
+  desenharRegiao(regiao);
+  montarCompetencias();
+  if(competencia){ selCompetencia.value = competencia; carregarSelecionado(); }
+  selTipo.value = tipo;
+  montarTrechos();
+  selTrecho.value = String(trechoNum);
+  montarSres();
+  selSre.value = sre || TODOS;
+  destacarSre();
+  abrirDrawer();
+  atualizarURL();
+  atualizarResumoRegiao();
+}
+
+// ---------------------------------------------------------------------
+// Link direto (compartilhar) — guarda o estado do funil na URL.
+// ---------------------------------------------------------------------
+function atualizarURL(){
+  var params = new URLSearchParams();
+  if(selRegiao.value) params.set('regiao', selRegiao.value);
+  if(selCompetencia.value) params.set('competencia', selCompetencia.value);
+  if(selTipo.value) params.set('tipo', selTipo.value);
+  if(selTrecho.value) params.set('trecho', selTrecho.value);
+  if(selSre.value) params.set('sre', selSre.value);
+  history.replaceState(null, '', location.pathname + '?' + params.toString());
+}
+
+function aplicarEstadoDaURL(){
+  var params = new URLSearchParams(location.search);
+  var regiao = params.get('regiao');
+  if(!regiao) return;
+  irParaTrecho(regiao, params.get('competencia'), params.get('tipo'), params.get('trecho'), params.get('sre'));
+}
+
+document.getElementById('drawer-compartilhar').addEventListener('click', function(){
+  atualizarURL();
+  var btn = document.getElementById('drawer-compartilhar');
+  var original = btn.textContent;
+  function avisar(texto, ms){
+    btn.textContent = texto;
+    setTimeout(function(){ btn.textContent = original; }, ms || 1500);
+  }
+  if(!navigator.clipboard){ avisar('🔗 '+location.href, 4000); return; }
+  navigator.clipboard.writeText(location.href).then(function(){
+    avisar('✅ Copiado!');
+  }).catch(function(){
+    // clipboard pode falhar por permissão/foco — mostra o link no próprio
+    // botão em vez de deixar o clique parecer que não fez nada.
+    avisar('🔗 '+location.href, 4000);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Exportar a tabela da gaveta como CSV.
+// ---------------------------------------------------------------------
+document.getElementById('drawer-csv').addEventListener('click', function(){
+  var tabela = document.querySelector('#drawer-corpo table');
+  if(!tabela) return;
+  var linhas = [];
+  tabela.querySelectorAll('tr').forEach(function(tr){
+    var celulas = [];
+    tr.querySelectorAll('th,td').forEach(function(td){
+      celulas.push('"' + td.textContent.trim().replace(/"/g, '""') + '"');
+    });
+    linhas.push(celulas.join(';'));
+  });
+  var csv = linhas.join('\r\n');
+  var blob = new Blob(['﻿' + csv], {type: 'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = (document.getElementById('drawer-titulo').textContent || 'trecho').replace(/[^\w\-]+/g, '_') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// ---------------------------------------------------------------------
+// Painel colapsável no celular.
+// ---------------------------------------------------------------------
+document.getElementById('btn-menu').addEventListener('click', function(){
+  document.getElementById('painel').classList.toggle('aberto');
+});
+
+// ---------------------------------------------------------------------
 // Início
 // ---------------------------------------------------------------------
 montarSelects();
+// Carrega tudo (não só a região/competência selecionada) — necessário pra
+// busca e link direto funcionarem em qualquer trecho já convertido.
+carregarTodosOsDados(function(){
+  // "Visão Geral" é a aba padrão — mas um link direto compartilhado
+  // (?regiao=...) tem prioridade e troca pra "Por Região" sozinho.
+  if(new URLSearchParams(location.search).get('regiao')){
+    aplicarEstadoDaURL();
+  }else{
+    trocarAba('geral');
+  }
+});
 
 })();
 </script>

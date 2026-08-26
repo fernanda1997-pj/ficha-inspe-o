@@ -50,6 +50,15 @@ CAMADAS_DIR = os.path.join(BASE, '..', 'camadas')  # compartilhado com ordens-se
 DADOS_DIR = os.path.join(BASE, 'dados')
 EPSG_METRICO = 31982  # SIRGAS 2000 / UTM 22S — mesmo do geoportal principal
 
+# Planilha de controle dos Pontos Críticos vive no OUTRO projeto (o geoportal
+# principal Folium, pasta "web"), não em "web - fichas" — é lá que a usuária
+# edita/atualiza o status mês a mês. Lida direto de lá (path absoluto) pra não
+# correr o risco de rodar com uma cópia desatualizada; só as geometrias
+# (camadas/R<n>_Pontos_Criticos.shp) é que foram copiadas pra web - fichas/camadas
+# porque essas praticamente não mudam.
+WEB_PRINCIPAL_DIR = os.path.join(BASE, '..', '..', 'web')
+PLANILHA_PONTOS_CRITICOS = os.path.join(WEB_PRINCIPAL_DIR, 'pontos criticos', 'Controle Pontos Críticos .xlsx')
+
 MESES_PT = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio',
             6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro',
             10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
@@ -425,6 +434,22 @@ def parse_ficha(caminho):
                 if v:
                     rodovia_nome = str(v).strip()
                     break
+        if rodovia_nome is None:
+            # modelo novo (jul/2026): o título "FICHA DE INSPEÇÃO" e o nome
+            # da rodovia ficam na MESMA célula mesclada (sem coluna vizinha
+            # com o nome) — o nome real está na linha "TRECHO N – RODOVIA
+            # ...", que sempre existe nos dois modelos.
+            for r in range(1, 6):
+                for c in range(1, ws.max_column + 1):
+                    v = ws.cell(row=r, column=c).value
+                    if not v:
+                        continue
+                    m = re.match(r'\s*TRECHO\s+\d+\s*[-–—]\s*(.+)', str(v), re.IGNORECASE)
+                    if m:
+                        rodovia_nome = m.group(1).strip()
+                        break
+                if rodovia_nome:
+                    break
 
         if competencia_dt is None or regiao_num is None:
             print(f'  [aviso] aba "{nome_aba}": não achei DATA e/ou REGIÃO no cabeçalho — pulando')
@@ -544,6 +569,11 @@ def parse_ficha(caminho):
 
 BASE_RODS_2023 = os.path.join(CAMADAS_DIR, 'Base_Rods_2023.shp')
 _cache_base_rods_2023 = None
+
+# Limite municipal do TO inteiro (copiado de MAPAS OSP/SHAPEFILES UTEIS —
+# fonte AGM/2022) — só contexto visual, não tem relação com as regiões de
+# inspeção.
+LIMITES_MUNICIPAIS_SHP = os.path.join(CAMADAS_DIR, 'LimiteMunicipal_AGM_TO_2022_A.shp')
 
 
 def _carregar_base_rods_2023():
@@ -673,7 +703,14 @@ def _carregar_linhas_de_shapefile(caminho, label):
                         if melhor is None or dist < melhor[0]:
                             melhor = (dist, idx, lado, coords_certas)
                 dist, idx, lado, coords_certas = melhor
-                maior_vao = max(maior_vao, dist)
+                # Só conta pro "maior vão" se a parte que tá entrando é
+                # significativa (>50m) — parte minúscula é vértice solto/
+                # duplicado (ruído de digitalização), não estrada de verdade.
+                # Sem isso o aviso "CONFERIR" dispara com o vão até um
+                # pontinho perdido, mesmo quando as partes reais da estrada
+                # já se encontram exatas entre si (falso alarme).
+                if partes_restantes[idx].length > 50:
+                    maior_vao = max(maior_vao, dist)
                 if lado == 'fim':
                     cadeia.extend(coords_certas)
                 else:
@@ -767,9 +804,287 @@ def gerar_regioes():
     print(f'dados/regioes.js escrito com {len(features)} região(ões).')
 
 
+# Tolerância de simplificação (graus, ~WGS84) da malha de contexto — só pra
+# dar referência visual de fundo, não precisa da geometria exata. Sem isso o
+# shapefile inteiro (~1 milhão de vértices) ficaria pesado demais pro navegador.
+TOLERANCIA_SIMPLIFICACAO_MALHA = 0.0005  # ~50 m
+
+
+def gerar_malha_contexto():
+    """Lê camadas/Base_Rods_2023.shp (malha viária estadual completa, TO) e
+    escreve dados/malha_contexto.js — camada de contexto (cinza, sempre atrás
+    dos trechos inspecionados) pra dar noção de onde a malha inspecionada se
+    encaixa na rede de rodovias ao redor. Geometria simplificada porque é só
+    pano de fundo, não análise."""
+    if not os.path.exists(BASE_RODS_2023):
+        qa('Base_Rods_2023.shp não encontrado em camadas/ — sem malha viária de contexto no mapa')
+        return
+    gdf = gpd.read_file(BASE_RODS_2023)
+    gdf = gdf.to_crs(4326) if gdf.crs else gdf.set_crs(4326)
+    gdf['geometry'] = gdf.geometry.simplify(TOLERANCIA_SIMPLIFICACAO_MALHA, preserve_topology=False)
+
+    col_via = next((c for c in gdf.columns if _norm(c) == 'NM_VIA'), None)
+    col_mun = next((c for c in gdf.columns if _norm(c) == 'NM_MUN'), None)
+
+    features = []
+    for _, row in gdf.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        props = {}
+        if col_via and row[col_via]:
+            props['via'] = str(row[col_via]).strip()
+        if col_mun and row[col_mun]:
+            props['municipio'] = str(row[col_mun]).strip()
+        features.append({'type': 'Feature', 'properties': props, 'geometry': mapping(geom)})
+
+    geojson = {'type': 'FeatureCollection', 'features': features}
+    with open(os.path.join(DADOS_DIR, 'malha_contexto.js'), 'w', encoding='utf-8') as f:
+        f.write('// Gerado por converter_fichas.py — não editar à mão\n')
+        f.write(f'window.MALHA_CONTEXTO = {json.dumps(geojson, ensure_ascii=False)};\n')
+    print(f'dados/malha_contexto.js escrito com {len(features)} via(s) de contexto.')
+
+
+# Tolerância maior que a da malha viária — é polígono (não precisa mostrar
+# reentrância fina de fronteira), então dá pra simplificar mais sem perder
+# a noção de "esse trecho tá dentro de qual município".
+TOLERANCIA_SIMPLIFICACAO_MUNICIPIOS = 0.0015  # ~150 m
+
+
+def gerar_limites_municipais():
+    """Lê camadas/LimiteMunicipal_AGM_TO_2022_A.shp (139 municípios do TO) e
+    escreve dados/limites_municipais.js — camada opcional (checkbox), só
+    contorno + nome ao passar o mouse, pra ajudar a localizar em qual
+    município cada trecho está."""
+    if not os.path.exists(LIMITES_MUNICIPAIS_SHP):
+        qa('LimiteMunicipal_AGM_TO_2022_A.shp não encontrado em camadas/ — sem limites municipais no mapa')
+        return
+    # encoding='utf-8' explícito: o .dbf desse shapefile vem com um .cst (não um
+    # .cpg, que é o que o GDAL reconhece) indicando UTF-8 — sem isso o pyogrio
+    # adivinha errado e devolve nome de município com acento em dobro
+    # ("PalmeirÃ³polis" em vez de "Palmeirópolis").
+    gdf = gpd.read_file(LIMITES_MUNICIPAIS_SHP, encoding='utf-8')
+    gdf = gdf.to_crs(4326) if gdf.crs else gdf.set_crs(4326)
+    gdf['geometry'] = gdf.geometry.simplify(TOLERANCIA_SIMPLIFICACAO_MUNICIPIOS, preserve_topology=True)
+
+    col_nome = next((c for c in gdf.columns if _norm(c) == 'NOME'), None)
+    if col_nome is None:
+        qa(f'LimiteMunicipal_AGM_TO_2022_A.shp: sem coluna "nome" (colunas: {list(gdf.columns)}) — municípios sem rótulo')
+
+    features = []
+    for _, row in gdf.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        props = {'nome': str(row[col_nome]).strip() if col_nome and row[col_nome] else ''}
+        features.append({'type': 'Feature', 'properties': props, 'geometry': mapping(geom)})
+
+    geojson = {'type': 'FeatureCollection', 'features': features}
+    with open(os.path.join(DADOS_DIR, 'limites_municipais.js'), 'w', encoding='utf-8') as f:
+        f.write('// Gerado por converter_fichas.py — não editar à mão\n')
+        f.write(f'window.LIMITES_MUNICIPAIS = {json.dumps(geojson, ensure_ascii=False)};\n')
+    print(f'dados/limites_municipais.js escrito com {len(features)} município(s).')
+
+
+REGIOES_PONTOS_CRITICOS = ['R1', 'R2', 'R3', 'R11', 'R12', 'R13']
+
+
+def _classificar_situacao(texto):
+    """Reduz o texto livre da coluna de status mensal a um punhado de classes
+    (pra colorir o marcador) — mesma ideia do I.C.M., só que pra pontos
+    críticos."""
+    t = _norm(texto or '')
+    if not t or t in ('-', 'NA', 'N/A'):
+        return 'Sem atualização'
+    if 'RESOLV' in t or 'CONCLU' in t or 'FINALIZ' in t or 'NORMALIZ' in t or 'RECUPER' in t:
+        return 'Resolvido'
+    if 'EXECU' in t or 'ANDAMENTO' in t or 'OBRA' in t:
+        return 'Em execução'
+    if 'CRITIC' in t:
+        return 'Crítico'
+    return 'Outro'
+
+
+MESES_ABREV_PC = {
+    'JAN': 'Janeiro', 'FEV': 'Fevereiro', 'MAR': 'Março', 'ABR': 'Abril',
+    'MAI': 'Maio', 'JUN': 'Junho', 'JUL': 'Julho', 'AGO': 'Agosto',
+    'SET': 'Setembro', 'OUT': 'Outubro', 'NOV': 'Novembro', 'DEZ': 'Dezembro',
+}
+
+
+def _mes_abrev_de(texto):
+    """Acha a abreviação de mês (3 letras) em qualquer posição do texto
+    normalizado — usado como chave pra casar a coluna de status ('Novembro',
+    'Novembro/2025'...) com a coluna do link do mapa ('Mapa Nov', 'Mapas de
+    Out', 'MapaAbril' sem espaço, 'Mapa Novembro/2025'...), mesmo quando os
+    dois cabeçalhos têm formato bem diferente (ano no meio, sem espaço etc.)."""
+    h = _norm(texto)
+    for abrev in MESES_ABREV_PC:
+        if abrev in h:
+            return abrev
+    return None
+
+
+def _mes_da_coluna_mapa(header):
+    """Só conta como coluna 'Mapa de <mês>' se o cabeçalho começar com
+    'MAPA' — sem isso qualquer coluna de status cujo nome contenha um mês
+    (a maioria) seria confundida com coluna de link."""
+    h = _norm(header)
+    if not h.startswith('MAPA'):
+        return None
+    return _mes_abrev_de(header)
+
+
+def _ler_planilha_pontos_criticos():
+    """Lê Controle Pontos Críticos .xlsx (uma aba por região) e devolve dict
+    regiao -> {PONTO(int): {...}}. O layout varia um pouco de região pra
+    região (meses diferentes, nome da coluna de situação final diferente) —
+    resolve pelo nome normalizado da coluna, igual ao resto do conversor."""
+    if not os.path.exists(PLANILHA_PONTOS_CRITICOS):
+        qa(f'Pontos Críticos: planilha não encontrada em {PLANILHA_PONTOS_CRITICOS} '
+           f'— camada vai ficar sem status/descrição, só a geometria')
+        return {}
+    wb = openpyxl.load_workbook(PLANILHA_PONTOS_CRITICOS, data_only=True)
+    saida = {}
+    for nome_aba in wb.sheetnames:
+        m = re.match(r'REGI[ÃA]O\s*(\d+)', nome_aba, re.IGNORECASE)
+        if not m:
+            continue
+        regiao = f'R{int(m.group(1))}'
+        ws = wb[nome_aba]
+        header = [ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)]
+        header_norm = [_norm(h) if h else '' for h in header]
+
+        def _achar(*candidatos):
+            candidatos_norm = [_norm(c) for c in candidatos]
+            for i, h in enumerate(header_norm):
+                if h in candidatos_norm:
+                    return i + 1  # coluna 1-based
+            return None
+
+        col_ponto = _achar('PONTO')
+        col_rodovia = _achar('RODOVIA')
+        col_trecho = _achar('TRECHO CORRESPONDENTE', 'TRECHO')
+        col_situacao = _achar('STATUS FINAL / SITUACAO', 'SITUACAO ATUAL', 'STATUS FINAL/SITUACAO')
+        if col_ponto is None:
+            qa(f'Pontos Críticos {regiao}: aba {nome_aba!r} sem coluna PONTO reconhecível — pulada')
+            continue
+
+        # Colunas de mês: tudo entre "Trecho Correspondente" e a coluna de
+        # situação final são status pontuais (Crítico/Em execução/-), na
+        # ordem em que a usuária foi preenchendo — dá a evolução do ponto.
+        col_meses = []
+        if col_trecho and col_situacao and col_situacao > col_trecho:
+            for c in range(col_trecho + 1, col_situacao):
+                nome_mes = header[c - 1]
+                if nome_mes:
+                    col_meses.append((c, str(nome_mes).strip(), _mes_abrev_de(nome_mes)))
+
+        # Colunas "Mapa de <mês>" (depois da situação final) — o texto do
+        # link é sempre "Ver no Mapa", o que interessa é o hyperlink em si:
+        # abre a ficha do mês em PDF (mapa de localização + fotos, hospedada
+        # no Drive da usuária, privada — por isso só link, nunca embutimos
+        # a imagem direto).
+        col_mapas_por_mes = {}
+        if col_situacao:
+            for c in range(col_situacao + 1, ws.max_column + 1):
+                abrev = _mes_da_coluna_mapa(header[c - 1])
+                if abrev:
+                    col_mapas_por_mes[abrev] = c
+
+        pontos = {}
+        for r in range(2, ws.max_row + 1):
+            id_ponto = ws.cell(row=r, column=col_ponto).value
+            if id_ponto is None:
+                continue
+            try:
+                id_ponto = int(id_ponto)
+            except (TypeError, ValueError):
+                continue
+            historico = []
+            for c, nome_mes, abrev_mes in col_meses:
+                v = ws.cell(row=r, column=c).value
+                v = str(v).strip() if v is not None else ''
+                mapa_url = None
+                col_mapa = col_mapas_por_mes.get(abrev_mes) if abrev_mes else None
+                if col_mapa:
+                    cell_mapa = ws.cell(row=r, column=col_mapa)
+                    if cell_mapa.hyperlink:
+                        mapa_url = cell_mapa.hyperlink.target
+                if (v and v != '-') or mapa_url:
+                    historico.append({'mes': nome_mes, 'status': v or '-', 'mapa_url': mapa_url})
+            ultimo_status = next((h['status'] for h in reversed(historico) if h['status'] and h['status'] != '-'), '-')
+            situacao_bruta = ultimo_status
+            descricao = ws.cell(row=r, column=col_situacao).value if col_situacao else None
+            descricao = str(descricao).strip() if descricao else ''
+            rodovia = ws.cell(row=r, column=col_rodovia).value if col_rodovia else None
+            trecho = ws.cell(row=r, column=col_trecho).value if col_trecho else None
+            pontos[id_ponto] = {
+                'rodovia': str(rodovia).strip() if rodovia else '',
+                'trecho': str(trecho).strip() if trecho else '',
+                'situacao_classe': _classificar_situacao(situacao_bruta),
+                'situacao_bruta': situacao_bruta,
+                'descricao': descricao,
+                'historico': historico,
+            }
+        saida[regiao] = pontos
+    return saida
+
+
+def gerar_pontos_criticos():
+    """Lê camadas/R<n>_Pontos_Criticos.shp (geometria) + Controle Pontos
+    Críticos .xlsx (status/descrição — planilha do outro projeto) e escreve
+    dados/pontos_criticos.js — camada opcional (checkbox no mapa) com os
+    pontos de erosão/bueiro/talude etc. já levantados em campo."""
+    dados_planilha = _ler_planilha_pontos_criticos()
+    features = []
+    for regiao in REGIOES_PONTOS_CRITICOS:
+        caminho = os.path.join(CAMADAS_DIR, f'{regiao}_Pontos_Criticos.shp')
+        if not os.path.exists(caminho):
+            continue
+        gdf = gpd.read_file(caminho)
+        gdf = gdf.to_crs(4326) if gdf.crs else gdf.set_crs(4326)
+        col_id = next((c for c in gdf.columns if _norm(c) == 'ID'), None)
+        if col_id is None:
+            qa(f'Pontos Críticos {regiao}: shapefile sem coluna Id — pulado')
+            continue
+        pontos_regiao = dados_planilha.get(regiao, {})
+        for _, row in gdf.iterrows():
+            geom = row.geometry
+            if geom is None or geom.is_empty:
+                continue
+            ponto_id = row[col_id]
+            try:
+                ponto_id = int(ponto_id)
+            except (TypeError, ValueError):
+                continue
+            info = pontos_regiao.get(ponto_id)
+            if info is None:
+                qa(f'Pontos Críticos {regiao}: ponto {ponto_id} tem geometria mas não está na planilha '
+                   f'— sem status/descrição')
+                info = {'rodovia': '', 'trecho': '', 'situacao_classe': 'Sem atualização',
+                        'situacao_bruta': '-', 'descricao': '', 'historico': []}
+            # Ponto já recuperado/resolvido — não entra no mapa (a usuária só
+            # quer ver o que ainda precisa de atenção).
+            if info['situacao_classe'] == 'Resolvido':
+                continue
+            props = {'regiao': regiao, 'id': ponto_id}
+            props.update(info)
+            features.append({'type': 'Feature', 'properties': props, 'geometry': mapping(geom)})
+
+    geojson = {'type': 'FeatureCollection', 'features': features}
+    with open(os.path.join(DADOS_DIR, 'pontos_criticos.js'), 'w', encoding='utf-8') as f:
+        f.write('// Gerado por converter_fichas.py — não editar à mão\n')
+        f.write(f'window.PONTOS_CRITICOS = {json.dumps(geojson, ensure_ascii=False)};\n')
+    print(f'dados/pontos_criticos.js escrito com {len(features)} ponto(s) crítico(s).')
+
+
 def main():
     os.makedirs(DADOS_DIR, exist_ok=True)
     gerar_regioes()
+    gerar_malha_contexto()
+    gerar_limites_municipais()
+    gerar_pontos_criticos()
     # recursivo: a usuária organiza em subpastas tipo fichas/LOTE 04/JULHO/...
     arquivos = sorted(glob.glob(os.path.join(FICHAS_DIR, '**', '*.xlsx'), recursive=True))
     arquivos = [a for a in arquivos if not os.path.basename(a).startswith('~$')]
@@ -804,7 +1119,7 @@ def main():
 
         for seg in segmentos:
             sre_key = _norm(seg['sre']).replace(' ', '')
-            linha_info, _veio_do_fallback = linha_do_sre(linhas, sre_key, regiao)
+            linha_info, veio_do_fallback = linha_do_sre(linhas, sre_key, regiao)
             if linha_info is None:
                 sre_nao_achados.add(seg['sre'])
                 continue
@@ -826,6 +1141,10 @@ def main():
                 'trecho_nome': seg.get('trecho_nome'),
                 'km_ini': seg['km_ini'],
                 'km_fim': seg['km_fim'],
+                # geometria veio do fallback estadual (Base_Rods_2023, ainda não
+                # oficial) em vez do shapefile da própria região — o mapa marca
+                # esses segmentos com um traço diferente.
+                'fallback': veio_do_fallback,
             }
             # só grava o grupo se ele existir na ficha dessa via (pavimentada
             # tem 5 grupos, não pavimentada tem 2 — o mapa filtra cada camada
@@ -914,6 +1233,15 @@ def main():
         else:
             f.write('Nenhum problema encontrado.\n')
     print(f'relatorio_qualidade.txt: {len(qa_msgs)} observação(ões).')
+
+    # Mesmo conteúdo do relatorio_qualidade.txt, mas em dados/ (não é
+    # gitignored, então vai junto quando publicar) — o index.html usa isso
+    # pra mostrar um painel de avisos na aba "Visão Geral", em vez do
+    # relatório só existir como .txt que ninguém vê depois de publicado.
+    with open(os.path.join(DADOS_DIR, 'avisos.js'), 'w', encoding='utf-8') as f:
+        f.write('// Gerado por converter_fichas.py — não editar à mão\n')
+        f.write(f'window.AVISOS_QUALIDADE = {json.dumps(qa_msgs, ensure_ascii=False, indent=2)};\n')
+    print(f'dados/avisos.js: {len(qa_msgs)} aviso(s).')
 
 
 if __name__ == '__main__':
