@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/ficha-inspecao/index.html" },
+    { "source": "/dados/:path*", "destination": "/ficha-inspecao/dados/:path*" }
+  ]
+}
