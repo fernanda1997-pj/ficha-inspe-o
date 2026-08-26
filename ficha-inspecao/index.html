@@ -356,8 +356,12 @@ var CORES_PONTO_CRITICO = {
 var map = L.map('map', {zoomControl:true}).setView([-10.3, -48.3], 7);
 var MALHA_CONTEXTO = window.MALHA_CONTEXTO || {type:'FeatureCollection', features:[]};
 
-var baseClaro = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-  attribution:'&copy; OpenStreetMap, &copy; CARTO', maxZoom:19,
+// CARTO (basemaps.cartocdn.com) passou a exigir API key pra uso público —
+// sem ela as tiles vêm com marca d'água "API KEY REQUIRED". Trocado pro
+// Esri World_Street_Map, mesmo provedor do basemap Satélite (já não exige
+// chave, comprovadamente estável neste site).
+var baseClaro = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+  attribution:'Esri, HERE, Garmin, FAO, NOAA, USGS', maxZoom:19,
 }).addTo(map);
 var baseSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution:'Esri, Maxar, Earthstar Geographics', maxZoom:19,
