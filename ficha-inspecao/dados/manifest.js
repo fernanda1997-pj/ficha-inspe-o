@@ -13,8 +13,8 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
     "arquivo": "insp_R11_2026-07.js",
-    "n_segmentos": 1103,
-    "ext_km": 1092.7
+    "n_segmentos": 1104,
+    "ext_km": 1093.1
   },
   {
     "regiao": "R12",
@@ -37,8 +37,8 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
     "arquivo": "insp_R2_2026-07.js",
-    "n_segmentos": 1080,
-    "ext_km": 1056.3
+    "n_segmentos": 1092,
+    "ext_km": 1068.0
   },
   {
     "regiao": "R3",
