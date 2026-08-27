@@ -17,8 +17,8 @@ app — não duplicar aqui.
 
 Usuária: Fernanda (RTA Engenheiros Consultores). Responder sempre em português.
 
-- **Site**: (ainda não publicado — ver seção "Publicar" abaixo)
-- **Repo**: (ainda não publicado)
+- **Site**: `ficha-inspe-o.vercel.app` (deploy automático a cada push na `main`)
+- **Repo**: `github.com/fernanda1997-pj/ficha-inspe-o`
 
 ## Arquitetura — ficha de inspeção (`ficha-inspecao/`)
 
@@ -71,12 +71,19 @@ converter:
 4. Reprojeta o pedaço cortado pra WGS84 (EPSG:4326) pro GeoJSON final.
 
 **Shapefiles com geometria em partes desconexas** (emenda de digitalização, comum nesses
-dados): o converter concatena as partes na ordem em que aparecem no shapefile (não usa
-`linemerge`, que reordena sem critério), invertendo cada parte se precisar manter a
-continuidade com a anterior. Isso preserva o comprimento total (bate com `EXT_REAL`) em
-vez de descartar pedaços. Se o vão entre duas partes for grande (>200 m), o
-`relatorio_qualidade.txt` avisa com "CONFERIR o shapefile" — pode ser um pedaço do
-traçado que falta digitalizar.
+dados): o converter primeiro **descarta partes minúsculas (≤50m)** — vértice solto/
+duplicado, ruído de digitalização, não estrada de verdade. Sem isso o algoritmo de
+encadeamento (abaixo) desenha um "espeto" reto até esse pontinho perdido (às vezes
+vários km de distância) e volta, criando um laço sem sentido no mapa — caso real
+encontrado pela usuária: R3/020ETO0210 (2026-08-27). Das partes que sobram, concatena
+sempre pela **parte mais próxima de uma das pontas** da linha já montada (guloso:
+começa pela mais longa, gruda a mais perto em qualquer ponta, invertendo se precisar)
+— preserva o comprimento total (bate com `EXT_REAL`) sem o zigue-zague feio que dava
+concatenar "na ordem do arquivo". Se o vão entre duas partes *significativas* for
+grande (>200 m), o `relatorio_qualidade.txt` avisa com "CONFERIR o shapefile" — pode
+ser um pedaço do traçado que falta digitalizar (exemplo real corrigido em 2026-08-27:
+R2/420ETO0030 tinha ~12km faltando; a usuária atualizou o shapefile no projeto
+principal e copiou pra cá).
 
 ## Os dois modelos de ficha e os 7 grupos de condição
 
@@ -132,21 +139,64 @@ média, enquadra em faixas de 25% (`calcular_icm()` em `converter_fichas.py`):
 | 75–100% | Péssimo |
 | nenhum grupo com marcação | Sem Informação |
 
-Guardado em `properties.icm = {classe, valor}` de cada feature. Cores fixas (paleta de
-status, não a escala verde→vinho de severidade): Bom `#0ca30c`, Regular `#fab219`, Ruim
-`#ec835a`, Péssimo `#d03b3b`, Sem Informação `#94A3B8` (`CORES_ICM` no `index.html`).
+Guardado em `properties.icm = {classe, valor}` de cada feature — nome interno no
+código continua "I.C.M.", mas a sigla foi tirada de todo rótulo visível na tela
+(2026-08-27, pedido da usuária: "sem sigla") — na UI é só **"Resultado Geral"**.
+Cores fixas (paleta de status, não a escala verde→vinho de severidade): Bom
+`#0ca30c`, Regular `#fab219`, Ruim `#ec835a`, Péssimo `#d03b3b`, Sem Informação
+`#94A3B8` (`CORES_ICM` no `index.html`).
 
 Aparece em 3 lugares:
-- **Mapa da aba "Por Região"**: sempre colorido por `icm` (não tem seletor de aspecto).
-- **Rosca (donut) + KPI de extensão**: em "Por Região" (escopo região+competência
-  selecionadas) e na aba "Visão Geral" (escopo tudo que já foi convertido — carrega os
-  `insp_*.js` que faltarem via `carregarTodosOsDados()`). Mesmas funções
-  (`somaIcmDe`/`montarDonut`/`montarLegendaIcm`), só o conjunto de features muda.
-- **"Visão Geral"** tem também um filtro "Mostrar no mapa" por classe (Bom/Regular/
-  Ruim/Péssimo/Sem Informação) — independente do gráfico, que sempre mostra o total.
+- **Mapa das duas abas**: sempre colorido por `icm` (não tem seletor de aspecto).
+- **Donut + legenda com checkbox**: em "Por Região" (escopo = o que estiver
+  selecionado no funil Tipo/Trecho/S.R.E., ou a região inteira se nada escolhido —
+  `atualizarResumoRegiao()`) e em "Visão Geral" (escopo = tudo que já foi convertido
+  — carrega os `insp_*.js` que faltarem via `carregarTodosOsDados()`). A legenda
+  **dobra de filtro do mapa** — desmarcar uma classe some com ela do gráfico e do
+  mapa ao mesmo tempo (`ativosIcmRegiao`/`ativosIcm`); não existe mais uma seção
+  separada de "Mostrar no mapa", foi unificada com a legenda (2026-08-26).
+- Clicar em qualquer trecho abre um popup com "Resultado geral" em destaque + o
+  detalhe dos grupos que existem naquele segmento + tag "Pavimentada"/"Não
+  pavimentada".
 
-Clicar em qualquer trecho abre um popup com "Resultado geral" em destaque + o detalhe
-dos grupos que existem naquele segmento + tag "Pavimentada"/"Não pavimentada".
+## Camadas de contexto (mapa)
+
+Adicionadas em 2026-08-27, todas com dados gerados por funções em
+`converter_fichas.py` (chamadas no `main()`) que escrevem `dados/*.js` própios:
+
+| Camada | Fonte | Liga por padrão? | Gerado por |
+|---|---|---|---|
+| Malha viária (cinza, fundo) | `camadas/Base_Rods_2023.shp`, simplificado (~50m) | Sim, sempre | `gerar_malha_contexto()` → `dados/malha_contexto.js` |
+| Limites municipais | `camadas/LimiteMunicipal_AGM_TO_2022_A.shp` (139 municípios TO, fonte AGM/2022) | Não (checkbox) | `gerar_limites_municipais()` → `dados/limites_municipais.js` |
+| Pontos Críticos | `camadas/R<n>_Pontos_Criticos.shp` (geometria) + planilha "Controle Pontos Críticos" (status/descrição/link) | Não (checkbox) | `gerar_pontos_criticos()` → `dados/pontos_criticos.js` |
+| Satélite (basemap) | Esri `World_Imagery` | Não (troca com "Padrão" no controle de camadas) | — |
+
+**Pontos Críticos** é o mais elaborado: lê a planilha **`C:\1. Projetos\RTA\web\pontos
+criticos\Controle Pontos Críticos .xlsx`** (do OUTRO projeto, `../../web/` a partir de
+`ficha-inspecao/` — caminho absoluto em `PLANILHA_PONTOS_CRITICOS`; lida direto de lá
+pra sempre pegar a versão mais atual, nunca copiada pra cá). Uma aba por região
+("REGIÃO 1"..."REGIÃO 13"), colunas de mês variam MUITO entre regiões (nome, se tem
+ano junto tipo "Novembro/2025", se tem espaço em "Mapas de Out"/"MapaAbril") —
+`_mes_abrev_de()` casa tudo pela abreviação de 3 letras, ignorando o resto do texto.
+Cada mês tem uma coluna de status ("Crítico"/"Em execução"/"Recuperado"/"-") e,
+depois da coluna "Status Final / Situação", uma coluna "Mapa de \<mês\>" com um
+**hyperlink pro Google Drive** (ficha do mês em PDF, privada) — vira o botão "Ver
+mapa" no popup (nunca embutir a imagem, é privada e não é URL direta de imagem —
+mesmo comportamento do geoportal principal, `gerar_mapa.py`). Ponto com status mais
+recente = "Recuperado"/similar **não entra na camada** (`_classificar_situacao`
+'Resolvido' → `continue` em `gerar_pontos_criticos()`) — a usuária só quer ver o que
+ainda precisa de atenção.
+
+Tentativa revertida: embutir foto de campo real (`fotos-pontos-criticos/`, copiada
+do projeto principal, só existe pra algumas regiões) direto no popup como `<img>` —
+a usuária pediu pra tirar ("deixa sem as fotos, apenas com o link"). Os arquivos de
+foto continuam no repo (não fazem mal), só não são mais referenciados pelo código.
+
+`camadas/R<n>_Pontos_Criticos.shp`, `LimiteMunicipal_AGM_TO_2022_A.shp` e
+`Base_Rods_2023.shp` — igual aos `R<n>_TRECHOS.shp`, são cópias de fora deste repo
+(a primeira do projeto principal `../web/camadas/`, a segunda de
+`MAPAS OSP/SHAPEFILES UTEIS/` — ver "Relação com outros projetos" no fim deste
+arquivo). Se precisar atualizar, copiar de novo de lá e rodar o conversor.
 
 ## Funil Região → Competência → Tipo de via → Trecho → S.R.E.
 
@@ -193,15 +243,43 @@ Servidor `python -m http.server 8768 --directory .` na RAIZ do projeto — há c
 (`C:\1. Projetos\RTA\web\.claude\launch.json`). URL:
 `http://localhost:8768/ficha-inspecao/index.html`.
 
-## Publicar
+## Publicar (já feito — ver abaixo se precisar refazer/entender)
 
-Ainda não publicado. Passos (mesmo fluxo do [[geoportal-levantamento]] em `web - Mapas`):
+Publicado em 2026-08-27: `github.com/fernanda1997-pj/ficha-inspe-o` →
+`ficha-inspe-o.vercel.app`, deploy automático a cada `git push` na `main`.
+
+**`vercel.json` (raiz do repo) é essencial — não apagar.** O `index.html` fica em
+`ficha-inspecao/`, não na raiz do repo, e o Root Directory do projeto no Vercel
+ficou no padrão (raiz) — sem o rewrite, o link raiz do site dá 404. Ele redireciona
+`/` → `/ficha-inspecao/index.html` e `/dados/*` → `/ficha-inspecao/dados/*` (as duas
+únicas referências relativas que "saem" da pasta; `../logo/*` já resolve sozinho
+porque o navegador clampa `..` na raiz).
+
+Passos originais (mesmo fluxo do [[geoportal-levantamento]] em `web - Mapas`), pra
+publicar um projeto novo do zero:
 
 1. Criar um repositório **novo e vazio** no GitHub (a usuária faz isso pela UI —
    sessões de Claude Code não têm `gh` CLI nem token configurado aqui)
 2. `git remote add origin <url>` e `git push -u origin main`
 3. Importar o repo no Vercel (vercel.com → Add New Project → escolher o repo) — deploy
    automático a cada push na `main`, igual aos outros dois projetos
+
+### Basemap "Padrão" — histórico de tentativas (não repetir sem checar antes)
+
+CARTO (`basemaps.cartocdn.com/rastertiles/voyager`) passou a exigir API key em
+produção (marca d'água "API KEY REQUIRED"). Tentativas seguintes, na ordem:
+Esri `World_Street_Map` (carregado/colorido demais) → Esri `Canvas/World_Light_Gray_Base`
++ `World_Light_Gray_Reference` juntas (2 camadas sobrecarregaram o carregamento
+inicial — tiles levando 10s+ cada, provável limite de rajada) → OpenStreetMap padrão
+(mostra rio/estrada de terra/contorno de propriedade, poluído demais em cima dos
+trechos coloridos) → **atual: só `Canvas/World_Light_Gray_Base`, uma única camada**
+(sem a `_Reference`) — visual limpo, sem chave, rápido. Se precisar trocar nesse
+mesmo problema, testar tempo de resposta de verdade antes (a Esri variou de
+"instantâneo" a "10s+" pro mesmo endpoint em momentos diferentes — provável
+throttling de rajada, não indisponibilidade permanente).
+
+`map` usa `preferCanvas:true` (Leaflet) — Visão Geral soma milhares de trechos de
+uma vez (+ a malha viária de contexto), SVG individual por feição pesava demais.
 
 ## Histórico de tentativas de ligar ficha × O.S. (não repetir sem pedido explícito)
 
