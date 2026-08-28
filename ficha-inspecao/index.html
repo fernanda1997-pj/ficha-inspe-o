@@ -117,20 +117,6 @@
 
   .leaflet-control-layers{font-size:13px;}
 
-  /* ---------- Legenda fixa no mapa (I.C.M.) ---------- */
-  .legenda-mapa{
-    background:#fff; border-radius:8px; padding:8px 10px; box-shadow:0 1px 4px rgba(0,0,0,.3);
-    font-size:11.5px; line-height:1.6; color:#334155;
-  }
-  .legenda-mapa .item{display:flex; align-items:center; gap:6px;}
-  .legenda-mapa .chip{width:12px; height:12px; border-radius:3px; flex:none;}
-  .legenda-mapa .chip.tracejado{
-    background:none; border:2px dashed #64748B; width:10px; height:10px;
-  }
-  .legenda-mapa .chip.linha-contexto{
-    background:#94A3B8; width:14px; height:2px; border-radius:0;
-  }
-
   /* Rótulo das Localidades — permanente (não só ao passar o mouse), texto
      branco com halo escuro (sem "pílula" de fundo), mesmo visual do
      geoportal principal. Some no zoom afastado pra não virar "sopa". */
@@ -343,7 +329,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="dados/manifest.js"></script>
 <script src="dados/regioes.js"></script>
-<script src="dados/malha_contexto.js"></script>
 <script src="dados/limites_municipais.js"></script>
 <script src="dados/localidades.js"></script>
 <script src="dados/pontos_criticos.js"></script>
@@ -379,11 +364,10 @@ var CORES_PONTO_CRITICO = {
 // Mapa base
 // ---------------------------------------------------------------------
 // preferCanvas: com milhares de trechos (Visão Geral soma todas as regiões
-// já convertidas de uma vez) + a malha viária de contexto, desenhar cada
-// linha como elemento SVG individual pesa muito — Canvas é bem mais leve
-// pra esse volume de feições, sem perder popup/hover/clique.
+// já convertidas de uma vez), desenhar cada linha como elemento SVG
+// individual pesa muito — Canvas é bem mais leve pra esse volume de
+// feições, sem perder popup/hover/clique.
 var map = L.map('map', {zoomControl:true, preferCanvas:true}).setView([-10.3, -48.3], 7);
-var MALHA_CONTEXTO = window.MALHA_CONTEXTO || {type:'FeatureCollection', features:[]};
 
 // Mesmo basemap "Padrão" do Geoportal de Levantamento (web - Mapas/index.html)
 // — OpenStreetMap padrão, pra manter consistência visual entre os produtos.
@@ -485,33 +469,6 @@ if(camadaLimitesMunicipais) overlaysMapa['🏘️ Limites municipais'] = camadaL
 if(camadaPontosCriticos) overlaysMapa['⚠️ Pontos Críticos'] = camadaPontosCriticos;
 L.control.layers({'Padrão': baseClaro, 'Satélite': baseSatelite}, overlaysMapa, {position:'topright', collapsed:false}).addTo(map);
 L.control.scale({imperial:false, position:'bottomright'}).addTo(map);
-
-// Malha viária de contexto (Base_Rods_2023, TO inteiro) — cinza clarinho,
-// sempre no fundo, nas duas abas. Pane próprio com z-index abaixo do
-// overlayPane padrão (400), então fica sempre atrás de tudo (trechos,
-// contorno de região, destaque), sem precisar de bringToBack a cada redraw.
-map.createPane('paneMalhaContexto');
-map.getPane('paneMalhaContexto').style.zIndex = 350;
-if(MALHA_CONTEXTO.features.length > 0){
-  L.geoJSON(MALHA_CONTEXTO, {
-    pane: 'paneMalhaContexto',
-    style: {color:'#94A3B8', weight:1, opacity:0.6},
-    interactive: false,
-  }).addTo(map);
-}
-
-// Legenda fixa (sempre visível, mesmo sem clicar em nada) — hoje só indica
-// a malha viária de contexto (cinza fino, ao fundo).
-var ControleLegenda = L.Control.extend({
-  options: {position: 'topright'},
-  onAdd: function(){
-    var div = L.DomUtil.create('div', 'legenda-mapa');
-    div.innerHTML = '<div class="item"><span class="chip linha-contexto"></span>malha viária (contexto)</div>';
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  },
-});
-if(MALHA_CONTEXTO.features.length > 0) map.addControl(new ControleLegenda());
 
 // Botão de GPS — mostra onde a usuária está (útil em campo).
 var ControleGps = L.Control.extend({

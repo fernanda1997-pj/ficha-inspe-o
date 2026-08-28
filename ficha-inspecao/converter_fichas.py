@@ -810,46 +810,6 @@ def gerar_regioes():
     print(f'dados/regioes.js escrito com {len(features)} região(ões).')
 
 
-# Tolerância de simplificação (graus, ~WGS84) da malha de contexto — só pra
-# dar referência visual de fundo, não precisa da geometria exata. Sem isso o
-# shapefile inteiro (~1 milhão de vértices) ficaria pesado demais pro navegador.
-TOLERANCIA_SIMPLIFICACAO_MALHA = 0.0005  # ~50 m
-
-
-def gerar_malha_contexto():
-    """Lê camadas/Base_Rods_2023.shp (malha viária estadual completa, TO) e
-    escreve dados/malha_contexto.js — camada de contexto (cinza, sempre atrás
-    dos trechos inspecionados) pra dar noção de onde a malha inspecionada se
-    encaixa na rede de rodovias ao redor. Geometria simplificada porque é só
-    pano de fundo, não análise."""
-    if not os.path.exists(BASE_RODS_2023):
-        qa('Base_Rods_2023.shp não encontrado em camadas/ — sem malha viária de contexto no mapa')
-        return
-    gdf = gpd.read_file(BASE_RODS_2023)
-    gdf = gdf.to_crs(4326) if gdf.crs else gdf.set_crs(4326)
-    gdf['geometry'] = gdf.geometry.simplify(TOLERANCIA_SIMPLIFICACAO_MALHA, preserve_topology=False)
-
-    col_via = next((c for c in gdf.columns if _norm(c) == 'NM_VIA'), None)
-    col_mun = next((c for c in gdf.columns if _norm(c) == 'NM_MUN'), None)
-
-    features = []
-    for _, row in gdf.iterrows():
-        geom = row.geometry
-        if geom is None or geom.is_empty:
-            continue
-        props = {}
-        if col_via and row[col_via]:
-            props['via'] = str(row[col_via]).strip()
-        if col_mun and row[col_mun]:
-            props['municipio'] = str(row[col_mun]).strip()
-        features.append({'type': 'Feature', 'properties': props, 'geometry': mapping(geom)})
-
-    geojson = {'type': 'FeatureCollection', 'features': features}
-    with open(os.path.join(DADOS_DIR, 'malha_contexto.js'), 'w', encoding='utf-8') as f:
-        f.write('// Gerado por converter_fichas.py — não editar à mão\n')
-        f.write(f'window.MALHA_CONTEXTO = {json.dumps(geojson, ensure_ascii=False)};\n')
-    print(f'dados/malha_contexto.js escrito com {len(features)} via(s) de contexto.')
-
 
 # Tolerância maior que a da malha viária — é polígono (não precisa mostrar
 # reentrância fina de fronteira), então dá pra simplificar mais sem perder
@@ -1124,7 +1084,6 @@ def gerar_pontos_criticos():
 def main():
     os.makedirs(DADOS_DIR, exist_ok=True)
     gerar_regioes()
-    gerar_malha_contexto()
     gerar_limites_municipais()
     gerar_localidades()
     gerar_pontos_criticos()
