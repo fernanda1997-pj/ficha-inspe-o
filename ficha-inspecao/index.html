@@ -385,6 +385,15 @@ var baseSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/serv
   attribution:'Esri, Maxar, Earthstar Geographics', maxZoom:19,
 });
 
+// Localidades (nome de cidade/rodovia) — camada opcional, desligada por
+// padrão. É a "_Reference" do Esri Light Gray, a mesma que usávamos junto
+// com a base antes; ligar as duas ao mesmo tempo (sempre) foi o que
+// sobrecarregou o carregamento inicial — como overlay (a usuária ativa só
+// quando quiser), não repete o problema.
+var baseLocalidades = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom:19, maxNativeZoom:16,
+});
+
 // Pontos Críticos — camada opcional (desligada por padrão), liga pelo
 // controle de camadas no canto superior direito, junto com o basemap.
 var PONTOS_CRITICOS = window.PONTOS_CRITICOS || {type:'FeatureCollection', features:[]};
@@ -441,6 +450,7 @@ var camadaLimitesMunicipais = LIMITES_MUNICIPAIS.features.length > 0 ? L.geoJSON
 }) : null;
 
 var overlaysMapa = {};
+overlaysMapa['🏷️ Localidades'] = baseLocalidades;
 if(camadaLimitesMunicipais) overlaysMapa['🏘️ Limites municipais'] = camadaLimitesMunicipais;
 if(camadaPontosCriticos) overlaysMapa['⚠️ Pontos Críticos'] = camadaPontosCriticos;
 L.control.layers({'Padrão': baseClaro, 'Satélite': baseSatelite}, overlaysMapa, {position:'topright', collapsed:false}).addTo(map);
