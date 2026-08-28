@@ -385,15 +385,13 @@ var CORES_PONTO_CRITICO = {
 var map = L.map('map', {zoomControl:true, preferCanvas:true}).setView([-10.3, -48.3], 7);
 var MALHA_CONTEXTO = window.MALHA_CONTEXTO || {type:'FeatureCollection', features:[]};
 
-// CARTO (basemaps.cartocdn.com) passou a exigir API key (marca d'água "API
-// KEY REQUIRED"). Esri World_Street_Map ficou carregado/colorido demais.
-// OpenStreetMap padrão mostra rio/estrada de terra/contorno de propriedade
-// junto — poluído demais em cima dos trechos coloridos. Esri Light Gray
-// Canvas SÓ a camada base (sem a de rótulos — foi a combinação das duas
-// juntas que sobrecarregou antes, gerando tiles de 10s+): cinza-claro
-// minimalista, uma única camada, sem chave.
-var baseClaro = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-  attribution:'Esri, HERE, Garmin, FAO, NOAA, USGS', maxZoom:19, maxNativeZoom:16,
+// Mesmo basemap "Padrão" do Geoportal de Levantamento (web - Mapas/index.html)
+// — OpenStreetMap padrão, pra manter consistência visual entre os produtos.
+// crossOrigin:true: os 3 provedores mandam Access-Control-Allow-Origin: *,
+// então carregar em modo CORS evita "tainted canvas" se um dia exportarmos
+// a tela como imagem (mesmo motivo do comentário lá no outro projeto).
+var baseClaro = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom:19, attribution:'&copy; OpenStreetMap', crossOrigin:true,
 }).addTo(map);
 var baseSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   attribution:'Esri, Maxar, Earthstar Geographics', maxZoom:19,
