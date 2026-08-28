@@ -131,6 +131,19 @@
     background:#94A3B8; width:14px; height:2px; border-radius:0;
   }
 
+  /* Rótulo das Localidades — permanente (não só ao passar o mouse), texto
+     branco com halo escuro (sem "pílula" de fundo), mesmo visual do
+     geoportal principal. Some no zoom afastado pra não virar "sopa". */
+  .loc-label{
+    background:transparent !important; border:none; box-shadow:none;
+    color:#fff; font-size:11.5px; font-weight:700; letter-spacing:.15px;
+    padding:0; white-space:nowrap;
+    text-shadow: -1px -1px 0 rgba(0,0,0,.75), 1px -1px 0 rgba(0,0,0,.75),
+      -1px 1px 0 rgba(0,0,0,.75), 1px 1px 0 rgba(0,0,0,.75), 0 2px 4px rgba(0,0,0,.45);
+  }
+  .loc-label::before{display:none !important;}
+  .loc-zoom-baixo .loc-label{display:none !important;}
+
   /* Marcador dos Pontos Críticos — bolinha colorida com borda branca,
      mesma paleta (por classe de situação) usada no popup. */
   .icone-ponto-critico span{
@@ -395,9 +408,23 @@ var camadaLocalidades = LOCALIDADES.features.length > 0 ? L.geoJSON(LOCALIDADES,
     return L.circleMarker(latlng, {radius:2.6, color:'#fff', weight:0.8, fillColor:'#000', fillOpacity:0.9});
   },
   onEachFeature: function(feat, layer){
-    if(feat.properties.nome) layer.bindTooltip(feat.properties.nome);
+    // Rótulo permanente (não só ao passar o mouse) — mesmo estilo do
+    // geoportal principal (rta-msi-rodovias). Some com zoom afastado (ver
+    // .loc-zoom-baixo) pra não virar "sopa" de texto com 709 nomes juntos.
+    if(feat.properties.nome){
+      layer.bindTooltip(String(feat.properties.nome), {
+        permanent: true, direction: 'right', className: 'loc-label', offset: [5, 0],
+      });
+    }
   },
 }) : null;
+if(camadaLocalidades){
+  var ajustarZoomLocalidades = function(){
+    map.getContainer().classList.toggle('loc-zoom-baixo', map.getZoom() < 9);
+  };
+  map.on('zoomend', ajustarZoomLocalidades);
+  ajustarZoomLocalidades();
+}
 
 // Pontos Críticos — camada opcional (desligada por padrão), liga pelo
 // controle de camadas no canto superior direito, junto com o basemap.
