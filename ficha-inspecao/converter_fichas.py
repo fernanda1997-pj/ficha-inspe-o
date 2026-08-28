@@ -892,6 +892,42 @@ def gerar_limites_municipais():
     print(f'dados/limites_municipais.js escrito com {len(features)} município(s).')
 
 
+LOCALIDADES_SHP = os.path.join(CAMADAS_DIR, 'BCLocalidadePonto100_GCS.shp')
+
+
+def gerar_localidades():
+    """Lê camadas/BCLocalidadePonto100_GCS.shp (base cartográfica de
+    localidades/povoados, mesma camada de contexto do geoportal principal —
+    ver gerar_mapa.py) e escreve dados/localidades.js — pontinhos com nome
+    ao passar o mouse, filtrados só pro Tocantins (coluna NM_UF)."""
+    if not os.path.exists(LOCALIDADES_SHP):
+        qa('BCLocalidadePonto100_GCS.shp não encontrado em camadas/ — sem localidades no mapa')
+        return
+    gdf = gpd.read_file(LOCALIDADES_SHP)
+    gdf = gdf[gdf['NM_UF'] == 'TO'].copy()
+    gdf = gdf.to_crs(4326) if gdf.crs else gdf.set_crs(4326)
+
+    col_nome = next((c for c in ('NM_IDENTIF', 'NM_LOC_ASS', 'NOME', 'nome') if c in gdf.columns), None)
+    if col_nome is None:
+        qa(f'BCLocalidadePonto100_GCS.shp: sem coluna de nome reconhecível (colunas: {list(gdf.columns)})')
+
+    features = []
+    for _, row in gdf.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        nome = row[col_nome] if col_nome else None
+        if not nome:
+            continue
+        features.append({'type': 'Feature', 'properties': {'nome': str(nome).strip()}, 'geometry': mapping(geom)})
+
+    geojson = {'type': 'FeatureCollection', 'features': features}
+    with open(os.path.join(DADOS_DIR, 'localidades.js'), 'w', encoding='utf-8') as f:
+        f.write('// Gerado por converter_fichas.py — não editar à mão\n')
+        f.write(f'window.LOCALIDADES = {json.dumps(geojson, ensure_ascii=False)};\n')
+    print(f'dados/localidades.js escrito com {len(features)} localidade(s).')
+
+
 REGIOES_PONTOS_CRITICOS = ['R1', 'R2', 'R3', 'R11', 'R12', 'R13']
 
 
@@ -1090,6 +1126,7 @@ def main():
     gerar_regioes()
     gerar_malha_contexto()
     gerar_limites_municipais()
+    gerar_localidades()
     gerar_pontos_criticos()
     # recursivo: a usuária organiza em subpastas tipo fichas/LOTE 04/JULHO/...
     arquivos = sorted(glob.glob(os.path.join(FICHAS_DIR, '**', '*.xlsx'), recursive=True))

@@ -332,6 +332,7 @@
 <script src="dados/regioes.js"></script>
 <script src="dados/malha_contexto.js"></script>
 <script src="dados/limites_municipais.js"></script>
+<script src="dados/localidades.js"></script>
 <script src="dados/pontos_criticos.js"></script>
 <script>
 (function(){
@@ -385,14 +386,18 @@ var baseSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/serv
   attribution:'Esri, Maxar, Earthstar Geographics', maxZoom:19,
 });
 
-// Localidades (nome de cidade/rodovia) — camada opcional, desligada por
-// padrão. É a "_Reference" do Esri Light Gray, a mesma que usávamos junto
-// com a base antes; ligar as duas ao mesmo tempo (sempre) foi o que
-// sobrecarregou o carregamento inicial — como overlay (a usuária ativa só
-// quando quiser), não repete o problema.
-var baseLocalidades = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-  maxZoom:19, maxNativeZoom:16,
-});
+// Localidades — pontinhos de povoado/cidade com nome ao passar o mouse,
+// mesma camada de contexto do geoportal principal (dados/localidades.js,
+// gerado de BCLocalidadePonto100_GCS.shp). Opcional, desligada por padrão.
+var LOCALIDADES = window.LOCALIDADES || {type:'FeatureCollection', features:[]};
+var camadaLocalidades = LOCALIDADES.features.length > 0 ? L.geoJSON(LOCALIDADES, {
+  pointToLayer: function(feat, latlng){
+    return L.circleMarker(latlng, {radius:2.6, color:'#fff', weight:0.8, fillColor:'#000', fillOpacity:0.9});
+  },
+  onEachFeature: function(feat, layer){
+    if(feat.properties.nome) layer.bindTooltip(feat.properties.nome);
+  },
+}) : null;
 
 // Pontos Críticos — camada opcional (desligada por padrão), liga pelo
 // controle de camadas no canto superior direito, junto com o basemap.
@@ -450,7 +455,7 @@ var camadaLimitesMunicipais = LIMITES_MUNICIPAIS.features.length > 0 ? L.geoJSON
 }) : null;
 
 var overlaysMapa = {};
-overlaysMapa['🏷️ Localidades'] = baseLocalidades;
+if(camadaLocalidades) overlaysMapa['📍 Localidades'] = camadaLocalidades;
 if(camadaLimitesMunicipais) overlaysMapa['🏘️ Limites municipais'] = camadaLimitesMunicipais;
 if(camadaPontosCriticos) overlaysMapa['⚠️ Pontos Críticos'] = camadaPontosCriticos;
 L.control.layers({'Padrão': baseClaro, 'Satélite': baseSatelite}, overlaysMapa, {position:'topright', collapsed:false}).addTo(map);
