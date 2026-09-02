@@ -28,6 +28,11 @@
   #painel .conteudo{flex:1; overflow-y:auto; padding:12px;}
 
   .abas{display:flex; border-bottom:1px solid var(--borda); flex:none;}
+
+  /* Seletor "Colorir mapa por" — fica fora das duas abas (compartilhado),
+     mesma cor de fundo do cabeçalho das linhas de trecho pra destacar que
+     é um controle "global" do mapa, não específico de uma aba. */
+  #aspecto-wrap{padding:8px 14px; background:var(--fundo); border-bottom:1px solid var(--borda); flex:none;}
   .aba-btn{
     flex:1; padding:10px 6px; border:none; background:#fff; color:var(--cinza);
     font-size:12.5px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;
@@ -246,6 +251,10 @@
       <button class="aba-btn ativa" data-aba="geral">Visão Geral</button>
       <button class="aba-btn" data-aba="regiao">Por Região</button>
     </div>
+    <div id="aspecto-wrap">
+      <label class="rotulo" for="sel-aspecto" style="margin-top:0;">Colorir mapa por</label>
+      <select id="sel-aspecto"></select>
+    </div>
     <div class="conteudo" id="painel-regiao" style="display:none;">
       <label class="rotulo" for="sel-regiao">Região</label>
       <select id="sel-regiao"></select>
@@ -292,7 +301,7 @@
         <div class="kpi-mini"><b id="geral-pct-pav">—</b><span>pavimentada</span></div>
       </div>
 
-      <label class="rotulo" style="margin-top:16px;">Resultado geral</label>
+      <label class="rotulo" id="geral-titulo-aspecto" style="margin-top:16px;">Resultado geral</label>
       <div class="donut-wrap-central">
         <div id="geral-donut"></div>
       </div>
@@ -510,10 +519,10 @@ var arquivosCarregados = {};   // arquivo -> true, evita <script> duplicado
 var camadaRegiao = null;       // contorno da região selecionada (aba "Por Região")
 var camadaRegioesGeral = null; // contorno de todas as regiões (aba "Visão Geral")
 var camadasDestaque = [];      // casing + linha do S.R.E. escolhido no funil
-// Classes I.C.M. marcadas na legenda da aba "Por Região" — controla o que
-// aparece pintado no mapa da região e no gráfico de rosca, igual à Visão Geral.
-var ativosIcmRegiao = {};
-CLASSES_ICM.forEach(function(c){ ativosIcmRegiao[c] = true; });
+// Classes/níveis marcados na legenda da aba "Por Região", pro aspecto atual
+// (ver seletor "Colorir mapa por" mais abaixo) — controla o que aparece
+// pintado no mapa da região e no gráfico de rosca, igual à Visão Geral.
+var ativosAspectoRegiao = {};
 
 // ---------------------------------------------------------------------
 // Monta os selects de Região / Competência a partir do manifest.js
@@ -657,9 +666,9 @@ function atualizarResumoRegiao(){
   var extKm = feats.reduce(function(soma, f){ return soma + (f.properties.km_fim - f.properties.km_ini); }, 0);
   document.getElementById('resumo-ext').textContent = extKm.toLocaleString('pt-BR', {maximumFractionDigits: 1});
   document.getElementById('resumo-n').textContent = feats.length;
-  var r = somaIcmDe(feats);
-  atualizarDonutRegiao(r.somaPorClasse, r.total);
-  montarLegendaFiltroIcmRegiao(r.somaPorClasse, r.total);
+  var r = somaPorAspecto(feats, aspectoAtual);
+  atualizarDonutRegiao(r.somaPorClasse, r.total, r.ordemClasses);
+  montarLegendaFiltroRegiao(r.somaPorClasse, r.total, r.ordemClasses);
 
   var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
   var escopo = 'Região inteira';
@@ -675,34 +684,37 @@ function atualizarResumoRegiao(){
   document.getElementById('resumo-escopo').textContent = escopo;
 }
 
-// Redesenha só o donut de "Por Região" considerando as classes (des)marcadas
-// na legenda — a fatia de uma classe desmarcada some do gráfico, igual some
-// do mapa. somaPorClasse/total aqui já vêm do escopo atual do funil.
-function atualizarDonutRegiao(somaPorClasse, total){
+// Redesenha só o donut de "Por Região" considerando as classes/níveis
+// (des)marcados na legenda — a fatia desmarcada some do gráfico, igual some
+// do mapa. somaPorClasse/total/ordemClasses aqui já vêm do escopo atual do
+// funil + do aspecto escolhido no seletor "Colorir mapa por".
+function atualizarDonutRegiao(somaPorClasse, total, ordemClasses){
   var somaFiltrada = {};
-  CLASSES_ICM.forEach(function(c){ somaFiltrada[c] = ativosIcmRegiao[c] ? somaPorClasse[c] : 0; });
-  var totalFiltrado = CLASSES_ICM.reduce(function(s, c){ return s + somaFiltrada[c]; }, 0);
-  montarDonut(somaFiltrada, totalFiltrado, 'regiao-donut');
+  ordemClasses.forEach(function(cl){ somaFiltrada[cl.chave] = ativosAspectoRegiao[cl.chave] !== false ? (somaPorClasse[cl.chave]||0) : 0; });
+  var totalFiltrado = ordemClasses.reduce(function(s, cl){ return s + somaFiltrada[cl.chave]; }, 0);
+  montarDonut(somaFiltrada, totalFiltrado, 'regiao-donut', ordemClasses);
 }
 
 // Legenda de "Por Região" com checkbox — mesmo padrão da Visão Geral: dobra
-// de filtro do que aparece no mapa da região e no gráfico de rosca.
-function montarLegendaFiltroIcmRegiao(somaPorClasse, total){
-  document.getElementById('regiao-legenda').innerHTML = CLASSES_ICM.map(function(c){
-    var pct = total > 0 ? (100 * somaPorClasse[c] / total) : 0;
+// de filtro do que aparece no mapa da região e no gráfico de rosca. Serve
+// tanto pro Resultado Geral (5 classes fixas) quanto pra qualquer aspecto
+// (níveis variam — ordemClasses já vem pronta de somaPorAspecto).
+function montarLegendaFiltroRegiao(somaPorClasse, total, ordemClasses){
+  document.getElementById('regiao-legenda').innerHTML = ordemClasses.map(function(cl){
+    var pct = total > 0 ? (100 * (somaPorClasse[cl.chave]||0) / total) : 0;
     return '<label class="linha">' +
-      '<input type="checkbox" data-filtro-icm-regiao="'+c+'" '+(ativosIcmRegiao[c]?'checked':'')+'>' +
-      '<span class="chip" style="background:'+CORES_ICM[c]+'"></span>' +
-      '<span class="nome">'+c+'</span>' +
-      '<span class="valor">'+somaPorClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km · '+pct.toFixed(0)+'%</span>' +
+      '<input type="checkbox" data-filtro-aspecto-regiao="'+cl.chave+'" '+(ativosAspectoRegiao[cl.chave]!==false?'checked':'')+'>' +
+      '<span class="chip" style="background:'+cl.cor+'"></span>' +
+      '<span class="nome">'+cl.nome+'</span>' +
+      '<span class="valor">'+(somaPorClasse[cl.chave]||0).toLocaleString('pt-BR', {maximumFractionDigits:1})+' km · '+pct.toFixed(0)+'%</span>' +
     '</label>';
   }).join('');
-  document.querySelectorAll('[data-filtro-icm-regiao]').forEach(function(el){
+  document.querySelectorAll('[data-filtro-aspecto-regiao]').forEach(function(el){
     el.addEventListener('change', function(){
-      ativosIcmRegiao[el.getAttribute('data-filtro-icm-regiao')] = el.checked;
+      ativosAspectoRegiao[el.getAttribute('data-filtro-aspecto-regiao')] = el.checked;
       redesenharMapa();
-      var r = somaIcmDe(featuresParaResumo());
-      atualizarDonutRegiao(r.somaPorClasse, r.total);
+      var r = somaPorAspecto(featuresParaResumo(), aspectoAtual);
+      atualizarDonutRegiao(r.somaPorClasse, r.total, r.ordemClasses);
     });
   });
 }
@@ -825,7 +837,10 @@ function destacarSre(){
   var tipo = selTipo.value;
   var feats = featuresDoFunil();
   if(feats.length === 0) return;
-  var grupoPrincipal = (tipo === 'nao_pavimentada') ? 'plataforma' : 'pavimento';
+  // Segue o aspecto escolhido no seletor "Colorir mapa por"; no Resultado
+  // Geral (padrão) o destaque mostra o aspecto "principal" do tipo de via —
+  // igual sempre foi, já que o mapa de fundo aí é o Resultado Geral mesmo.
+  var grupoPrincipal = aspectoAtual !== 'icm' ? aspectoAtual : ((tipo === 'nao_pavimentada') ? 'plataforma' : 'pavimento');
   var colecao = {type:'FeatureCollection', features:feats};
 
   var casing = L.geoJSON(colecao, {style:{color:'#ffffff', weight:9, opacity:0.95}, interactive:false}).addTo(map);
@@ -966,9 +981,10 @@ function montarPopup(props){
   );
 }
 
-// Mapa da região colorido pelo Resultado Geral (I.C.M.) — a legenda embaixo
-// do gráfico de rosca (ativosIcmRegiao) filtra quais classes aparecem aqui.
-// Quem quiser o detalhe de pavimento, vegetação, drenagem etc. usa o funil
+// Mapa da região colorido pelo aspecto escolhido no seletor "Colorir mapa
+// por" (Resultado Geral por padrão) — a legenda embaixo do gráfico de rosca
+// (ativosAspectoRegiao) filtra quais classes/níveis aparecem aqui. Quem
+// quiser o detalhe completo (todos os aspectos de uma vez) usa o funil
 // Trecho/S.R.E. (zoom + tabela) ou clica direto no trecho (popup mostra tudo).
 function redesenharMapa(){
   camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
@@ -980,14 +996,14 @@ function redesenharMapa(){
 
   var tipo = selTipo.value;
   var feats = pacote.features.filter(function(f){
-    var classe = (f.properties.icm && f.properties.icm.classe) || 'Sem Informação';
-    if(!ativosIcmRegiao[classe]) return false;
+    var classe = classeDoAspecto(f.properties, aspectoAtual);
+    if(ativosAspectoRegiao[classe] === false) return false;
     if(tipo && f.properties.tipo_via !== tipo) return false;
     return true;
   });
 
   var camada = L.geoJSON({type:'FeatureCollection', features:feats}, {
-    style: function(feat){ return estiloDoSegmento(feat.properties, 'icm', 4); },
+    style: function(feat){ return estiloDoSegmento(feat.properties, aspectoAtual, 4); },
     onEachFeature: function(feat, layer){
       layer.bindPopup(montarPopup(feat.properties));
       layer.on('mouseover', function(){ layer.setStyle({weight:7}); });
@@ -1003,12 +1019,11 @@ function redesenharMapa(){
 // Aba "Visão Geral" — soma tudo que já foi convertido (todas as regiões e
 // competências), independente do que está selecionado na aba "Por Região".
 // ---------------------------------------------------------------------
-var ativosIcm = {};
-CLASSES_ICM.forEach(function(c){ ativosIcm[c] = true; });
+var ativosAspectoGeral = {};
 var camadaGeral = null;
 // Guarda a última soma/total calculados pra Visão Geral, pra poder redesenhar
 // só o donut (sem recalcular tudo) quando o usuário (des)marca uma classe.
-var geralSomaPorClasse = null, geralTotal = 0;
+var geralSomaPorClasse = null, geralTotal = 0, geralOrdemClasses = null;
 
 function trocarAba(aba){
   document.querySelectorAll('.aba-btn').forEach(function(b){
@@ -1069,20 +1084,93 @@ function somaIcmDe(feats){
     somaPorClasse[classe] += (f.properties.km_fim - f.properties.km_ini);
   });
   var total = CLASSES_ICM.reduce(function(s, c){ return s + somaPorClasse[c]; }, 0);
-  return {somaPorClasse: somaPorClasse, total: total};
+  var ordemClasses = CLASSES_ICM.map(function(c){ return {chave: c, nome: c, cor: CORES_ICM[c]}; });
+  return {somaPorClasse: somaPorClasse, total: total, ordemClasses: ordemClasses};
 }
+
+// Classe/nível do aspecto escolhido pra uma feature — pro Resultado Geral é
+// a classe (Bom/Regular/...); pra um aspecto específico é o nível de
+// severidade (0,1,2...) como texto, ou 'sem_info' se o segmento nem tem
+// esse aspecto (ex.: vegetação numa via não pavimentada, que só tem
+// plataforma/drenagem_superficial).
+function classeDoAspecto(props, grupoId){
+  if(grupoId === 'icm') return (props.icm && props.icm.classe) || 'Sem Informação';
+  var info = props[grupoId];
+  if(!info || info.severidade === null || info.severidade === undefined) return 'sem_info';
+  return String(info.severidade);
+}
+
+// Soma km por classe/nível pro aspecto escolhido — generaliza somaIcmDe pra
+// qualquer grupo (pavimento/vegetação/drenagem/...). Os níveis e o rótulo de
+// cada um são descobertos a partir dos dados de verdade (o texto que a
+// ficha usou), não de uma lista fixa — funciona igual pra qualquer aspecto
+// sem precisar duplicar a tabela de severidades do converter aqui.
+function somaPorAspecto(feats, grupoId){
+  if(grupoId === 'icm') return somaIcmDe(feats);
+  var porNivel = {}; // nivel (Number) -> {km, rotulo}
+  var kmSemInfo = 0;
+  feats.forEach(function(f){
+    var info = f.properties[grupoId];
+    var km = f.properties.km_fim - f.properties.km_ini;
+    if(!info || info.severidade === null || info.severidade === undefined){
+      kmSemInfo += km;
+      return;
+    }
+    var nivel = info.severidade;
+    if(!porNivel[nivel]) porNivel[nivel] = {km: 0, rotulo: info.status || ('Nível '+nivel)};
+    porNivel[nivel].km += km;
+  });
+  var niveis = Object.keys(porNivel).map(Number).sort(function(a, b){ return a - b; });
+  var somaPorClasse = {};
+  var ordemClasses = niveis.map(function(n){
+    somaPorClasse[String(n)] = porNivel[n].km;
+    return {chave: String(n), nome: porNivel[n].rotulo, cor: CORES_SEVERIDADE[Math.min(n, CORES_SEVERIDADE.length-1)]};
+  });
+  somaPorClasse.sem_info = kmSemInfo;
+  ordemClasses.push({chave: 'sem_info', nome: 'Sem Informação', cor: '#94A3B8'});
+  var total = niveis.reduce(function(s, n){ return s + porNivel[n].km; }, 0) + kmSemInfo;
+  return {somaPorClasse: somaPorClasse, total: total, ordemClasses: ordemClasses};
+}
+
+// ---------------------------------------------------------------------
+// Seletor "Colorir mapa por" — Resultado Geral (padrão) ou um aspecto
+// específico (Pavimento, Vegetação, Drenagem...). Troca a cor de TODO o
+// mapa, nas duas abas, pro aspecto escolhido, em vez de só a média —
+// pedido explícito da usuária (2026-09): a média escondia detalhe que ela
+// precisava ver (ex.: trecho Bom no geral mas sinalização péssima).
+// Tentativa anterior de mostrar os aspectos (camadas por aspecto
+// deslocadas ~6m lado a lado) foi removida por confusa — esse seletor é o
+// substituto: um aspecto de cada vez, sem sobrepor linha nenhuma.
+var selAspecto = document.getElementById('sel-aspecto');
+selAspecto.innerHTML = GRUPOS.map(function(g){ return '<option value="'+g.id+'">'+g.nome+'</option>'; }).join('');
+var aspectoAtual = 'icm';
+selAspecto.value = aspectoAtual; // começa em Resultado Geral, igual sempre foi
+selAspecto.addEventListener('change', function(){
+  aspectoAtual = selAspecto.value;
+  // Reseta o filtro por checkbox — os níveis do aspecto novo não têm
+  // relação com os do aspecto anterior (ex.: ICM tem 5 classes, Vegetação
+  // só 2), então força tudo marcado de novo em vez de tentar herdar estado.
+  ativosAspectoGeral = {};
+  ativosAspectoRegiao = {};
+  desenharVisaoGeral();
+  atualizarResumoRegiao();
+  redesenharMapa();
+});
 
 function desenharVisaoGeral(){
   var todas = todasAsFeatures();
-  var r = somaIcmDe(todas);
+  var r = somaPorAspecto(todas, aspectoAtual);
   geralSomaPorClasse = r.somaPorClasse;
   geralTotal = r.total;
+  geralOrdemClasses = r.ordemClasses;
 
   document.getElementById('geral-total').textContent =
     r.total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
+  var grupoAtual = GRUPOS.find(function(g){ return g.id === aspectoAtual; });
+  document.getElementById('geral-titulo-aspecto').textContent = grupoAtual ? grupoAtual.nome : 'Resultado geral';
 
   atualizarDonutGeralFiltrado();
-  montarLegendaFiltroIcm(r.somaPorClasse, r.total);
+  montarLegendaFiltroIcm(r.somaPorClasse, r.total, r.ordemClasses);
   desenharTodasAsRegioes();
   redesenharMapaGeral(todas);
 
@@ -1147,14 +1235,14 @@ function montarComparativoRegioes(todas){
   });
 }
 
-function montarDonut(somaPorClasse, total, idSvg){
+function montarDonut(somaPorClasse, total, idSvg, ordemClasses){
   var cx = 60, cy = 60, r = 46, largura = 20;
   var circ = 2 * Math.PI * r;
   var acumulado = 0;
-  var partes = CLASSES_ICM.map(function(c){
-    var frac = total > 0 ? somaPorClasse[c] / total : 0;
+  var partes = ordemClasses.map(function(cl){
+    var frac = total > 0 ? (somaPorClasse[cl.chave]||0) / total : 0;
     var comprimento = frac * circ;
-    var trecho = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+CORES_ICM[c]+
+    var trecho = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+cl.cor+
       '" stroke-width="'+largura+'" stroke-dasharray="'+comprimento+' '+(circ - comprimento)+
       '" stroke-dashoffset="'+(-acumulado)+'" transform="rotate(-90 '+cx+' '+cy+')"></circle>';
     acumulado += comprimento;
@@ -1171,44 +1259,44 @@ function montarDonut(somaPorClasse, total, idSvg){
 // Legenda da Visão Geral: mesma info de "Resultado geral" (chip, nome, km e %)
 // mas com checkbox — dobra como filtro do que aparece pintado no mapa, então
 // não precisa mais de uma seção "Mostrar no mapa" separada e repetida.
-function montarLegendaFiltroIcm(somaPorClasse, total){
-  document.getElementById('geral-legenda').innerHTML = CLASSES_ICM.map(function(c){
-    var pct = total > 0 ? (100 * somaPorClasse[c] / total) : 0;
+function montarLegendaFiltroIcm(somaPorClasse, total, ordemClasses){
+  document.getElementById('geral-legenda').innerHTML = ordemClasses.map(function(cl){
+    var pct = total > 0 ? (100 * (somaPorClasse[cl.chave]||0) / total) : 0;
     return '<label class="linha">' +
-      '<input type="checkbox" data-filtro-icm="'+c+'" '+(ativosIcm[c]?'checked':'')+'>' +
-      '<span class="chip" style="background:'+CORES_ICM[c]+'"></span>' +
-      '<span class="nome">'+c+'</span>' +
-      '<span class="valor">'+somaPorClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km · '+pct.toFixed(0)+'%</span>' +
+      '<input type="checkbox" data-filtro-icm="'+cl.chave+'" '+(ativosAspectoGeral[cl.chave]!==false?'checked':'')+'>' +
+      '<span class="chip" style="background:'+cl.cor+'"></span>' +
+      '<span class="nome">'+cl.nome+'</span>' +
+      '<span class="valor">'+(somaPorClasse[cl.chave]||0).toLocaleString('pt-BR', {maximumFractionDigits:1})+' km · '+pct.toFixed(0)+'%</span>' +
     '</label>';
   }).join('');
   document.querySelectorAll('[data-filtro-icm]').forEach(function(el){
     el.addEventListener('change', function(){
-      ativosIcm[el.getAttribute('data-filtro-icm')] = el.checked;
+      ativosAspectoGeral[el.getAttribute('data-filtro-icm')] = el.checked;
       redesenharMapaGeral(todasAsFeatures());
       atualizarDonutGeralFiltrado();
     });
   });
 }
 
-// Redesenha só o donut da Visão Geral considerando as classes (des)marcadas —
-// a fatia de uma classe desmarcada some do gráfico, igual já sumia do mapa.
+// Redesenha só o donut da Visão Geral considerando as classes/níveis
+// (des)marcados — a fatia desmarcada some do gráfico, igual já sumia do mapa.
 function atualizarDonutGeralFiltrado(){
   if(!geralSomaPorClasse) return;
   var somaFiltrada = {};
-  CLASSES_ICM.forEach(function(c){ somaFiltrada[c] = ativosIcm[c] ? geralSomaPorClasse[c] : 0; });
-  var totalFiltrado = CLASSES_ICM.reduce(function(s, c){ return s + somaFiltrada[c]; }, 0);
-  montarDonut(somaFiltrada, totalFiltrado, 'geral-donut');
+  geralOrdemClasses.forEach(function(cl){ somaFiltrada[cl.chave] = ativosAspectoGeral[cl.chave] !== false ? (geralSomaPorClasse[cl.chave]||0) : 0; });
+  var totalFiltrado = geralOrdemClasses.reduce(function(s, cl){ return s + somaFiltrada[cl.chave]; }, 0);
+  montarDonut(somaFiltrada, totalFiltrado, 'geral-donut', geralOrdemClasses);
 }
 
 function redesenharMapaGeral(todas){
   if(camadaGeral){ map.removeLayer(camadaGeral); camadaGeral = null; }
   var feats = todas.filter(function(f){
-    var classe = (f.properties.icm && f.properties.icm.classe) || 'Sem Informação';
-    return ativosIcm[classe];
+    var classe = classeDoAspecto(f.properties, aspectoAtual);
+    return ativosAspectoGeral[classe] !== false;
   });
   if(feats.length === 0) return;
   camadaGeral = L.geoJSON({type:'FeatureCollection', features:feats}, {
-    style: function(feat){ return estiloDoSegmento(feat.properties, 'icm', 4); },
+    style: function(feat){ return estiloDoSegmento(feat.properties, aspectoAtual, 4); },
     onEachFeature: function(feat, layer){
       layer.bindPopup(montarPopup(feat.properties));
       layer.on('mouseover', function(){ layer.setStyle({weight:7}); });

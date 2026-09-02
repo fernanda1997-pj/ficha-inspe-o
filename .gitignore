@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
+.claude/
 relatorio_qualidade.txt
 relatorio_qualidade_os.txt
 ~$*.xlsx

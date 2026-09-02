@@ -120,10 +120,25 @@ usado pra filtrar colunas na tabela do funil (`f.properties[grupoId] !== undefin
 **Histórico (revertido):** os 5/2 grupos já foram camadas independentes do mapa
 (checkbox por aspecto, com `turf.lineOffset` deslocando as linhas ~6m pra comparar
 lado a lado). A usuária achou confuso mesmo depois de numerar as camadas e explicar
-com exemplo — pediu pra tirar (2026-08-04). **Não recriar sem pedido explícito.** O
-mapa da região hoje é sempre colorido pelo Resultado Geral (I.C.M.) só; quem quer o
-detalhe por aspecto usa o popup (clique no trecho) ou a tabela do funil (que já mostra
-todas as colunas de uma vez). `turf.js` foi removido do projeto (só existia pro offset).
+com exemplo — pediu pra tirar (2026-08-04). `turf.js` foi removido do projeto (só
+existia pro offset). Não recriar esse formato de camadas sobrepostas/deslocadas.
+
+**Seletor "Colorir mapa por" (2026-09-02):** a usuária reclamou que o Resultado Geral
+(média de todos os aspectos) escondia detalhe importante — "os dados ficavam muito
+vagos". Substituiu-se por um `<select id="sel-aspecto">` (populado a partir de
+`GRUPOS` = `GRUPOS_INSPECAO` + `{id:'icm', nome:'Resultado Geral'}`) compartilhado
+pelas duas abas: ele recolore o mapa INTEIRO por um aspecto de cada vez (nunca duas
+camadas ao mesmo tempo, sem offset). Trocar o select muda `aspectoAtual`, reseta os
+filtros de checkbox (`ativosAspectoGeral`/`ativosAspectoRegiao` — os níveis de um
+aspecto não têm relação com os de outro) e redesenha Visão Geral + Por Região. A
+generalização do que antes só existia pro I.C.M.: `classeDoAspecto(props, grupoId)` /
+`somaPorAspecto(feats, grupoId)` (paralelo a `somaIcmDe`, mas descobre os níveis a
+partir dos dados de verdade em vez de uma lista fixa tipo `CLASSES_ICM`) e
+`ordemClasses` (`[{chave,nome,cor}]`) como formato comum que alimenta donut, legenda
+e filtro tanto pro I.C.M. quanto pra qualquer aspecto. Trecho que não tem aquele
+aspecto (ex.: `vegetacao` numa via não pavimentada) cai em `'sem_info'`, cinza
+`#94A3B8`. `montarComparativoRegioes` (a barra "Comparativo por região" na Visão
+Geral) ficou de propósito só no Resultado Geral — não segue o seletor.
 
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
