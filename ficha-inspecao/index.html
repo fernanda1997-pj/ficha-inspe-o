@@ -40,43 +40,6 @@
   #painel .conteudo::-webkit-scrollbar-thumb{background:var(--p-trilha); border-radius:3px;}
   #painel .conteudo::-webkit-scrollbar-track{background:transparent;}
 
-  /* Resultado geral (Visão Geral) e Por Região: donut centralizado, legenda
-     embaixo em largura cheia — linhas enxutas, sem cartão/borda, só um traço
-     fino separando cada uma. Na Visão Geral cada linha também tem checkbox
-     e dobra de filtro do mapa; em Por Região é só leitura. */
-  /* Barra horizontal 100% empilhada — substitui o donut/pizza antigo (ver
-     montarBarra()): comparar comprimento numa reta é mais rápido que comparar
-     arco de fatia, principal motivo da troca. */
-  /* Resultado geral / Por Região: a barra e a legenda-filtro formam UM
-     cartão só (mesma borda, sem risco entre as duas), estilo "hero" de
-     dashboard — antes era só solto no painel, sem moldura nenhuma. */
-  .barra-wrap-central{
-    margin-top:6px; background:var(--p-bg-2); border:1px solid var(--p-borda); border-bottom:none;
-    border-radius:12px 12px 0 0; padding:14px 14px 4px;
-  }
-  .barra-total{font-size:24px; font-weight:800; color:#fff; line-height:1;}
-  .barra-total span{font-size:11.5px; font-weight:600; color:var(--p-texto-2); margin-left:5px;}
-  .barra-empilhada{
-    display:flex; gap:2px; height:24px; margin-top:10px;
-    border-radius:5px; overflow:hidden; background:var(--p-trilha);
-  }
-  .barra-empilhada span{height:100%;}
-  .legenda-filtro{
-    margin-top:0; background:var(--p-bg-2); border:1px solid var(--p-borda); border-top:none;
-    border-radius:0 0 12px 12px; padding:2px 14px 6px;
-  }
-  .legenda-filtro .linha{
-    display:flex; align-items:center; gap:8px; padding:7px 2px;
-    border-bottom:1px solid var(--p-borda); font-size:12.5px; border-radius:6px;
-    transition:background .12s ease;
-  }
-  .legenda-filtro .linha:hover{background:var(--p-bg-3);}
-  .legenda-filtro .linha:last-child{border-bottom:none;}
-  .legenda-filtro input{width:15px; height:15px; accent-color:var(--p-azul); flex:none;}
-  .legenda-filtro .chip{width:9px; height:9px; border-radius:50%; flex:none;}
-  .legenda-filtro .nome{flex:1; color:var(--p-texto);}
-  .legenda-filtro .valor{color:var(--p-texto-2); font-size:11.5px; font-variant-numeric:tabular-nums;}
-
   /* "Por aspecto avaliado" (2026-09-03) — pedido da usuária: em vez de um
      Resultado Geral só, uma barra por aspecto (Pavimento, Vegetação,
      Drenagem...). Aparece em "Todas" (#aspectos-geral) e dentro de cada
@@ -352,7 +315,6 @@
       <button id="btn-config" type="button">⚙️ O que mostrar</button>
       <div id="popover-config">
         <label class="linha-config"><input type="checkbox" id="chk-kpis"> KPIs</label>
-        <label class="linha-config"><input type="checkbox" id="chk-resultado-geral"> Resultado Geral (dentro da região)</label>
         <label class="linha-config"><input type="checkbox" id="chk-por-aspecto"> Por aspecto avaliado</label>
         <label class="linha-config"><input type="checkbox" id="chk-comparativo"> Comparativo por região (Todas)</label>
       </div>
@@ -378,13 +340,6 @@
         </div>
       </div>
 
-      <div id="resultado-regiao-wrap">
-        <div class="barra-wrap-central" style="margin-top:8px;">
-          <div id="regiao-barra"></div>
-        </div>
-        <div class="legenda-filtro" id="regiao-legenda"></div>
-      </div>
-
       <div id="aspectos-regiao-wrap">
         <label class="rotulo" style="margin-top:16px;">Por aspecto avaliado</label>
         <div id="aspectos-regiao"></div>
@@ -402,11 +357,10 @@
       <select id="sel-sre"><option value="">Selecione…</option></select>
 
       <div class="dica">
-        O mapa mostra o Resultado Geral de cada trecho — desmarque uma classe na
-        legenda acima (Bom, Regular, Ruim...) pra tirá-la do mapa e do gráfico.
-        Escolha um Trecho/S.R.E. acima (ou "Todos") pra dar zoom nele e ver a
-        tabela completa com pavimento, vegetação, drenagem e sinalização — ou
-        clique direto num trecho no mapa.
+        O mapa mostra o Resultado Geral de cada trecho. Escolha um Trecho/S.R.E.
+        acima (ou "Todos") pra dar zoom nele e ver a tabela completa com
+        pavimento, vegetação, drenagem e sinalização — ou clique direto num
+        trecho no mapa.
       </div>
     </div>
 
@@ -646,9 +600,6 @@ var arquivosCarregados = {};   // arquivo -> true, evita <script> duplicado
 var camadaRegiao = null;       // contorno da região selecionada (pílulas de região)
 var camadaRegioesGeral = null; // contorno de todas as regiões ("Todas")
 var camadasDestaque = [];      // casing + linha do S.R.E. escolhido no funil
-// Classes marcadas na legenda de uma região específica — controla o que
-// aparece pintado no mapa da região e na barra, igual ao "Todas".
-var ativosAspectoRegiao = {};
 
 // ---------------------------------------------------------------------
 // Monta os selects de Região / Competência a partir do manifest.js
@@ -793,9 +744,6 @@ function atualizarResumoRegiao(){
   var extKm = feats.reduce(function(soma, f){ return soma + (f.properties.km_fim - f.properties.km_ini); }, 0);
   document.getElementById('resumo-ext').textContent = extKm.toLocaleString('pt-BR', {maximumFractionDigits: 1});
   document.getElementById('resumo-n').textContent = feats.length;
-  var r = somaPorAspecto(feats, aspectoAtual);
-  atualizarDonutRegiao(r.somaPorClasse, r.total, r.ordemClasses);
-  montarLegendaFiltroRegiao(r.somaPorClasse, r.total, r.ordemClasses);
   montarAspectosPorGrupo(feats, 'aspectos-regiao');
 
   var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
@@ -810,41 +758,6 @@ function atualizarResumoRegiao(){
     escopo = NOME_TIPO_VIA[tipo] || tipo;
   }
   document.getElementById('resumo-escopo').textContent = escopo;
-}
-
-// Redesenha só a barra da região considerando as classes (des)marcadas na
-// legenda — a fatia desmarcada some do gráfico, igual some do mapa.
-// somaPorClasse/total/ordemClasses aqui já vêm do escopo atual do funil
-// (Tipo/Trecho/S.R.E.), sempre pelo Resultado Geral.
-function atualizarDonutRegiao(somaPorClasse, total, ordemClasses){
-  var somaFiltrada = {};
-  ordemClasses.forEach(function(cl){ somaFiltrada[cl.chave] = ativosAspectoRegiao[cl.chave] !== false ? (somaPorClasse[cl.chave]||0) : 0; });
-  var totalFiltrado = ordemClasses.reduce(function(s, cl){ return s + somaFiltrada[cl.chave]; }, 0);
-  montarBarra(somaFiltrada, totalFiltrado, 'regiao-barra', ordemClasses);
-}
-
-// Legenda de "Por Região" com checkbox — mesmo padrão da Visão Geral: dobra
-// de filtro do que aparece no mapa da região e no gráfico de rosca. Serve
-// tanto pro Resultado Geral (5 classes fixas) quanto pra qualquer aspecto
-// (níveis variam — ordemClasses já vem pronta de somaPorAspecto).
-function montarLegendaFiltroRegiao(somaPorClasse, total, ordemClasses){
-  document.getElementById('regiao-legenda').innerHTML = ordemClasses.map(function(cl){
-    var pct = total > 0 ? (100 * (somaPorClasse[cl.chave]||0) / total) : 0;
-    return '<label class="linha">' +
-      '<input type="checkbox" data-filtro-aspecto-regiao="'+cl.chave+'" '+(ativosAspectoRegiao[cl.chave]!==false?'checked':'')+'>' +
-      '<span class="chip" style="background:'+cl.cor+'"></span>' +
-      '<span class="nome">'+cl.nome+'</span>' +
-      '<span class="valor">'+(somaPorClasse[cl.chave]||0).toLocaleString('pt-BR', {maximumFractionDigits:1})+' km · '+pct.toFixed(0)+'%</span>' +
-    '</label>';
-  }).join('');
-  document.querySelectorAll('[data-filtro-aspecto-regiao]').forEach(function(el){
-    el.addEventListener('change', function(){
-      ativosAspectoRegiao[el.getAttribute('data-filtro-aspecto-regiao')] = el.checked;
-      redesenharMapa();
-      var r = somaPorAspecto(featuresParaResumo(), aspectoAtual);
-      atualizarDonutRegiao(r.somaPorClasse, r.total, r.ordemClasses);
-    });
-  });
 }
 
 function montarTipos(){
@@ -1109,10 +1022,10 @@ function montarPopup(props){
   );
 }
 
-// Mapa da região colorido pelo Resultado Geral — a legenda embaixo da barra
-// (ativosAspectoRegiao) filtra quais classes aparecem aqui. Quem quiser o
-// detalhe por aspecto (Pavimento/Vegetação/Drenagem...) usa o funil
-// Trecho/S.R.E. (zoom + tabela) ou clica direto no trecho (popup mostra tudo).
+// Mapa da região colorido pelo Resultado Geral. Quem quiser o detalhe por
+// aspecto (Pavimento/Vegetação/Drenagem...) usa o funil Trecho/S.R.E. (zoom
+// + tabela), a lista "Por aspecto avaliado", ou clica direto no trecho
+// (popup mostra tudo).
 function redesenharMapa(){
   camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
   camadasNoMapa = [];
@@ -1123,8 +1036,6 @@ function redesenharMapa(){
 
   var tipo = selTipo.value;
   var feats = pacote.features.filter(function(f){
-    var classe = classeDoAspecto(f.properties, aspectoAtual);
-    if(ativosAspectoRegiao[classe] === false) return false;
     if(tipo && f.properties.tipo_via !== tipo) return false;
     return true;
   });
@@ -1339,18 +1250,12 @@ function montarPillsRegiao(){
 var CHAVE_PREFS = 'rta_fichas_secoes_visiveis';
 var WRAPPERS_SECAO = {
   kpis: ['kpis-geral-wrap', 'kpis-regiao-wrap'],
-  resultadoGeral: ['resultado-regiao-wrap'],
   porAspecto: ['aspectos-geral-wrap', 'aspectos-regiao-wrap'],
   comparativo: ['comparativo-wrap'],
 };
 
 function carregarPreferenciasSecoes(){
-  // resultadoGeral começa DESLIGADO (2026-09-03, pedido repetido da usuária
-  // mandando o mesmo print de novo, "PODE TIRAR ISSO") — ela pode ligar de
-  // volta em "O que mostrar" se quiser, mas o padrão de quem abre o site
-  // (ou troca de navegador/aparelho, já que é por localStorage) é sem essa
-  // seção. As outras 3 continuam começando ligadas.
-  var padrao = {kpis: true, resultadoGeral: false, porAspecto: true, comparativo: true};
+  var padrao = {kpis: true, porAspecto: true, comparativo: true};
   try {
     var salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS));
     return Object.assign(padrao, salvo || {});
@@ -1484,39 +1389,22 @@ function montarComparativoRegioes(todas){
   });
 }
 
-// Barra horizontal 100% empilhada — era um donut/pizza antes (2026-09-03,
-// pedido da usuária pra trocar por um gráfico melhor). Pra proporção
-// parte-do-todo com várias classes ordenadas (Bom→Péssimo, ou os níveis de um
-// aspecto), comparar COMPRIMENTO numa reta é bem mais rápido pro olho do que
-// comparar ÂNGULO de fatia — mesma razão pela qual "Comparativo por região"
-// logo abaixo já usava barra em vez de vários donuts lado a lado.
-function montarBarra(somaPorClasse, total, idAlvo, ordemClasses){
-  var segmentos = ordemClasses.map(function(cl){
-    var km = somaPorClasse[cl.chave] || 0;
-    var pct = total > 0 ? (100 * km / total) : 0;
-    if(pct <= 0) return ''; // classe zerada não vira um traço invisível na barra
-    return '<span style="width:'+pct+'%; background:'+cl.cor+'" title="'+cl.nome+': '+
-      km.toLocaleString('pt-BR', {maximumFractionDigits:1})+' km ('+pct.toFixed(0)+'%)"></span>';
-  }).join('');
-  document.getElementById(idAlvo).innerHTML =
-    '<div class="barra-total">'+Math.round(total).toLocaleString('pt-BR')+' km<span>total</span></div>' +
-    '<div class="barra-empilhada">'+segmentos+'</div>';
-}
-
-// Legenda da Visão Geral: mesma info de "Resultado geral" (chip, nome, km e %)
-// mas com checkbox — dobra como filtro do que aparece pintado no mapa, então
-// não precisa mais de uma seção "Mostrar no mapa" separada e repetida.
 // "Por aspecto avaliado" — uma barra + legenda por aspecto (Pavimento,
 // Vegetação, Drenagem, Sinalização H/V, Plataforma, Drenagem Superficial),
 // em vez de uma barra só com a média do Resultado Geral (pedido da usuária:
 // "deixa específico de cada um" / "faça pra cada região tbm"). Só
-// leitura — sem checkbox de filtro, já que o mapa continua sempre pelo
-// Resultado Geral (a barra/legenda COM checkbox que filtra o mapa da região
-// é outra, ver montarLegendaFiltroRegiao). ICM fica de fora da lista (é o
-// que já aparece na barra do Resultado Geral / "Comparativo por região",
-// com o mesmo espírito). `alvoId` deixa a mesma função servir tanto
-// #aspectos-geral ("Todas") quanto #aspectos-regiao (região específica,
-// já recortado pelo funil Tipo/Trecho/S.R.E. — ver atualizarResumoRegiao()).
+// leitura — sem checkbox de filtro; a barra/legenda do Resultado Geral com
+// checkbox (que filtrava o mapa) foi removida de vez em 2026-09-03 ("TIRA
+// POR REGIÃO ISSO" — a usuária já tinha pedido só desligado por padrão
+// antes, mas continuava vendo por causa da própria preferência salva no
+// navegador dela; a solução definitiva foi tirar a seção do código, não só
+// mudar o padrão). O mapa continua sempre colorido pelo Resultado Geral,
+// sem filtro por checkbox nenhum, em nenhuma das duas visões. ICM fica de
+// fora da lista de "Por aspecto avaliado" (é o que já aparece no
+// "Comparativo por região", com o mesmo espírito). `alvoId` deixa a mesma
+// função servir tanto #aspectos-geral ("Todas") quanto #aspectos-regiao
+// (região específica, já recortado pelo funil Tipo/Trecho/S.R.E. — ver
+// atualizarResumoRegiao()).
 function montarAspectosPorGrupo(feats, alvoId){
   var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm'; });
   document.getElementById(alvoId).innerHTML = aspectos.map(function(g){

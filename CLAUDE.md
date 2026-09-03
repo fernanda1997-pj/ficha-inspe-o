@@ -383,15 +383,16 @@ inteira com um menu de controle — escolheu a segunda.
   etc.) não precisaram mudar nada — continuam escrevendo normalmente,
   escondido ou não.
 
-**`resultadoGeral` virou padrão DESLIGADO (2026-09-03, minutos depois):** a
-usuária mandou o MESMO print de novo (a barra/legenda do Resultado Geral
-dentro de uma região) só que agora "PODE TIRAR ISSO" em caixa alta — não
-queria só a opção de desligar, queria que já viesse desligado (ela pode
-religar em "O que mostrar" se quiser; o controle continua existindo, só o
-padrão mudou). `localStorage` é por navegador/aparelho — então mudar o
-padrão em código é o que garante que ISSO comece escondido em qualquer
-lugar que ela abra o site, não só onde ela já tinha desmarcado manualmente
-antes.
+**`resultadoGeral` virou padrão DESLIGADO (2026-09-03, minutos depois) —
+SUPERADO, ver "removida de vez" mais abaixo:** a usuária mandou o MESMO
+print de novo (a barra/legenda do Resultado Geral dentro de uma região) só
+que agora "PODE TIRAR ISSO" em caixa alta — não queria só a opção de
+desligar, queria que já viesse desligado (o controle continuava existindo,
+só o padrão mudou). Não resolveu de vez: quem já tinha aberto o site antes
+(mesmo sem nunca ter mexido no checkbox) podia ter `resultadoGeral: true`
+salvo no `localStorage` de uma sessão anterior, e isso pesa mais que o
+padrão do código — ela continuou vendo a seção e voltou a pedir, ver
+abaixo.
 
 **Bug real: "Sem Informação" inflado por trecho do tipo de via ERRADO
 (2026-09-03, ainda o mesmo dia):** a usuária estranhou "Por aspecto
@@ -419,6 +420,39 @@ pavimentada), e a tabela "Comparativo por região" (que já usava
 nela. `classeDoAspecto()` (usada só quando `aspectoAtual` != `'icm'`, hoje
 sempre `'icm'` — ver histórico do seletor removido) NÃO foi alterada, seria
 o mesmo ajuste se algum dia o mapa voltar a colorir por aspecto específico.
+
+**Resultado Geral da região removida DE VEZ, não só desligada (2026-09-03,
+mais tarde ainda):** terceira vez que a usuária mandou o mesmo print —
+"TIRA POR REGIÃO ISSO". Como desligar por padrão (entrada acima) não
+resolveu por causa do `localStorage` de sessões antigas com `resultadoGeral:
+true` salvo, a solução definitiva foi tirar a seção do CÓDIGO, não só mudar
+uma preferência que pode ter sido salva com o valor errado antes:
+
+- **HTML removido:** `#resultado-regiao-wrap` (a `.barra-wrap-central` +
+  `.legenda-filtro` da região) e a linha `chk-resultado-geral` do popover
+  "O que mostrar" — a chave `resultadoGeral` saiu de `WRAPPERS_SECAO` e do
+  `padrao` de `carregarPreferenciasSecoes()`. Se alguém ainda tiver
+  `resultadoGeral` salvo no `localStorage` de antes, a chave só fica lá
+  sem efeito nenhum (nada mais lê ela) — inofensivo, não precisa migração.
+- **JS removido (ficou órfão):** `atualizarDonutRegiao`,
+  `montarLegendaFiltroRegiao`, `montarBarra` (só existia pra essas duas
+  barras, geral E região — as duas já tinham saído, então virou 100% morto),
+  `ativosAspectoRegiao`. `redesenharMapa()` perdeu o filtro por
+  `ativosAspectoRegiao[classe] === false` — o mapa da região sempre mostra
+  tudo agora, sem checkbox nenhum pra esconder classe (só o filtro por Tipo
+  de via continua, esse é outro mecanismo). `atualizarResumoRegiao()` não
+  chama mais nenhuma das duas funções removidas, só
+  `montarAspectosPorGrupo`.
+- **CSS removido:** `.barra-wrap-central`/`.barra-total`/`.barra-empilhada`/
+  `.legenda-filtro` (e descendentes) — não sobrou nenhum elemento que use
+  essas classes em lugar nenhum do site.
+- **Lição pra próxima vez que uma preferência "por padrão desligada" não
+  bastar:** mudar o padrão de código só ajuda quem NUNCA salvou nada; quem
+  já tinha uma versão anterior rodando (ou testou o checkbox) carrega o
+  valor salvo pra sempre, já que não há expiração/versão no
+  `rta_fichas_secoes_visiveis`. Se a peça é pra sumir de vez (não é
+  realmente uma preferência que faz sentido religar), tirar do código é
+  mais confiável que mexer no padrão.
 
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
