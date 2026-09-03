@@ -298,9 +298,47 @@ pelo Resultado Geral, como era antes de 2026-09-02.
   fixa `'icm'`, nunca mais muda. O detalhe por aspecto (Pavimento/Vegetação/
   Drenagem/Sinalização/Plataforma/Drenagem Superficial) continua 100%
   disponível no popup do trecho e na tabela do funil — só parou de ser
-  como o MAPA é colorido. **Não recriar a grade de cards sem pedido
-  explícito** — foi construída, testada, publicada e removida no mesmo dia;
-  a usuária quer menos controle nessa área, não mais.
+  como o MAPA é colorido. **Não recriar a grade de cards (clicável, muda o
+  mapa) sem pedido explícito** — foi construída, testada, publicada e
+  removida no mesmo dia; a usuária quer menos CONTROLE nessa área, não
+  menos DADO — ver entrada seguinte, que é sobre dado, não controle.
+
+**"Por aspecto avaliado" — Resultado Geral saiu do dashboard, virou lista por
+aspecto (2026-09-03, ainda o mesmo dia):** pouco depois de pedir a remoção da
+grade de cards, a usuária pediu o oposto na direção do DADO (não do
+controle): "invés de coloca dados do resultado geral, deixa especifico de
+cada um: vegetação, condição etc" — confirmou que era tanto no card grande
+quanto na tabela "Comparativo por região". Ou seja: ela não queria a grade de
+cards CLICÁVEL que mudava a cor do mapa (isso continua fora — mapa sempre
+Resultado Geral), mas queria sim ver o dado de cada aspecto separado, só que
+como LEITURA, não como controle.
+
+- **Card "Resultado geral" → `montarAspectosGeral(feats)`:** troca a barra
+  única (Bom/Regular/Ruim/Péssimo/Sem Informação) por uma `.aspecto-linha`
+  pra cada um dos 7 aspectos reais (`GRUPOS` sem o `icm`) — ícone, km total,
+  barra + legenda própria (níveis de severidade daquele aspecto, via
+  `somaPorAspecto`). Sem checkbox, sem clique — só consulta. `ICONE_ASPECTO`
+  voltou a existir só pra isso (tinha sido removido junto com a grade).
+- **Tabela "Comparativo por região" → colunas viraram aspectos:** era
+  Região × classe do Resultado Geral; virou Região × aspecto, célula = % na
+  MELHOR classe daquele aspecto naquela região (`ordemClasses[0]` que não é
+  `'sem_info'` — vem ordenado 0→pior, então a primeira é sempre a melhor).
+  Cor da célula sempre verde (`corHeatmap('#0ca30c', pct)`) — diferente de
+  antes (cor por classe), porque agora É sempre "quanto maior, melhor"
+  (% em boa condição), não faz sentido variar o matiz por coluna. Nomes de
+  coluna abreviados (`NOME_CURTO_ASPECTO` — "Sinal. H", "Dren. Superf."...)
+  porque 7 colunas + região não cabem nos 460px do painel; `#comparativo-regioes{overflow-x:auto}`
+  deixa rolar na horizontal em vez de espremer o texto.
+- **O que NÃO mudou:** o mapa da Visão Geral ("Todas") continua sempre
+  Resultado Geral — isso é sobre os CARDS/TABELA, não o mapa (a grade de
+  cards que trocava a cor do mapa continua removida, ver entrada anterior).
+  A aba de região específica (barra/legenda/checkbox do Resultado Geral em
+  `#regiao-barra`/`#regiao-legenda`) também não mudou — só a "Todas".
+- **Ficou órfão e foi removido junto:** `montarLegendaFiltroIcm`,
+  `atualizarDonutGeralFiltrado`, `ativosAspectoGeral`, `geralSomaPorClasse`/
+  `geralTotal`/`geralOrdemClasses` — eram só pro checkbox-filtro da barra
+  única que não existe mais. `redesenharMapaGeral` simplificou (sempre
+  desenha todas as features recebidas, sem filtrar por classe marcada).
 
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
@@ -327,14 +365,15 @@ Aparece em 3 lugares:
 - **Mapa inteiro** (Todas ou qualquer região): sempre colorido por `icm` — o
   seletor "Colorir mapa por" que trocava isso existiu por um dia (2026-09-02/03)
   e foi removido a pedido da usuária, ver seção acima.
-- **Barra + legenda com checkbox**: numa região específica (escopo = o que
-  estiver selecionado no funil Tipo/Trecho/S.R.E., ou a região inteira se nada
-  escolhido — `atualizarResumoRegiao()`) e em "Todas" (escopo = tudo que já foi
-  convertido — carrega os `insp_*.js` que faltarem via `carregarTodosOsDados()`).
-  A legenda
-  **dobra de filtro do mapa** — desmarcar uma classe some com ela do gráfico e do
-  mapa ao mesmo tempo (`ativosAspectoRegiao`/`ativosAspectoGeral`); não existe mais
-  uma seção separada de "Mostrar no mapa", foi unificada com a legenda (2026-08-26).
+- **Barra + legenda com checkbox**: só numa região específica agora
+  (`#regiao-barra`/`#regiao-legenda`, escopo = o que estiver selecionado no
+  funil Tipo/Trecho/S.R.E., ou a região inteira se nada escolhido —
+  `atualizarResumoRegiao()`). A legenda **dobra de filtro do mapa** —
+  desmarcar uma classe some com ela do gráfico e do mapa ao mesmo tempo
+  (`ativosAspectoRegiao`). Em "Todas" isso não existe mais desde
+  2026-09-03 — virou a lista "Por aspecto avaliado" (sem checkbox, sem
+  filtro de mapa, ver seção acima); quem quer filtrar o mapa por classe do
+  Resultado Geral abre uma região.
 - Clicar em qualquer trecho abre um popup com "Resultado geral" em destaque + o
   detalhe dos grupos que existem naquele segmento + tag "Pavimentada"/"Não
   pavimentada".

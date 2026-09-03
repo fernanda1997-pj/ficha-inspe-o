@@ -77,6 +77,24 @@
   .legenda-filtro .nome{flex:1; color:var(--p-texto);}
   .legenda-filtro .valor{color:var(--p-texto-2); font-size:11.5px; font-variant-numeric:tabular-nums;}
 
+  /* "Por aspecto avaliado" (2026-09-03) — pedido da usuária: em vez de um
+     Resultado Geral só, uma barra por aspecto (Pavimento, Vegetação,
+     Drenagem...). Só leitura, sem checkbox — o mapa da "Todas" continua
+     sempre pelo Resultado Geral; quem quer filtrar o mapa abre uma região.
+     Ver montarAspectosGeral(). */
+  .aspecto-linha{
+    background:var(--p-bg-2); border:1px solid var(--p-borda); border-radius:10px;
+    padding:10px 12px; margin-bottom:8px;
+  }
+  .aspecto-linha .topo{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .aspecto-linha .nome{font-size:12.5px; font-weight:700; color:var(--p-texto); display:flex; align-items:center; gap:6px;}
+  .aspecto-linha .icone{font-size:14px; line-height:1;}
+  .aspecto-linha .total{font-size:11px; color:var(--p-texto-2); font-variant-numeric:tabular-nums; flex:none;}
+  .aspecto-linha .barra{display:flex; gap:2px; height:14px; border-radius:4px; overflow:hidden; background:var(--p-trilha);}
+  .aspecto-linha .barra span{height:100%;}
+  .aspecto-linha .legenda{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:10.5px; color:var(--p-texto-2);}
+  .aspecto-linha .legenda .chip{width:7px; height:7px; border-radius:2px; display:inline-block; margin-right:5px;}
+
   label.rotulo{display:block; font-size:12px; font-weight:600; color:var(--p-texto-2); margin:10px 0 4px;}
   label.rotulo:first-child{margin-top:0;}
   select{
@@ -224,11 +242,14 @@
 
   /* ---------- Comparativo por região — tabela "heatmap" ---------- */
   /* Era uma lista de cartões com barrinha; virou tabela com célula colorida
-     por intensidade (mesma ideia da referência de dashboard escuro), célula
-     na cor de status da própria classe (verde/amarelo/laranja/vermelho) com
-     opacidade proporcional ao %, não uma escala neutra — mantém a mesma
-     linguagem de cor do resto do site. Ver montarComparativoRegioes(). */
-  .tabela-heatmap{width:100%; border-collapse:separate; border-spacing:0 4px; font-size:11.5px;}
+     por intensidade (mesma ideia da referência de dashboard escuro). Colunas
+     viraram os aspectos (2026-09-03, "deixa específico de cada um" — antes
+     eram as classes do Resultado Geral) — célula = % na melhor classe daquele
+     aspecto naquela região, verde mais forte = melhor. Ver
+     montarComparativoRegioes(). 7 colunas + região não cabe nos 460px do
+     painel — rola na horizontal (overflow-x) em vez de espremer o texto. */
+  #comparativo-regioes{overflow-x:auto;}
+  .tabela-heatmap{width:100%; border-collapse:separate; border-spacing:0 4px; font-size:11.5px; white-space:nowrap;}
   .tabela-heatmap th{
     text-align:center; color:var(--p-texto-2); font-weight:600; padding:2px 5px 6px;
     font-size:10px; text-transform:uppercase; letter-spacing:.03em;
@@ -353,20 +374,19 @@
         <div class="kpi-mini"><b id="geral-pct-pav">—</b><span>pavimentada</span></div>
       </div>
 
-      <label class="rotulo" id="geral-titulo-aspecto" style="margin-top:16px;">Resultado geral</label>
-      <div class="barra-wrap-central">
-        <div id="geral-barra"></div>
-      </div>
-      <div class="legenda-filtro" id="geral-legenda"></div>
+      <label class="rotulo" style="margin-top:16px;">Por aspecto avaliado</label>
+      <div id="aspectos-geral"></div>
 
       <hr class="separador">
 
-      <label class="rotulo">Comparativo por região (km por classe)</label>
+      <label class="rotulo">Comparativo por região (% na melhor classe)</label>
       <div id="comparativo-regioes"></div>
 
       <div class="dica">
-        Soma de todas as regiões e competências já convertidas. O gráfico mostra o
-        total sempre; desmarque uma classe na legenda acima pra tirá-la do mapa.
+        Soma de todas as regiões e competências já convertidas. O mapa mostra
+        sempre o Resultado Geral — o detalhe por aspecto aqui é só pra
+        consulta; pra ver no mapa, abra uma região e use o funil ou clique
+        direto no trecho.
       </div>
     </div>
   </div>
@@ -1077,11 +1097,7 @@ function redesenharMapa(){
 // Pílula "Todas" — soma tudo que já foi convertido (todas as regiões e
 // competências), independente de qual região específica esteja aberta.
 // ---------------------------------------------------------------------
-var ativosAspectoGeral = {};
 var camadaGeral = null;
-// Guarda a última soma/total calculados pra Visão Geral, pra poder redesenhar
-// só o donut (sem recalcular tudo) quando o usuário (des)marca uma classe.
-var geralSomaPorClasse = null, geralTotal = 0, geralOrdemClasses = null;
 
 
 // Carrega (uma vez só) todos os dados/insp_*.js listados no manifest, mesmo
@@ -1165,15 +1181,23 @@ function somaPorAspecto(feats, grupoId){
   return {somaPorClasse: somaPorClasse, total: total, ordemClasses: ordemClasses};
 }
 
-// Mapa e resumo sempre coloridos pelo Resultado Geral (I.C.M.) — teve um
-// seletor "Colorir mapa por" (grade de cards por aspecto) entre 2026-09-02 e
+// Mapa sempre colorido pelo Resultado Geral (I.C.M.) — teve um seletor
+// "Colorir mapa por" (grade de cards por aspecto) entre 2026-09-02 e
 // 2026-09-03, removido a pedido da usuária junto com a reforma do cabeçalho
-// por região (queria menos coisa, não mais). O detalhe por aspecto continua
-// disponível no popup do trecho e na tabela do funil (GRUPOS, mais abaixo) —
-// só saiu do CONTROLE DE COR do mapa. `estiloDoSegmento`/`classeDoAspecto`/
+// por região (queria menos coisa, não mais, no MAPA). O detalhe por aspecto
+// continua em 3 lugares: popup do trecho, tabela do funil, e a lista "Por
+// aspecto avaliado" da Visão Geral (montarAspectosGeral, mais abaixo) — só
+// saiu do CONTROLE DE COR do mapa. `estiloDoSegmento`/`classeDoAspecto`/
 // `somaPorAspecto` continuam genéricos (aceitam qualquer grupoId) por baixo
-// do capô; não recriar a grade de novo sem pedido explícito.
+// do capô; não recriar a grade de cards (clicável, muda o mapa) sem pedido
+// explícito — mas listas/tabelas só de leitura como as duas acima já
+// respondem ao pedido de "mostrar específico de cada aspecto".
 var aspectoAtual = 'icm';
+
+var ICONE_ASPECTO = {
+  pavimento: '🛣️', vegetacao: '🌿', drenagem: '🌊', sinalizacao_horizontal: '🎨',
+  sinalizacao_vertical: '🪧', plataforma: '🪨', drenagem_superficial: '💧',
+};
 
 // Filtro por região da Visão Geral (pílulas no topo — ver CSS
 // .pills-regiao). '' = Todas. Só existe nessa aba: "Por Região" já tem seu
@@ -1238,20 +1262,13 @@ function montarPillsRegiao(){
 
 function desenharVisaoGeral(){
   var todas = featuresDaVisaoGeral();
-  var r = somaPorAspecto(todas, aspectoAtual);
-  geralSomaPorClasse = r.somaPorClasse;
-  geralTotal = r.total;
-  geralOrdemClasses = r.ordemClasses;
 
   montarPillsRegiao();
 
   document.getElementById('geral-total').textContent =
-    r.total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
-  var grupoAtual = GRUPOS.find(function(g){ return g.id === aspectoAtual; });
-  document.getElementById('geral-titulo-aspecto').textContent = grupoAtual ? grupoAtual.nome : 'Resultado geral';
+    somaIcmDe(todas).total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
 
-  atualizarDonutGeralFiltrado();
-  montarLegendaFiltroIcm(r.somaPorClasse, r.total, r.ordemClasses);
+  montarAspectosGeral(todas);
   desenharTodasAsRegioes();
   redesenharMapaGeral(todas);
 
@@ -1294,30 +1311,37 @@ function corHeatmap(hex, pct){
 // própria cor de status na intensidade do %. Antes era um cartão com
 // barrinha por região; a tabela deixa comparar a MESMA classe entre regiões
 // de relance (em vez de comparar barras inteiras lado a lado).
-function montarComparativoRegioes(todas){
-  var porRegiao = {};
-  todas.forEach(function(f){
-    var p = f.properties;
-    var r = porRegiao[p.regiao] || (porRegiao[p.regiao] = {});
-    CLASSES_ICM.forEach(function(c){ if(r[c] === undefined) r[c] = 0; });
-    var classe = (p.icm && p.icm.classe) || 'Sem Informação';
-    r[classe] += (p.km_fim - p.km_ini);
-  });
+// Rótulo curto pro cabeçalho da tabela — os nomes completos de GRUPOS
+// ("Sinalização Horizontal"...) não cabem em 7 colunas espremidas.
+var NOME_CURTO_ASPECTO = {
+  pavimento: 'Pavimento', vegetacao: 'Vegetação', drenagem: 'Drenagem',
+  sinalizacao_horizontal: 'Sinal. H', sinalizacao_vertical: 'Sinal. V',
+  plataforma: 'Plataforma', drenagem_superficial: 'Dren. Superf.',
+};
 
-  var regioes = Object.keys(porRegiao).sort(function(a, b){
+function montarComparativoRegioes(todas){
+  var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm'; });
+  var regioesVistas = {};
+  todas.forEach(function(f){ regioesVistas[f.properties.regiao] = true; });
+  var regioes = Object.keys(regioesVistas).sort(function(a, b){
     return parseInt(a.replace(/^R/i, ''), 10) - parseInt(b.replace(/^R/i, ''), 10);
   });
   if(regioes.length === 0){
     document.getElementById('comparativo-regioes').innerHTML = '<div class="vazio">Nenhum dado ainda.</div>';
     return;
   }
-  var cabecalho = '<tr><th>Região</th>' + CLASSES_ICM.map(function(c){ return '<th>'+c+'</th>'; }).join('') + '</tr>';
+  var cabecalho = '<tr><th>Região</th>' +
+    aspectos.map(function(g){ return '<th>'+(NOME_CURTO_ASPECTO[g.id]||g.nome)+'</th>'; }).join('') + '</tr>';
   var linhas = regioes.map(function(regiao){
-    var porClasse = porRegiao[regiao];
-    var total = CLASSES_ICM.reduce(function(s, c){ return s + porClasse[c]; }, 0);
-    var celulas = CLASSES_ICM.map(function(c){
-      var pct = total > 0 ? (100 * porClasse[c] / total) : 0;
-      return '<td style="background:'+corHeatmap(CORES_ICM[c], pct)+'" title="'+c+': '+porClasse[c].toLocaleString('pt-BR', {maximumFractionDigits:1})+' km">'+Math.round(pct)+'%</td>';
+    var featsRegiao = todas.filter(function(f){ return f.properties.regiao === regiao; });
+    var celulas = aspectos.map(function(g){
+      var r = somaPorAspecto(featsRegiao, g.id);
+      // Primeira classe que não é "sem_info" é sempre a melhor (ordemClasses
+      // vem ordenada 0→pior, ver somaPorAspecto) — % dela = % em boa condição.
+      var melhor = r.ordemClasses.find(function(cl){ return cl.chave !== 'sem_info'; });
+      var pct = (melhor && r.total > 0) ? (100 * (r.somaPorClasse[melhor.chave]||0) / r.total) : 0;
+      var titulo = melhor ? (g.nome+' — '+melhor.nome+': '+Math.round(pct)+'%') : (g.nome+' — sem dado');
+      return '<td style="background:'+corHeatmap('#0ca30c', pct)+'" title="'+titulo+'">'+Math.round(pct)+'%</td>';
     }).join('');
     return '<tr data-regiao="'+regiao+'"><td>'+nomeRegiao(regiao)+'</td>'+celulas+'</tr>';
   }).join('');
@@ -1351,41 +1375,40 @@ function montarBarra(somaPorClasse, total, idAlvo, ordemClasses){
 // Legenda da Visão Geral: mesma info de "Resultado geral" (chip, nome, km e %)
 // mas com checkbox — dobra como filtro do que aparece pintado no mapa, então
 // não precisa mais de uma seção "Mostrar no mapa" separada e repetida.
-function montarLegendaFiltroIcm(somaPorClasse, total, ordemClasses){
-  document.getElementById('geral-legenda').innerHTML = ordemClasses.map(function(cl){
-    var pct = total > 0 ? (100 * (somaPorClasse[cl.chave]||0) / total) : 0;
-    return '<label class="linha">' +
-      '<input type="checkbox" data-filtro-icm="'+cl.chave+'" '+(ativosAspectoGeral[cl.chave]!==false?'checked':'')+'>' +
-      '<span class="chip" style="background:'+cl.cor+'"></span>' +
-      '<span class="nome">'+cl.nome+'</span>' +
-      '<span class="valor">'+(somaPorClasse[cl.chave]||0).toLocaleString('pt-BR', {maximumFractionDigits:1})+' km · '+pct.toFixed(0)+'%</span>' +
-    '</label>';
+// "Por aspecto avaliado" — uma barra + legenda por aspecto (Pavimento,
+// Vegetação, Drenagem, Sinalização H/V, Plataforma, Drenagem Superficial),
+// em vez de uma barra só com a média do Resultado Geral (pedido da usuária:
+// "deixa específico de cada um"). Só leitura — sem checkbox de filtro, já
+// que o mapa da "Todas" sempre mostra o Resultado Geral mesmo (quem quer
+// filtrar o mapa por classe abre uma região específica, que continua com
+// esse filtro). ICM fica de fora da lista (é o que virou "Comparativo por
+// região" logo abaixo, com o mesmo espírito).
+function montarAspectosGeral(feats){
+  var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm'; });
+  document.getElementById('aspectos-geral').innerHTML = aspectos.map(function(g){
+    var r = somaPorAspecto(feats, g.id);
+    var partes = r.ordemClasses.map(function(cl){
+      var pct = r.total > 0 ? (100 * (r.somaPorClasse[cl.chave]||0) / r.total) : 0;
+      return {cl: cl, pct: pct};
+    }).filter(function(p){ return p.pct > 0; });
+    var barra = partes.map(function(p){ return '<span style="width:'+p.pct+'%; background:'+p.cl.cor+'"></span>'; }).join('');
+    var legenda = partes.map(function(p){
+      return '<span><span class="chip" style="background:'+p.cl.cor+'"></span>'+p.cl.nome+' · '+Math.round(p.pct)+'%</span>';
+    }).join('');
+    return '<div class="aspecto-linha">' +
+      '<div class="topo">' +
+        '<span class="nome">'+(ICONE_ASPECTO[g.id]||'')+' '+g.nome+'</span>' +
+        '<span class="total">'+Math.round(r.total).toLocaleString('pt-BR')+' km</span>' +
+      '</div>' +
+      '<div class="barra">'+barra+'</div>' +
+      '<div class="legenda">'+legenda+'</div>' +
+    '</div>';
   }).join('');
-  document.querySelectorAll('[data-filtro-icm]').forEach(function(el){
-    el.addEventListener('change', function(){
-      ativosAspectoGeral[el.getAttribute('data-filtro-icm')] = el.checked;
-      redesenharMapaGeral(todasAsFeatures());
-      atualizarDonutGeralFiltrado();
-    });
-  });
-}
-
-// Redesenha só o donut da Visão Geral considerando as classes/níveis
-// (des)marcados — a fatia desmarcada some do gráfico, igual já sumia do mapa.
-function atualizarDonutGeralFiltrado(){
-  if(!geralSomaPorClasse) return;
-  var somaFiltrada = {};
-  geralOrdemClasses.forEach(function(cl){ somaFiltrada[cl.chave] = ativosAspectoGeral[cl.chave] !== false ? (geralSomaPorClasse[cl.chave]||0) : 0; });
-  var totalFiltrado = geralOrdemClasses.reduce(function(s, cl){ return s + somaFiltrada[cl.chave]; }, 0);
-  montarBarra(somaFiltrada, totalFiltrado, 'geral-barra', geralOrdemClasses);
 }
 
 function redesenharMapaGeral(todas){
   if(camadaGeral){ map.removeLayer(camadaGeral); camadaGeral = null; }
-  var feats = todas.filter(function(f){
-    var classe = classeDoAspecto(f.properties, aspectoAtual);
-    return ativosAspectoGeral[classe] !== false;
-  });
+  var feats = todas;
   if(feats.length === 0) return;
   camadaGeral = L.geoJSON({type:'FeatureCollection', features:feats}, {
     style: function(feat){ return estiloDoSegmento(feat.properties, aspectoAtual, 4); },
