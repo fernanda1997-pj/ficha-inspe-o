@@ -45,7 +45,17 @@
      embaixo em largura cheia — linhas enxutas, sem cartão/borda, só um traço
      fino separando cada uma. Na Visão Geral cada linha também tem checkbox
      e dobra de filtro do mapa; em Por Região é só leitura. */
-  .donut-wrap-central{display:flex; justify-content:center; margin-top:6px;}
+  /* Barra horizontal 100% empilhada — substitui o donut/pizza antigo (ver
+     montarBarra()): comparar comprimento numa reta é mais rápido que comparar
+     arco de fatia, principal motivo da troca. */
+  .barra-wrap-central{margin-top:6px;}
+  .barra-total{font-size:22px; font-weight:800; color:var(--azul); line-height:1;}
+  .barra-total span{font-size:11px; font-weight:600; color:var(--cinza); margin-left:5px;}
+  .barra-empilhada{
+    display:flex; gap:2px; height:22px; margin-top:8px;
+    border-radius:4px; overflow:hidden; background:var(--fundo);
+  }
+  .barra-empilhada span{height:100%;}
   .legenda-filtro{margin-top:8px;}
   .legenda-filtro .linha{
     display:flex; align-items:center; gap:8px; padding:7px 2px;
@@ -268,8 +278,8 @@
         <div><b id="resumo-n">—</b>segmentos</div>
       </div>
 
-      <div class="donut-wrap-central" style="margin-top:8px;">
-        <div id="regiao-donut"></div>
+      <div class="barra-wrap-central" style="margin-top:8px;">
+        <div id="regiao-barra"></div>
       </div>
       <div class="legenda-filtro" id="regiao-legenda"></div>
 
@@ -302,8 +312,8 @@
       </div>
 
       <label class="rotulo" id="geral-titulo-aspecto" style="margin-top:16px;">Resultado geral</label>
-      <div class="donut-wrap-central">
-        <div id="geral-donut"></div>
+      <div class="barra-wrap-central">
+        <div id="geral-barra"></div>
       </div>
       <div class="legenda-filtro" id="geral-legenda"></div>
 
@@ -692,7 +702,7 @@ function atualizarDonutRegiao(somaPorClasse, total, ordemClasses){
   var somaFiltrada = {};
   ordemClasses.forEach(function(cl){ somaFiltrada[cl.chave] = ativosAspectoRegiao[cl.chave] !== false ? (somaPorClasse[cl.chave]||0) : 0; });
   var totalFiltrado = ordemClasses.reduce(function(s, cl){ return s + somaFiltrada[cl.chave]; }, 0);
-  montarDonut(somaFiltrada, totalFiltrado, 'regiao-donut', ordemClasses);
+  montarBarra(somaFiltrada, totalFiltrado, 'regiao-barra', ordemClasses);
 }
 
 // Legenda de "Por Região" com checkbox — mesmo padrão da Visão Geral: dobra
@@ -1235,25 +1245,23 @@ function montarComparativoRegioes(todas){
   });
 }
 
-function montarDonut(somaPorClasse, total, idSvg, ordemClasses){
-  var cx = 60, cy = 60, r = 46, largura = 20;
-  var circ = 2 * Math.PI * r;
-  var acumulado = 0;
-  var partes = ordemClasses.map(function(cl){
-    var frac = total > 0 ? (somaPorClasse[cl.chave]||0) / total : 0;
-    var comprimento = frac * circ;
-    var trecho = '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+cl.cor+
-      '" stroke-width="'+largura+'" stroke-dasharray="'+comprimento+' '+(circ - comprimento)+
-      '" stroke-dashoffset="'+(-acumulado)+'" transform="rotate(-90 '+cx+' '+cy+')"></circle>';
-    acumulado += comprimento;
-    return trecho;
+// Barra horizontal 100% empilhada — era um donut/pizza antes (2026-09-03,
+// pedido da usuária pra trocar por um gráfico melhor). Pra proporção
+// parte-do-todo com várias classes ordenadas (Bom→Péssimo, ou os níveis de um
+// aspecto), comparar COMPRIMENTO numa reta é bem mais rápido pro olho do que
+// comparar ÂNGULO de fatia — mesma razão pela qual "Comparativo por região"
+// logo abaixo já usava barra em vez de vários donuts lado a lado.
+function montarBarra(somaPorClasse, total, idAlvo, ordemClasses){
+  var segmentos = ordemClasses.map(function(cl){
+    var km = somaPorClasse[cl.chave] || 0;
+    var pct = total > 0 ? (100 * km / total) : 0;
+    if(pct <= 0) return ''; // classe zerada não vira um traço invisível na barra
+    return '<span style="width:'+pct+'%; background:'+cl.cor+'" title="'+cl.nome+': '+
+      km.toLocaleString('pt-BR', {maximumFractionDigits:1})+' km ('+pct.toFixed(0)+'%)"></span>';
   }).join('');
-  document.getElementById(idSvg).innerHTML =
-    '<svg viewBox="0 0 120 120" width="120" height="120">' + partes +
-    '<text x="60" y="57" text-anchor="middle" font-size="9" fill="#64748B">total</text>' +
-    '<text x="60" y="71" text-anchor="middle" font-size="12" font-weight="700" fill="#1E3A72">' +
-      Math.round(total).toLocaleString('pt-BR') + '</text>' +
-    '</svg>';
+  document.getElementById(idAlvo).innerHTML =
+    '<div class="barra-total">'+Math.round(total).toLocaleString('pt-BR')+' km<span>total</span></div>' +
+    '<div class="barra-empilhada">'+segmentos+'</div>';
 }
 
 // Legenda da Visão Geral: mesma info de "Resultado geral" (chip, nome, km e %)
@@ -1285,7 +1293,7 @@ function atualizarDonutGeralFiltrado(){
   var somaFiltrada = {};
   geralOrdemClasses.forEach(function(cl){ somaFiltrada[cl.chave] = ativosAspectoGeral[cl.chave] !== false ? (geralSomaPorClasse[cl.chave]||0) : 0; });
   var totalFiltrado = geralOrdemClasses.reduce(function(s, cl){ return s + somaFiltrada[cl.chave]; }, 0);
-  montarDonut(somaFiltrada, totalFiltrado, 'geral-donut', geralOrdemClasses);
+  montarBarra(somaFiltrada, totalFiltrado, 'geral-barra', geralOrdemClasses);
 }
 
 function redesenharMapaGeral(todas){

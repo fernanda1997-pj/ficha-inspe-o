@@ -134,11 +134,22 @@ aspecto não têm relação com os de outro) e redesenha Visão Geral + Por Regi
 generalização do que antes só existia pro I.C.M.: `classeDoAspecto(props, grupoId)` /
 `somaPorAspecto(feats, grupoId)` (paralelo a `somaIcmDe`, mas descobre os níveis a
 partir dos dados de verdade em vez de uma lista fixa tipo `CLASSES_ICM`) e
-`ordemClasses` (`[{chave,nome,cor}]`) como formato comum que alimenta donut, legenda
-e filtro tanto pro I.C.M. quanto pra qualquer aspecto. Trecho que não tem aquele
-aspecto (ex.: `vegetacao` numa via não pavimentada) cai em `'sem_info'`, cinza
+`ordemClasses` (`[{chave,nome,cor}]`) como formato comum que alimenta a barra,
+legenda e filtro tanto pro I.C.M. quanto pra qualquer aspecto. Trecho que não tem
+aquele aspecto (ex.: `vegetacao` numa via não pavimentada) cai em `'sem_info'`, cinza
 `#94A3B8`. `montarComparativoRegioes` (a barra "Comparativo por região" na Visão
 Geral) ficou de propósito só no Resultado Geral — não segue o seletor.
+
+**Donut → barra empilhada (2026-09-03):** o gráfico de composição (km por
+classe/nível) era um donut/pizza; a usuária pediu um gráfico melhor. Virou
+`montarBarra()` — uma barra horizontal 100% empilhada com o total em destaque acima
+(`.barra-total` + `.barra-empilhada`), a mesma família visual que "Comparativo por
+região" já usava. Motivo: comparar comprimento numa reta é mais rápido de ler que
+comparar ângulo/arco de fatia, principal queixa de clareza da usuária nessa mesma
+conversa. Assinatura da função não mudou (`somaPorClasse, total, idAlvo,
+ordemClasses`), só o nome (era `montarDonut`) e os ids/classes CSS (`geral-barra`/
+`regiao-barra`, antes `geral-donut`/`regiao-donut`; `.barra-wrap-central`, antes
+`.donut-wrap-central`).
 
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
@@ -162,14 +173,15 @@ Cores fixas (paleta de status, não a escala verde→vinho de severidade): Bom
 `#94A3B8` (`CORES_ICM` no `index.html`).
 
 Aparece em 3 lugares:
-- **Mapa das duas abas**: sempre colorido por `icm` (não tem seletor de aspecto).
-- **Donut + legenda com checkbox**: em "Por Região" (escopo = o que estiver
+- **Mapa das duas abas**: colorido por `icm` por padrão, mas troca pra qualquer
+  aspecto pelo seletor "Colorir mapa por" (ver seção acima) — deixou de ser fixo.
+- **Barra + legenda com checkbox**: em "Por Região" (escopo = o que estiver
   selecionado no funil Tipo/Trecho/S.R.E., ou a região inteira se nada escolhido —
   `atualizarResumoRegiao()`) e em "Visão Geral" (escopo = tudo que já foi convertido
   — carrega os `insp_*.js` que faltarem via `carregarTodosOsDados()`). A legenda
   **dobra de filtro do mapa** — desmarcar uma classe some com ela do gráfico e do
-  mapa ao mesmo tempo (`ativosIcmRegiao`/`ativosIcm`); não existe mais uma seção
-  separada de "Mostrar no mapa", foi unificada com a legenda (2026-08-26).
+  mapa ao mesmo tempo (`ativosAspectoRegiao`/`ativosAspectoGeral`); não existe mais
+  uma seção separada de "Mostrar no mapa", foi unificada com a legenda (2026-08-26).
 - Clicar em qualquer trecho abre um popup com "Resultado geral" em destaque + o
   detalhe dos grupos que existem naquele segmento + tag "Pavimentada"/"Não
   pavimentada".
