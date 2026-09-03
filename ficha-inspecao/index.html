@@ -15,7 +15,7 @@
 
   /* ---------- Painel lateral ---------- */
   #painel{
-    width:330px; min-width:330px; background:#fff; border-right:1px solid var(--borda);
+    width:460px; min-width:460px; background:#fff; border-right:1px solid var(--borda);
     display:flex; flex-direction:column; z-index:1100; box-shadow:2px 0 8px rgba(0,0,0,.08);
   }
   #painel header{
@@ -36,40 +36,32 @@
   /* Seletor "Colorir mapa por" — fica fora das duas abas (compartilhado),
      mesma cor de fundo do cabeçalho das linhas de trecho pra destacar que
      é um controle "global" do mapa, não específico de uma aba. Virou uma
-     esteira horizontal de cards (2026-09-03, pedido da usuária: "algo mais
-     dinâmico, bonito") — cada card já mostra o total e a mini-barra daquele
-     aspecto, então dá pra comparar todos de relance antes de escolher qual
-     colore o mapa (o mapa em si continua só com UM aspecto por vez, pra não
-     voltar a ter linhas sobrepostas/confusas — ver histórico acima).*/
-  #aspecto-wrap{padding:10px 14px; background:var(--fundo); border-bottom:1px solid var(--borda); flex:none;}
-  .aspecto-cabeca{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
-  .rotulo-aspecto{font-size:12px; font-weight:600; color:var(--azul);}
-  .dica-scroll{font-size:10px; color:var(--cinza); font-style:italic;}
-  .grade-aspectos{
-    display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; scroll-snap-type:x proximity;
-  }
-  .grade-aspectos::-webkit-scrollbar{height:5px;}
-  .grade-aspectos::-webkit-scrollbar-thumb{background:#cbd5e1; border-radius:3px;}
-  .grade-aspectos::-webkit-scrollbar-track{background:transparent;}
+     grade de cards estilo dashboard (2026-09-03 — a esteira horizontal de
+     scroll que veio antes ficou "horrível" pra usuária; painel alargado de
+     330px pra 460px pra caber 2 colunas sem apertar, em vez de rolar). Cada
+     card já mostra a cobertura e a mini-barra daquele aspecto, então dá pra
+     comparar todos de relance antes de escolher qual colore o mapa (o mapa
+     em si continua só com UM aspecto por vez, sem linhas sobrepostas — ver
+     histórico acima). */
+  #aspecto-wrap{padding:12px 14px; background:var(--fundo); border-bottom:1px solid var(--borda); flex:none;}
+  .aspecto-cabeca{margin-bottom:9px;}
+  .rotulo-aspecto{font-size:12.5px; font-weight:600; color:var(--azul);}
+  .grade-aspectos{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;}
   .card-aspecto{
-    flex:0 0 108px; scroll-snap-align:start; display:flex; flex-direction:column; gap:6px;
-    text-align:left; background:#fff; border:1.5px solid var(--borda); border-radius:10px;
-    padding:8px 9px; cursor:pointer; font-family:inherit;
-    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    display:flex; flex-direction:column; gap:7px; text-align:left; background:#fff;
+    border:1.5px solid var(--borda); border-radius:10px; padding:10px 11px; cursor:pointer;
+    font-family:inherit; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
   }
   .card-aspecto:hover{transform:translateY(-2px); box-shadow:0 5px 12px rgba(30,58,114,.14);}
   .card-aspecto.ativo{
     border-color:var(--azul); box-shadow:0 0 0 3px rgba(30,58,114,.13), 0 5px 12px rgba(30,58,114,.16);
   }
-  .card-aspecto .topo{display:flex; align-items:center; gap:5px;}
-  .card-aspecto .icone{font-size:15px; line-height:1; flex:none;}
-  .card-aspecto .nome{
-    font-size:10.5px; font-weight:700; color:#334155; line-height:1.25;
-    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-  }
-  .card-aspecto .total{font-size:14.5px; font-weight:800; color:var(--azul); font-variant-numeric:tabular-nums;}
-  .card-aspecto .rotulo-total{font-size:9.5px; font-weight:600; color:var(--cinza); margin-left:3px;}
-  .card-aspecto .mini-barra{display:flex; gap:1px; height:6px; border-radius:3px; overflow:hidden; background:var(--borda);}
+  .card-aspecto .topo{display:flex; align-items:center; gap:6px;}
+  .card-aspecto .icone{font-size:16px; line-height:1; flex:none;}
+  .card-aspecto .nome{font-size:11.5px; font-weight:700; color:#334155; line-height:1.25;}
+  .card-aspecto .total{font-size:17px; font-weight:800; color:var(--azul); font-variant-numeric:tabular-nums;}
+  .card-aspecto .rotulo-total{font-size:10.5px; font-weight:600; color:var(--cinza); margin-left:3px;}
+  .card-aspecto .mini-barra{display:flex; gap:2px; height:7px; border-radius:3.5px; overflow:hidden; background:var(--borda);}
   .card-aspecto .mini-barra span{height:100%;}
   .aba-btn{
     flex:1; padding:10px 6px; border:none; background:#fff; color:var(--cinza);
@@ -87,17 +79,26 @@
   /* Barra horizontal 100% empilhada — substitui o donut/pizza antigo (ver
      montarBarra()): comparar comprimento numa reta é mais rápido que comparar
      arco de fatia, principal motivo da troca. */
-  .barra-wrap-central{margin-top:6px;}
-  .barra-total{font-size:22px; font-weight:800; color:var(--azul); line-height:1;}
-  .barra-total span{font-size:11px; font-weight:600; color:var(--cinza); margin-left:5px;}
+  /* Resultado geral / Por Região: a barra e a legenda-filtro formam UM
+     cartão só (mesma borda, sem risco entre as duas), estilo "hero" de
+     dashboard — antes era só solto no painel, sem moldura nenhuma. */
+  .barra-wrap-central{
+    margin-top:6px; background:#fff; border:1px solid var(--borda); border-bottom:none;
+    border-radius:12px 12px 0 0; padding:14px 14px 4px;
+  }
+  .barra-total{font-size:24px; font-weight:800; color:var(--azul); line-height:1;}
+  .barra-total span{font-size:11.5px; font-weight:600; color:var(--cinza); margin-left:5px;}
   .barra-empilhada{
-    display:flex; gap:2px; height:22px; margin-top:8px;
-    border-radius:4px; overflow:hidden; background:var(--fundo);
+    display:flex; gap:2px; height:24px; margin-top:10px;
+    border-radius:5px; overflow:hidden; background:var(--fundo);
   }
   .barra-empilhada span{height:100%;}
-  .legenda-filtro{margin-top:8px;}
+  .legenda-filtro{
+    margin-top:0; background:#fff; border:1px solid var(--borda); border-top:none;
+    border-radius:0 0 12px 12px; padding:2px 14px 6px;
+  }
   .legenda-filtro .linha{
-    display:flex; align-items:center; gap:8px; padding:7px 6px; margin:0 -6px;
+    display:flex; align-items:center; gap:8px; padding:7px 2px;
     border-bottom:1px solid var(--borda); font-size:12.5px; border-radius:6px;
     transition:background .12s ease;
   }
@@ -135,7 +136,7 @@
 
   /* ---------- Gaveta de detalhe do S.R.E. ---------- */
   #drawer{
-    position:absolute; left:330px; right:0; bottom:0; max-height:55%; background:#fff;
+    position:absolute; left:460px; right:0; bottom:0; max-height:55%; background:#fff;
     border-top:1px solid var(--borda); box-shadow:0 -2px 10px rgba(0,0,0,.15);
     z-index:1000; display:none; flex-direction:column;
   }
@@ -223,8 +224,8 @@
 
   /* ---------- Comparativo por região (Visão Geral) ---------- */
   /* ---------- Cartões de KPI (grade), estilo "painel" ---------- */
-  .kpis-grade{display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:4px;}
-  .kpis-grade-4{grid-template-columns:repeat(2, 1fr);}
+  .kpis-grade{display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:4px;}
+  .kpis-grade-4{grid-template-columns:repeat(4, 1fr);}
   .kpi-mini{
     background:var(--fundo); border:1px solid var(--borda); border-radius:8px;
     padding:10px 6px; text-align:center; transition:transform .15s ease, box-shadow .15s ease;
@@ -309,7 +310,6 @@
     <div id="aspecto-wrap">
       <div class="aspecto-cabeca">
         <span class="rotulo-aspecto">Colorir mapa por</span>
-        <span class="dica-scroll">arraste ← →</span>
       </div>
       <div class="grade-aspectos" id="grade-aspectos"></div>
     </div>

@@ -174,8 +174,32 @@ bonito") — cabeçalho com gradiente (`linear-gradient(135deg, --azul, --azul-c
 em vez de cor chapada), hover com leve elevação (`translateY`/`translateX` +
 sombra) nos cards de KPI, `.comp-regiao` e `.card-aspecto`, transição suave nas
 abas/legenda/select, anel de foco azul em select/busca, e scrollbar fina
-customizada no painel e na esteira de cards. Só CSS — nenhuma mudança de dado ou
-comportamento.
+customizada no painel. Só CSS — nenhuma mudança de dado ou comportamento.
+
+**Painel virou "dashboard" — 460px, grade que quebra linha em vez de esteira de
+scroll (2026-09-03, mesmo dia):** a versão acima da grade de cards ("esteira
+horizontal, arraste ← →" dentro do painel de 330px) foi recebida como "horrível".
+Mostrei um mockup mais largo (ferramenta `visualize`, fora do site) com KPIs em
+linha, grade 2 colunas e "Resultado geral" num cartão com borda — a usuária gostou
+do formato e escolheu a opção mais simples de encaixar isso no site de verdade:
+alargar o `#painel` inteiro (não um modal, não uma 3ª aba). Mudanças:
+- `#painel{width:460px}` (era 330px) — só a REGRA DESKTOP; o `@media (max-width:
+  768px)` continua cravando 85%/340px por cima, então o celular não muda em nada.
+  `#drawer{left:...}` teve que acompanhar o mesmo valor (460px), senão a gaveta de
+  detalhe do S.R.E. abre por baixo do painel.
+- `.grade-aspectos`: `display:flex; overflow-x:auto` virou `display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(180px, 1fr))` — quebra em 2
+  colunas (4 linhas pros 8 `GRUPOS`) em vez de rolar; no celular (painel ainda
+  340px) cai sozinho pra 1 coluna, também sem precisar rolar.
+- `.barra-wrap-central` + `.legenda-filtro` (Resultado Geral / Por Região) viraram
+  UM cartão só (borda compartilhada, cantos arredondados só nas pontas de fora) em
+  vez de ficarem soltos no painel — visual "hero" de dashboard, mesma ideia do
+  mockup.
+- `.kpis-grade-4` foi de 2 pra 4 colunas (cabe numa linha só com o painel mais
+  largo).
+Se pedir pra alargar mais ou mudar pra modal/aba cheia depois, o registro de
+alternativas consideradas está na resposta que ofereceu as 3 opções — a usuária
+escolheu explicitamente "alargar o painel" em vez de modal ou 3ª aba.
 
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
