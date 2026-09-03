@@ -123,6 +123,16 @@ lado a lado). A usuária achou confuso mesmo depois de numerar as camadas e expl
 com exemplo — pediu pra tirar (2026-08-04). `turf.js` foi removido do projeto (só
 existia pro offset). Não recriar esse formato de camadas sobrepostas/deslocadas.
 
+**⚠️ Tudo do "Colorir mapa por" abaixo (até a linha do mockup escuro) foi
+REMOVIDO em 2026-09-03** (mesmo dia, mais tarde — "essa parte de 'colori mapa
+por' pode tirar tbm") — `aspectoAtual` virou constante fixa `'icm'`,
+`selecionarAspecto`/`montarGradeAspectos` não existem mais, não tem mais
+select nem grade nenhuma no painel. Ver a entrada "As 2 abas viraram 1
+cabeçalho" mais abaixo pro estado atual. Fica descrito aqui só pra explicar
+POR QUE `classeDoAspecto`/`somaPorAspecto`/`estiloDoSegmento` continuam
+genéricos por baixo do capô (não foram revertidos, só perderam o controle de
+UI) — e pra não recriar isso de novo sem pedido explícito.
+
 **"Colorir mapa por" (2026-09-02, virou grade de cards em 2026-09-03):** a usuária
 reclamou que o Resultado Geral (média de todos os aspectos) escondia detalhe
 importante — "os dados ficavam muito vagos". Criou-se um controle compartilhado
@@ -226,16 +236,16 @@ região do topo; a pergunta em aberto foi só "como encaixar o mapa" — escolhe
   de API key em produção nesse projeto, ver histórico de basemap). Registrado
   como 3º radio em `L.control.layers`, ao lado de Padrão/Satélite; Padrão
   continua OpenStreetMap (bate com mapa-levantamento, isso não mudou).
-- **Filtro por pílulas de região (`.pills-regiao`, só na Visão Geral):**
-  "gostei da parte de cima que separa por região" — pedido novo, não é só CSS.
-  `regiaoFiltroGeral` (`''` = Todas) recorta `todasAsFeatures()` via
-  `featuresDaVisaoGeral()`, usado por `montarGradeAspectos()` e
-  `desenharVisaoGeral()` — filtra KPIs, Resultado Geral, grade de aspectos E O
-  MAPA (reaproveita `redesenharMapaGeral`, que já dá `fitBounds` sozinho).
+- **Filtro por pílulas de região (`.pills-regiao`):** "gostei da parte de cima
+  que separa por região" — pedido novo, não é só CSS. `regiaoFiltroGeral`
+  (`''` = Todas) recorta `todasAsFeatures()` via `featuresDaVisaoGeral()`,
+  usado por `desenharVisaoGeral()` — filtra KPIs, Resultado Geral E O MAPA
+  (reaproveita `redesenharMapaGeral`, que já dá `fitBounds` sozinho).
   `montarComparativoRegioes()` continua recebendo `todasAsFeatures()` SEM
   filtro de propósito — ela existe pra comparar regiões entre si, filtrar pra
-  uma só a esvaziaria. Diferente da aba "Por Região" (`selRegiao`): esse filtro
-  é rápido, sem trocar de aba nem afetar Tipo/Trecho/S.R.E.
+  uma só a esvaziaria. **Nesse mesmo dia isso ainda vivia dentro da aba "Visão
+  Geral"** (com uma aba "Por Região" separada) — ver entrada seguinte pra como
+  isso virou a navegação principal do site.
 - **"Comparativo por região" virou tabela heatmap:** era uma lista de cartões
   com barrinha (`.comp-regiao`, removido); virou `<table class="tabela-heatmap">`
   — uma linha por região, uma coluna por classe do Resultado Geral, célula
@@ -249,6 +259,48 @@ região do topo; a pergunta em aberto foi só "como encaixar o mapa" — escolhe
   geometria") eram ilustrativos pra mostrar o estilo — a usuária disse "deixa
   sem alertas". Não recriar sem pedido explícito; se pedir depois, envolve
   lógica nova (regras de quando/o que virar alerta), não é só visual.
+
+**As 2 abas viraram 1 cabeçalho de região; seletor "Colorir mapa por" foi
+removido (2026-09-03, ainda o mesmo dia):** pedido final da usuária depois de
+ver as pílulas funcionando: "um cabeçário horizontal, aonde vamos manter essa
+parte da imagem das regiões... não vai mais ter as 2 abas, e quando a gente
+seleciona a região aparece as opções de filtrar". Ou seja: as pílulas de
+região deixam de ser um filtro *dentro* da aba "Visão Geral" e viram A
+navegação do site inteiro — "Todas" = dashboard agregado, qualquer região
+específica = funil detalhado (Competência → Tipo → Trecho → S.R.E.), sem
+aba nenhuma. No mesmo fôlego ela pediu pra tirar a grade "Colorir mapa por"
+também ("essa parte... pode tirar tbm") — o mapa voltou a ser sempre colorido
+pelo Resultado Geral, como era antes de 2026-09-02.
+
+- **`selecionarRegiao(regiao)`** é a função central nova, substituindo
+  `trocarAba(aba)` (removida). `''` mostra `#painel-geral` (dashboard) e
+  chama `desenharVisaoGeral()`; qualquer código de região mostra
+  `#painel-regiao` (funil) e chama `desenharRegiao()` + `montarCompetencias()`
+  + `redesenharMapa()` — mesma limpeza de camadas do mapa que `trocarAba` já
+  fazia (fechar drawer, tirar destaque, remover a camada da visão que estava
+  saindo). Chamada de `montarPillsRegiao()` (destaca a pílula ativa),
+  `montarComparativoRegioes()` (clique na linha da tabela), `irParaTrecho()`
+  (busca e link direto) e no boot (`carregarTodosOsDados(...selecionarRegiao(''))`).
+- **`<select id="sel-regiao">` continua existindo, só escondido**
+  (`style="display:none"` no HTML) — MUITO código antigo (`atualizarURL`,
+  `redesenharMapa`, `aoCarregarDados`, `historicoDoSre`...) lê `selRegiao.value`
+  como fonte da verdade pra qual região está aberta; `selecionarRegiao()`
+  mantém esse `<select>` sincronizado (`selRegiao.value = regiao`) toda vez
+  que muda. Reescrever esse código todo pra uma variável solta não valia o
+  risco — o `<select>` é só um "estado interno" agora, ninguém vê ele.
+  `montarSelects()` só monta as `<option>` (precisa existir pra `.value =`
+  funcionar) — não desenha mais nada no mapa no boot (antes desenhava a
+  região 1 e a "Visão Geral" tinha que desfazer isso; virou desperdício sem
+  sentido já que o padrão agora é "Todas" de verdade).
+- **`GRUPOS`/`estiloDoSegmento`/`classeDoAspecto`/`somaPorAspecto` continuam
+  genéricos** (aceitam qualquer `grupoId`) por baixo do capô — só o CONTROLE
+  de cor do mapa (a grade de cards) saiu. `aspectoAtual` virou uma constante
+  fixa `'icm'`, nunca mais muda. O detalhe por aspecto (Pavimento/Vegetação/
+  Drenagem/Sinalização/Plataforma/Drenagem Superficial) continua 100%
+  disponível no popup do trecho e na tabela do funil — só parou de ser
+  como o MAPA é colorido. **Não recriar a grade de cards sem pedido
+  explícito** — foi construída, testada, publicada e removida no mesmo dia;
+  a usuária quer menos controle nessa área, não mais.
 
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
@@ -272,12 +324,14 @@ Cores fixas (paleta de status, não a escala verde→vinho de severidade): Bom
 `#94A3B8` (`CORES_ICM` no `index.html`).
 
 Aparece em 3 lugares:
-- **Mapa das duas abas**: colorido por `icm` por padrão, mas troca pra qualquer
-  aspecto pelo seletor "Colorir mapa por" (ver seção acima) — deixou de ser fixo.
-- **Barra + legenda com checkbox**: em "Por Região" (escopo = o que estiver
-  selecionado no funil Tipo/Trecho/S.R.E., ou a região inteira se nada escolhido —
-  `atualizarResumoRegiao()`) e em "Visão Geral" (escopo = tudo que já foi convertido
-  — carrega os `insp_*.js` que faltarem via `carregarTodosOsDados()`). A legenda
+- **Mapa inteiro** (Todas ou qualquer região): sempre colorido por `icm` — o
+  seletor "Colorir mapa por" que trocava isso existiu por um dia (2026-09-02/03)
+  e foi removido a pedido da usuária, ver seção acima.
+- **Barra + legenda com checkbox**: numa região específica (escopo = o que
+  estiver selecionado no funil Tipo/Trecho/S.R.E., ou a região inteira se nada
+  escolhido — `atualizarResumoRegiao()`) e em "Todas" (escopo = tudo que já foi
+  convertido — carrega os `insp_*.js` que faltarem via `carregarTodosOsDados()`).
+  A legenda
   **dobra de filtro do mapa** — desmarcar uma classe some com ela do gráfico e do
   mapa ao mesmo tempo (`ativosAspectoRegiao`/`ativosAspectoGeral`); não existe mais
   uma seção separada de "Mostrar no mapa", foi unificada com a legenda (2026-08-26).

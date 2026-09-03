@@ -40,47 +40,6 @@
   #painel .conteudo::-webkit-scrollbar-thumb{background:var(--p-trilha); border-radius:3px;}
   #painel .conteudo::-webkit-scrollbar-track{background:transparent;}
 
-  .abas{display:flex; border-bottom:1px solid var(--p-borda); flex:none;}
-
-  /* Seletor "Colorir mapa por" — fica fora das duas abas (compartilhado),
-     mesma cor de fundo do cabeçalho das linhas de trecho pra destacar que
-     é um controle "global" do mapa, não específico de uma aba. Virou uma
-     grade de cards estilo dashboard (2026-09-03 — a esteira horizontal de
-     scroll que veio antes ficou "horrível" pra usuária; painel alargado de
-     330px pra 460px pra caber 2 colunas sem apertar, em vez de rolar). Cada
-     card já mostra a cobertura e a mini-barra daquele aspecto, então dá pra
-     comparar todos de relance antes de escolher qual colore o mapa (o mapa
-     em si continua só com UM aspecto por vez, sem linhas sobrepostas — ver
-     histórico acima). */
-  #aspecto-wrap{padding:12px 14px; background:var(--p-bg-2); border-bottom:1px solid var(--p-borda); flex:none;}
-  .aspecto-cabeca{margin-bottom:9px;}
-  .rotulo-aspecto{font-size:11px; font-weight:700; color:var(--p-texto-2); text-transform:uppercase; letter-spacing:.04em;}
-  .grade-aspectos{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px;}
-  .card-aspecto{
-    display:flex; flex-direction:column; gap:7px; text-align:left; background:var(--p-bg-3);
-    border:1.5px solid var(--p-borda); border-radius:10px; padding:10px 11px; cursor:pointer;
-    font-family:inherit; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
-  }
-  .card-aspecto:hover{transform:translateY(-2px); box-shadow:0 6px 14px rgba(0,0,0,.4);}
-  .card-aspecto.ativo{
-    border-color:var(--p-azul); box-shadow:0 0 0 3px rgba(96,165,250,.22), 0 6px 14px rgba(0,0,0,.4);
-  }
-  .card-aspecto .topo{display:flex; align-items:center; gap:6px;}
-  .card-aspecto .icone{font-size:16px; line-height:1; flex:none;}
-  .card-aspecto .nome{font-size:11.5px; font-weight:700; color:var(--p-texto); line-height:1.25;}
-  .card-aspecto .total{font-size:17px; font-weight:800; color:#fff; font-variant-numeric:tabular-nums;}
-  .card-aspecto .rotulo-total{font-size:10.5px; font-weight:600; color:var(--p-texto-2); margin-left:3px;}
-  .card-aspecto .mini-barra{display:flex; gap:2px; height:7px; border-radius:3.5px; overflow:hidden; background:var(--p-trilha);}
-  .card-aspecto .mini-barra span{height:100%;}
-  .aba-btn{
-    flex:1; padding:10px 6px; border:none; background:var(--p-bg); color:var(--p-texto-2);
-    font-size:12.5px; font-weight:600; cursor:pointer; border-bottom:2.5px solid transparent;
-    transition:color .15s ease, border-color .15s ease, background .15s ease;
-  }
-  .aba-btn:hover{background:var(--p-bg-2); color:var(--p-azul);}
-  .aba-btn.ativa{color:var(--p-azul); border-bottom-color:var(--p-azul);}
-
-
   /* Resultado geral (Visão Geral) e Por Região: donut centralizado, legenda
      embaixo em largura cheia — linhas enxutas, sem cartão/borda, só um traço
      fino separando cada uma. Na Visão Geral cada linha também tem checkbox
@@ -232,13 +191,18 @@
   #busca-resultados .nome{color:var(--p-texto-2); font-size:11px; display:block; margin-top:1px;}
   #busca-resultados .vazio{padding:10px; font-size:12px; color:var(--p-texto-2); font-style:italic;}
 
-  /* ---------- Filtro por região (Visão Geral) — pílulas ---------- */
-  /* "gostei da parte de cima que separa por região" — pedido da usuária
-     depois de ver a referência de dashboard escuro. Filtra a Visão Geral
-     inteira (KPIs, Resultado Geral, grade de aspectos e o mapa) por uma
-     região só, ou "Todas" (padrão). Diferente da aba "Por Região": aqui é
-     rápido/lado a lado, sem trocar de aba nem mexer em Tipo/Trecho/S.R.E. */
-  .pills-regiao{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px;}
+  /* ---------- Cabeçalho de região — pílulas (2026-09-03) ---------- */
+  /* Era 2 abas (Visão Geral / Por Região); virou ISSO — um cabeçalho
+     horizontal só, sempre visível. "Todas" = dashboard agregado
+     (#painel-geral); qualquer região específica = funil detalhado
+     (#painel-regiao), igual a antiga aba "Por Região" só que sem select de
+     região próprio (as pílulas fazem esse papel agora). Ver
+     selecionarRegiao() — função central que decide qual painel mostrar,
+     substituindo trocarAba(). */
+  .pills-regiao{
+    display:flex; flex-wrap:wrap; gap:7px; padding:12px 14px;
+    background:var(--p-bg-2); border-bottom:1px solid var(--p-borda); flex:none;
+  }
   .pill-regiao{
     border:1px solid var(--p-borda); background:var(--p-bg-3); color:var(--p-texto-2);
     border-radius:20px; padding:5px 13px; font-size:12px; font-weight:600; cursor:pointer;
@@ -336,19 +300,16 @@
       <button id="busca-limpar" title="Limpar">✕</button>
       <div id="busca-resultados"></div>
     </div>
-    <div class="abas">
-      <button class="aba-btn ativa" data-aba="geral">Visão Geral</button>
-      <button class="aba-btn" data-aba="regiao">Por Região</button>
-    </div>
-    <div id="aspecto-wrap">
-      <div class="aspecto-cabeca">
-        <span class="rotulo-aspecto">Colorir mapa por</span>
-      </div>
-      <div class="grade-aspectos" id="grade-aspectos"></div>
-    </div>
+    <div class="pills-regiao" id="pills-regiao"></div>
     <div class="conteudo" id="painel-regiao" style="display:none;">
-      <label class="rotulo" for="sel-regiao">Região</label>
-      <select id="sel-regiao"></select>
+      <!-- "Região" era um select aqui — virou as pílulas lá em cima
+           (#pills-regiao, compartilhadas com a Visão Geral). O <select>
+           continua existindo, só escondido: MUITO código (atualizarURL,
+           irParaTrecho, redesenharMapa, aoCarregarDados...) ainda lê
+           selRegiao.value como fonte da verdade — reescrever tudo isso pra
+           uma variável solta não valia o risco. selecionarRegiao() é quem
+           mantém os dois sincronizados. -->
+      <select id="sel-regiao" style="display:none;"></select>
 
       <label class="rotulo" for="sel-competencia">Competência (mês da ficha)</label>
       <select id="sel-competencia"></select>
@@ -385,7 +346,6 @@
     </div>
 
     <div class="conteudo" id="painel-geral">
-      <div class="pills-regiao" id="pills-regiao"></div>
       <div class="kpis-grade kpis-grade-4">
         <div class="kpi-mini"><b id="geral-total">—</b><span>km levantados</span></div>
         <div class="kpi-mini"><b id="geral-n-trechos">—</b><span>trechos</span></div>
@@ -615,12 +575,11 @@ var MANIFEST = window.MANIFEST_INSPECAO || [];
 var REGIOES_GEOJSON = window.DADOS_REGIOES || {type:'FeatureCollection', features:[]};
 var camadasNoMapa = [];        // L.GeoJSON atualmente no mapa (pra limpar ao trocar seleção)
 var arquivosCarregados = {};   // arquivo -> true, evita <script> duplicado
-var camadaRegiao = null;       // contorno da região selecionada (aba "Por Região")
-var camadaRegioesGeral = null; // contorno de todas as regiões (aba "Visão Geral")
+var camadaRegiao = null;       // contorno da região selecionada (pílulas de região)
+var camadaRegioesGeral = null; // contorno de todas as regiões ("Todas")
 var camadasDestaque = [];      // casing + linha do S.R.E. escolhido no funil
-// Classes/níveis marcados na legenda da aba "Por Região", pro aspecto atual
-// (ver seletor "Colorir mapa por" mais abaixo) — controla o que aparece
-// pintado no mapa da região e no gráfico de rosca, igual à Visão Geral.
+// Classes marcadas na legenda de uma região específica — controla o que
+// aparece pintado no mapa da região e na barra, igual ao "Todas".
 var ativosAspectoRegiao = {};
 
 // ---------------------------------------------------------------------
@@ -666,7 +625,7 @@ function desenharRegiao(regiao){
   if(b.isValid()) map.fitBounds(b, {padding:[20,20]});
 }
 
-// Contorno de TODAS as regiões — usado na aba "Visão Geral" pra marcar a
+// Contorno de TODAS as regiões — usado com a pílula "Todas" pra marcar a
 // divisão entre elas no mapa (sem preencher, só a linha tracejada).
 function desenharTodasAsRegioes(){
   if(camadaRegioesGeral){ map.removeLayer(camadaRegioesGeral); camadaRegioesGeral = null; }
@@ -684,10 +643,11 @@ function montarSelects(){
     document.getElementById('painel-regiao').innerHTML = '<div class="vazio">Nenhuma ficha convertida ainda. Rode <code>python converter_fichas.py</code> depois de colocar os arquivos em fichas/.</div>';
     return;
   }
+  // Só monta as <option> pro <select> escondido ficar válido quando
+  // selecionarRegiao() setar .value programaticamente — não desenha nada
+  // no mapa nem carrega competência ainda (isso só acontece quando uma
+  // região de verdade for escolhida; o padrão é começar em "Todas").
   selRegiao.innerHTML = regioes.map(function(r){ return '<option value="'+r+'">'+nomeRegiao(r)+'</option>'; }).join('');
-  selRegiao.addEventListener('change', function(){ desenharRegiao(selRegiao.value); montarCompetencias(); });
-  desenharRegiao(selRegiao.value);
-  montarCompetencias();
 }
 
 function montarCompetencias(){
@@ -783,10 +743,10 @@ function atualizarResumoRegiao(){
   document.getElementById('resumo-escopo').textContent = escopo;
 }
 
-// Redesenha só o donut de "Por Região" considerando as classes/níveis
-// (des)marcados na legenda — a fatia desmarcada some do gráfico, igual some
-// do mapa. somaPorClasse/total/ordemClasses aqui já vêm do escopo atual do
-// funil + do aspecto escolhido no seletor "Colorir mapa por".
+// Redesenha só a barra da região considerando as classes (des)marcadas na
+// legenda — a fatia desmarcada some do gráfico, igual some do mapa.
+// somaPorClasse/total/ordemClasses aqui já vêm do escopo atual do funil
+// (Tipo/Trecho/S.R.E.), sempre pelo Resultado Geral.
 function atualizarDonutRegiao(somaPorClasse, total, ordemClasses){
   var somaFiltrada = {};
   ordemClasses.forEach(function(cl){ somaFiltrada[cl.chave] = ativosAspectoRegiao[cl.chave] !== false ? (somaPorClasse[cl.chave]||0) : 0; });
@@ -936,10 +896,10 @@ function destacarSre(){
   var tipo = selTipo.value;
   var feats = featuresDoFunil();
   if(feats.length === 0) return;
-  // Segue o aspecto escolhido no seletor "Colorir mapa por"; no Resultado
-  // Geral (padrão) o destaque mostra o aspecto "principal" do tipo de via —
-  // igual sempre foi, já que o mapa de fundo aí é o Resultado Geral mesmo.
-  var grupoPrincipal = aspectoAtual !== 'icm' ? aspectoAtual : ((tipo === 'nao_pavimentada') ? 'plataforma' : 'pavimento');
+  // O mapa de fundo é sempre o Resultado Geral — o destaque do S.R.E.
+  // escolhido mostra o aspecto "principal" do tipo de via (pavimento pra
+  // via pavimentada, plataforma pra não pavimentada) no popup/tabela.
+  var grupoPrincipal = (tipo === 'nao_pavimentada') ? 'plataforma' : 'pavimento';
   var colecao = {type:'FeatureCollection', features:feats};
 
   var casing = L.geoJSON(colecao, {style:{color:'#ffffff', weight:9, opacity:0.95}, interactive:false}).addTo(map);
@@ -1080,10 +1040,9 @@ function montarPopup(props){
   );
 }
 
-// Mapa da região colorido pelo aspecto escolhido no seletor "Colorir mapa
-// por" (Resultado Geral por padrão) — a legenda embaixo do gráfico de rosca
-// (ativosAspectoRegiao) filtra quais classes/níveis aparecem aqui. Quem
-// quiser o detalhe completo (todos os aspectos de uma vez) usa o funil
+// Mapa da região colorido pelo Resultado Geral — a legenda embaixo da barra
+// (ativosAspectoRegiao) filtra quais classes aparecem aqui. Quem quiser o
+// detalhe por aspecto (Pavimento/Vegetação/Drenagem...) usa o funil
 // Trecho/S.R.E. (zoom + tabela) ou clica direto no trecho (popup mostra tudo).
 function redesenharMapa(){
   camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
@@ -1115,8 +1074,8 @@ function redesenharMapa(){
 }
 
 // ---------------------------------------------------------------------
-// Aba "Visão Geral" — soma tudo que já foi convertido (todas as regiões e
-// competências), independente do que está selecionado na aba "Por Região".
+// Pílula "Todas" — soma tudo que já foi convertido (todas as regiões e
+// competências), independente de qual região específica esteja aberta.
 // ---------------------------------------------------------------------
 var ativosAspectoGeral = {};
 var camadaGeral = null;
@@ -1124,31 +1083,6 @@ var camadaGeral = null;
 // só o donut (sem recalcular tudo) quando o usuário (des)marca uma classe.
 var geralSomaPorClasse = null, geralTotal = 0, geralOrdemClasses = null;
 
-function trocarAba(aba){
-  document.querySelectorAll('.aba-btn').forEach(function(b){
-    b.classList.toggle('ativa', b.getAttribute('data-aba') === aba);
-  });
-  document.getElementById('painel-regiao').style.display = (aba === 'regiao') ? '' : 'none';
-  document.getElementById('painel-geral').style.display = (aba === 'geral') ? '' : 'none';
-  fecharDrawer();
-  camadasDestaque.forEach(function(l){ map.removeLayer(l); });
-  camadasDestaque = [];
-
-  if(aba === 'geral'){
-    camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
-    camadasNoMapa = [];
-    if(camadaRegiao){ map.removeLayer(camadaRegiao); camadaRegiao = null; }
-    carregarTodosOsDados(function(){ desenharVisaoGeral(); });
-  }else{
-    if(camadaGeral){ map.removeLayer(camadaGeral); camadaGeral = null; }
-    if(camadaRegioesGeral){ map.removeLayer(camadaRegioesGeral); camadaRegioesGeral = null; }
-    desenharRegiao(selRegiao.value);
-    redesenharMapa();
-  }
-}
-document.querySelectorAll('.aba-btn').forEach(function(b){
-  b.addEventListener('click', function(){ trocarAba(b.getAttribute('data-aba')); });
-});
 
 // Carrega (uma vez só) todos os dados/insp_*.js listados no manifest, mesmo
 // os de regiões/competências que a usuária não chegou a abrir na aba "Por
@@ -1231,44 +1165,15 @@ function somaPorAspecto(feats, grupoId){
   return {somaPorClasse: somaPorClasse, total: total, ordemClasses: ordemClasses};
 }
 
-// ---------------------------------------------------------------------
-// Grade "Colorir mapa por" — Resultado Geral (padrão) ou um aspecto
-// específico (Pavimento, Vegetação, Drenagem...). Troca a cor de TODO o
-// mapa, nas duas abas, pro aspecto escolhido, em vez de só a média —
-// pedido explícito da usuária (2026-09): a média escondia detalhe que ela
-// precisava ver (ex.: trecho Bom no geral mas sinalização péssima).
-// Tentativa anterior de mostrar os aspectos (camadas por aspecto
-// deslocadas ~6m lado a lado) foi removida por confusa — o mapa continua
-// só com UM aspecto por vez. Era um <select> simples; virou uma esteira de
-// cards (2026-09-03, "algo mais dinâmico, bonito") — cada card já mostra o
-// total e a composição daquele aspecto (mini-barra), então dá pra comparar
-// todos de relance sem precisar abrir um dropdown e trocar um por um.
-var ICONE_ASPECTO = {
-  pavimento: '🛣️', vegetacao: '🌿', drenagem: '🌊', sinalizacao_horizontal: '🎨',
-  sinalizacao_vertical: '🪧', plataforma: '🪨', drenagem_superficial: '💧', icm: '📊',
-};
-var aspectoAtual = 'icm'; // começa em Resultado Geral, igual sempre foi
-
-function selecionarAspecto(id){
-  aspectoAtual = id;
-  // Reseta o filtro por checkbox — os níveis do aspecto novo não têm
-  // relação com os do aspecto anterior (ex.: ICM tem 5 classes, Vegetação
-  // só 2), então força tudo marcado de novo em vez de tentar herdar estado.
-  ativosAspectoGeral = {};
-  ativosAspectoRegiao = {};
-  desenharVisaoGeral(); // já chama montarGradeAspectos() de novo, atualizando o card ativo
-  atualizarResumoRegiao();
-  redesenharMapa();
-}
-
-// O total em km é sempre ~igual em todo card (é o mesmo universo de trechos
-// levantados) — não ajuda a diferenciar aspecto nenhum. Cobertura (%) é bem
-// mais informativa: mostra quanto daquele total tem marcação real pra ESSE
-// aspecto (ex.: Vegetação só existe em via pavimentada, então cobertura
-// baixa ali é esperado).
-function semInfoKm(r){
-  return r.somaPorClasse['sem_info'] !== undefined ? r.somaPorClasse['sem_info'] : (r.somaPorClasse['Sem Informação'] || 0);
-}
+// Mapa e resumo sempre coloridos pelo Resultado Geral (I.C.M.) — teve um
+// seletor "Colorir mapa por" (grade de cards por aspecto) entre 2026-09-02 e
+// 2026-09-03, removido a pedido da usuária junto com a reforma do cabeçalho
+// por região (queria menos coisa, não mais). O detalhe por aspecto continua
+// disponível no popup do trecho e na tabela do funil (GRUPOS, mais abaixo) —
+// só saiu do CONTROLE DE COR do mapa. `estiloDoSegmento`/`classeDoAspecto`/
+// `somaPorAspecto` continuam genéricos (aceitam qualquer grupoId) por baixo
+// do capô; não recriar a grade de novo sem pedido explícito.
+var aspectoAtual = 'icm';
 
 // Filtro por região da Visão Geral (pílulas no topo — ver CSS
 // .pills-regiao). '' = Todas. Só existe nessa aba: "Por Região" já tem seu
@@ -1285,44 +1190,51 @@ function featuresDaVisaoGeral(){
   return todas.filter(function(f){ return f.properties.regiao === regiaoFiltroGeral; });
 }
 
-function selecionarRegiaoGeral(regiao){
+// Função central de navegação — substitui a antiga trocarAba(). "Todas"
+// mostra o dashboard agregado (#painel-geral); qualquer região específica
+// mostra o funil detalhado (#painel-regiao, a antiga aba "Por Região"), só
+// que a região agora vem das pílulas, não de um <select> próprio (que
+// continua existindo escondido — ver comentário no HTML). Toda troca de
+// painel (limpar camada do mapa, fechar drawer/destaque) que antes vivia em
+// trocarAba() foi pra cá.
+function selecionarRegiao(regiao){
   regiaoFiltroGeral = regiao;
-  desenharVisaoGeral(); // já rechama montarPillsRegiao() e redesenha tudo com o recorte novo
+  selRegiao.value = regiao; // mantém o <select> escondido sincronizado
+  montarPillsRegiao();
+
+  document.getElementById('painel-regiao').style.display = regiao ? '' : 'none';
+  document.getElementById('painel-geral').style.display = regiao ? 'none' : '';
+  fecharDrawer();
+  camadasDestaque.forEach(function(l){ map.removeLayer(l); });
+  camadasDestaque = [];
+
+  if(!regiao){
+    camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
+    camadasNoMapa = [];
+    if(camadaRegiao){ map.removeLayer(camadaRegiao); camadaRegiao = null; }
+    carregarTodosOsDados(function(){ desenharVisaoGeral(); });
+  }else{
+    if(camadaGeral){ map.removeLayer(camadaGeral); camadaGeral = null; }
+    if(camadaRegioesGeral){ map.removeLayer(camadaRegioesGeral); camadaRegioesGeral = null; }
+    desenharRegiao(regiao);
+    montarCompetencias();
+    redesenharMapa();
+  }
 }
 
 function montarPillsRegiao(){
   var opcoes = [''].concat(regioesDisponiveis());
   document.getElementById('pills-regiao').innerHTML = opcoes.map(function(r){
-    var nome = r ? nomeRegiao(r) : 'Todas';
+    // Só a pílula "Todas" carrega o rótulo "Região:" na frente (igual à
+    // referência que a usuária mandou) — nas outras o número já basta.
+    var nome = r ? nomeRegiao(r) : 'Região: Todas';
     return '<button type="button" class="pill-regiao'+(r === regiaoFiltroGeral ? ' ativa' : '')+
       '" data-regiao="'+r+'">'+nome+'</button>';
   }).join('');
   document.querySelectorAll('.pill-regiao').forEach(function(el){
-    el.addEventListener('click', function(){ selecionarRegiaoGeral(el.getAttribute('data-regiao')); });
+    el.addEventListener('click', function(){ selecionarRegiao(el.getAttribute('data-regiao')); });
   });
 }
-
-function montarGradeAspectos(){
-  var todas = featuresDaVisaoGeral();
-  document.getElementById('grade-aspectos').innerHTML = GRUPOS.map(function(g){
-    var r = somaPorAspecto(todas, g.id);
-    var cobertura = r.total > 0 ? (100 * (r.total - semInfoKm(r)) / r.total) : 0;
-    var segmentos = r.ordemClasses.map(function(cl){
-      var pct = r.total > 0 ? (100 * (r.somaPorClasse[cl.chave]||0) / r.total) : 0;
-      return pct > 0 ? '<span style="width:'+pct+'%; background:'+cl.cor+'"></span>' : '';
-    }).join('');
-    return '<button type="button" class="card-aspecto'+(g.id === aspectoAtual ? ' ativo' : '')+
-      '" data-aspecto="'+g.id+'" title="'+g.nome+' — '+Math.round(r.total).toLocaleString('pt-BR')+' km levantados">' +
-      '<span class="topo"><span class="icone">'+ICONE_ASPECTO[g.id]+'</span><span class="nome">'+g.nome+'</span></span>' +
-      '<span class="total">'+Math.round(cobertura)+'%<span class="rotulo-total">coberto</span></span>' +
-      '<span class="mini-barra">'+segmentos+'</span>' +
-    '</button>';
-  }).join('');
-  document.querySelectorAll('.card-aspecto').forEach(function(el){
-    el.addEventListener('click', function(){ selecionarAspecto(el.getAttribute('data-aspecto')); });
-  });
-}
-montarGradeAspectos(); // primeira pintura (ainda sem dado — vira placeholder até desenharVisaoGeral rodar)
 
 function desenharVisaoGeral(){
   var todas = featuresDaVisaoGeral();
@@ -1332,7 +1244,6 @@ function desenharVisaoGeral(){
   geralOrdemClasses = r.ordemClasses;
 
   montarPillsRegiao();
-  montarGradeAspectos(); // re-pinta com os totais reais + destaca o card ativo
 
   document.getElementById('geral-total').textContent =
     r.total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
@@ -1414,12 +1325,7 @@ function montarComparativoRegioes(todas){
     '<table class="tabela-heatmap"><thead>'+cabecalho+'</thead><tbody>'+linhas+'</tbody></table>';
 
   document.querySelectorAll('#comparativo-regioes tr[data-regiao]').forEach(function(el){
-    el.addEventListener('click', function(){
-      trocarAba('regiao');
-      selRegiao.value = el.getAttribute('data-regiao');
-      desenharRegiao(selRegiao.value);
-      montarCompetencias();
-    });
+    el.addEventListener('click', function(){ selecionarRegiao(el.getAttribute('data-regiao')); });
   });
 }
 
@@ -1560,10 +1466,7 @@ document.addEventListener('click', function(e){
 // Navega direto pra um trecho/S.R.E. — usado pela busca e pelo link
 // compartilhado (?regiao=...&sre=...).
 function irParaTrecho(regiao, competencia, tipo, trechoNum, sre){
-  trocarAba('regiao');
-  selRegiao.value = regiao;
-  desenharRegiao(regiao);
-  montarCompetencias();
+  selecionarRegiao(regiao);
   if(competencia){ selCompetencia.value = competencia; carregarSelecionado(); }
   selTipo.value = tipo;
   montarTrechos();
@@ -1654,12 +1557,12 @@ montarSelects();
 // Carrega tudo (não só a região/competência selecionada) — necessário pra
 // busca e link direto funcionarem em qualquer trecho já convertido.
 carregarTodosOsDados(function(){
-  // "Visão Geral" é a aba padrão — mas um link direto compartilhado
-  // (?regiao=...) tem prioridade e troca pra "Por Região" sozinho.
+  // "Todas" é o padrão — mas um link direto compartilhado (?regiao=...)
+  // tem prioridade e já abre direto na região/trecho salvos.
   if(new URLSearchParams(location.search).get('regiao')){
     aplicarEstadoDaURL();
   }else{
-    trocarAba('geral');
+    selecionarRegiao('');
   }
   esconderLoading();
 });
