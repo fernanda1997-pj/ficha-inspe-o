@@ -349,6 +349,40 @@ como LEITURA, não como controle.
   única que não existe mais. `redesenharMapaGeral` simplificou (sempre
   desenha todas as features recebidas, sem filtrar por classe marcada).
 
+**"O que mostrar" — usuária escolhe quais seções aparecem (2026-09-03, ainda
+o mesmo dia):** mandou print da barra/legenda do Resultado Geral **dentro de
+uma região** (a mesma coisa que `montarLegendaFiltroRegiao` desenha, ver
+acima) e pediu "pode tirar isso e eu poder escolher o que eu quero ativado".
+Perguntei se era só tirar o gráfico (manter a legenda) ou remover a seção
+inteira com um menu de controle — escolheu a segunda.
+
+- **`#config-wrap`** (botão "⚙️ O que mostrar" + `#popover-config`) fica no
+  mesmo nível de `#pills-regiao` — global, sempre visível, não dentro de
+  `.conteudo` nenhum. 4 checkboxes, cada um controlando uma seção POR
+  CONCEITO (não por tela): `kpis` esconde tanto `#kpis-geral-wrap` (Todas)
+  quanto `#kpis-regiao-wrap` (região) de uma vez só — é a mesma decisão
+  "não quero ver KPI" nas duas telas, não duas preferências separadas.
+  `resultadoGeral` só existe em `#resultado-regiao-wrap` (a barra+legenda
+  com checkbox que filtra o mapa da região — não tem equivalente em
+  "Todas", que já virou "Por aspecto avaliado" antes hoje).
+  `porAspecto` esconde `#aspectos-geral-wrap` E `#aspectos-regiao-wrap`.
+  `comparativo` só existe em `#comparativo-wrap` (só em "Todas").
+- **`WRAPPERS_SECAO`** (`index.html`) é o mapa chave→lista de ids de
+  `<div>`-wrapper — pra adicionar uma seção nova ao menu, envolve o
+  HTML dela num wrapper com id e adiciona uma entrada aqui + um
+  `<label class="linha-config">` novo no popover (o JS descobre a chave a
+  partir do id do checkbox automaticamente, não precisa editar mais nada).
+- **Preferência salva em `localStorage`** (chave `rta_fichas_secoes_visiveis`)
+  — sobrevive a reload, é por navegador/dispositivo (não sincroniza entre
+  máquinas). Padrão é tudo visível (`true`) se nunca configurado ou se
+  `localStorage` estiver bloqueado (`carregarPreferenciasSecoes()` cai pro
+  padrão em vez de quebrar).
+- Aplicado por `aplicarVisibilidadeSecoes()` — só mexe em `style.display`
+  dos wrappers (que existem fixos no HTML); as funções que já preenchiam o
+  CONTEÚDO desses wrappers (`atualizarResumoRegiao`, `desenharVisaoGeral`
+  etc.) não precisaram mudar nada — continuam escrevendo normalmente,
+  escondido ou não.
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:

@@ -231,6 +231,30 @@
   .pill-regiao:hover{border-color:var(--p-azul); color:var(--p-texto);}
   .pill-regiao.ativa{background:var(--p-azul); border-color:var(--p-azul); color:#0b1220;}
 
+  /* "O que mostrar" (2026-09-03) — pedido da usuária: em vez de eu decidir
+     tirar/pôr seção (foram várias idas e voltas: alertas, seletor de
+     aspecto, abas...), ela escolhe quais seções aparecem. Preferência salva
+     em localStorage (sobrevive a reload). Ver aplicarVisibilidadeSecoes(). */
+  #config-wrap{position:relative; padding:8px 14px; background:var(--p-bg-2); border-bottom:1px solid var(--p-borda); flex:none;}
+  #btn-config{
+    border:1px solid var(--p-borda); background:var(--p-bg-3); color:var(--p-texto-2);
+    border-radius:6px; padding:6px 11px; font-size:12px; font-weight:600; cursor:pointer;
+    font-family:inherit; transition:border-color .15s ease, color .15s ease;
+  }
+  #btn-config:hover{border-color:var(--p-azul); color:var(--p-texto);}
+  #popover-config{
+    display:none; position:absolute; left:14px; top:100%; margin-top:4px; z-index:1200;
+    background:var(--p-bg-3); border:1px solid var(--p-borda); border-radius:8px;
+    padding:6px; box-shadow:0 8px 18px rgba(0,0,0,.45); min-width:230px;
+  }
+  #popover-config.aberto{display:block;}
+  .linha-config{
+    display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:6px;
+    font-size:12.5px; color:var(--p-texto); cursor:pointer; transition:background .12s ease;
+  }
+  .linha-config:hover{background:var(--p-bg-2);}
+  .linha-config input{width:15px; height:15px; accent-color:var(--p-azul); flex:none;}
+
   /* ---------- Cartões de KPI (grade), estilo "painel" ---------- */
   .kpis-grade{display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:4px;}
   .kpis-grade-4{grid-template-columns:repeat(4, 1fr);}
@@ -324,6 +348,15 @@
       <div id="busca-resultados"></div>
     </div>
     <div class="pills-regiao" id="pills-regiao"></div>
+    <div id="config-wrap">
+      <button id="btn-config" type="button">⚙️ O que mostrar</button>
+      <div id="popover-config">
+        <label class="linha-config"><input type="checkbox" id="chk-kpis"> KPIs</label>
+        <label class="linha-config"><input type="checkbox" id="chk-resultado-geral"> Resultado Geral (dentro da região)</label>
+        <label class="linha-config"><input type="checkbox" id="chk-por-aspecto"> Por aspecto avaliado</label>
+        <label class="linha-config"><input type="checkbox" id="chk-comparativo"> Comparativo por região (Todas)</label>
+      </div>
+    </div>
     <div class="conteudo" id="painel-regiao" style="display:none;">
       <!-- "Região" era um select aqui — virou as pílulas lá em cima
            (#pills-regiao, compartilhadas com a Visão Geral). O <select>
@@ -337,19 +370,25 @@
       <label class="rotulo" for="sel-competencia">Competência (mês da ficha)</label>
       <select id="sel-competencia"></select>
 
-      <div id="resumo-escopo">Região inteira</div>
-      <div id="resumo">
-        <div><b id="resumo-ext">—</b>km inspecionados</div>
-        <div><b id="resumo-n">—</b>segmentos</div>
+      <div id="kpis-regiao-wrap">
+        <div id="resumo-escopo">Região inteira</div>
+        <div id="resumo">
+          <div><b id="resumo-ext">—</b>km inspecionados</div>
+          <div><b id="resumo-n">—</b>segmentos</div>
+        </div>
       </div>
 
-      <div class="barra-wrap-central" style="margin-top:8px;">
-        <div id="regiao-barra"></div>
+      <div id="resultado-regiao-wrap">
+        <div class="barra-wrap-central" style="margin-top:8px;">
+          <div id="regiao-barra"></div>
+        </div>
+        <div class="legenda-filtro" id="regiao-legenda"></div>
       </div>
-      <div class="legenda-filtro" id="regiao-legenda"></div>
 
-      <label class="rotulo" style="margin-top:16px;">Por aspecto avaliado</label>
-      <div id="aspectos-regiao"></div>
+      <div id="aspectos-regiao-wrap">
+        <label class="rotulo" style="margin-top:16px;">Por aspecto avaliado</label>
+        <div id="aspectos-regiao"></div>
+      </div>
 
       <hr class="separador">
 
@@ -372,20 +411,24 @@
     </div>
 
     <div class="conteudo" id="painel-geral">
-      <div class="kpis-grade kpis-grade-4">
+      <div id="kpis-geral-wrap" class="kpis-grade kpis-grade-4">
         <div class="kpi-mini"><b id="geral-total">—</b><span>km levantados</span></div>
         <div class="kpi-mini"><b id="geral-n-trechos">—</b><span>trechos</span></div>
         <div class="kpi-mini"><b id="geral-n-sre">—</b><span>S.R.E.</span></div>
         <div class="kpi-mini"><b id="geral-pct-pav">—</b><span>pavimentada</span></div>
       </div>
 
-      <label class="rotulo" style="margin-top:16px;">Por aspecto avaliado</label>
-      <div id="aspectos-geral"></div>
+      <div id="aspectos-geral-wrap">
+        <label class="rotulo" style="margin-top:16px;">Por aspecto avaliado</label>
+        <div id="aspectos-geral"></div>
+      </div>
 
       <hr class="separador">
 
-      <label class="rotulo">Comparativo por região (% na melhor classe)</label>
-      <div id="comparativo-regioes"></div>
+      <div id="comparativo-wrap">
+        <label class="rotulo">Comparativo por região (% na melhor classe)</label>
+        <div id="comparativo-regioes"></div>
+      </div>
 
       <div class="dica">
         Soma de todas as regiões e competências já convertidas. O mapa mostra
@@ -1265,6 +1308,63 @@ function montarPillsRegiao(){
     el.addEventListener('click', function(){ selecionarRegiao(el.getAttribute('data-regiao')); });
   });
 }
+
+// ---------------------------------------------------------------------
+// "O que mostrar" — preferência de quais seções aparecem, salva em
+// localStorage. Cada chave controla um <div>-wrapper (id abaixo) que existe
+// nas duas visões quando faz sentido (ex.: "porAspecto" esconde tanto
+// #aspectos-geral-wrap quanto #aspectos-regiao-wrap de uma vez só — é a
+// mesma decisão nas duas telas, não duas preferências separadas).
+// ---------------------------------------------------------------------
+var CHAVE_PREFS = 'rta_fichas_secoes_visiveis';
+var WRAPPERS_SECAO = {
+  kpis: ['kpis-geral-wrap', 'kpis-regiao-wrap'],
+  resultadoGeral: ['resultado-regiao-wrap'],
+  porAspecto: ['aspectos-geral-wrap', 'aspectos-regiao-wrap'],
+  comparativo: ['comparativo-wrap'],
+};
+
+function carregarPreferenciasSecoes(){
+  var padrao = {kpis: true, resultadoGeral: true, porAspecto: true, comparativo: true};
+  try {
+    var salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS));
+    return Object.assign(padrao, salvo || {});
+  } catch(e) {
+    return padrao; // localStorage bloqueado/corrompido — segue com tudo visível
+  }
+}
+var secoesVisiveis = carregarPreferenciasSecoes();
+
+function aplicarVisibilidadeSecoes(){
+  Object.keys(WRAPPERS_SECAO).forEach(function(chave){
+    var visivel = secoesVisiveis[chave] !== false;
+    WRAPPERS_SECAO[chave].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.style.display = visivel ? '' : 'none';
+    });
+    var chk = document.getElementById('chk-' + chave.replace(/([A-Z])/g, '-$1').toLowerCase());
+    if(chk) chk.checked = visivel;
+  });
+}
+
+document.querySelectorAll('#popover-config input[type=checkbox]').forEach(function(chk){
+  var chave = chk.id.replace('chk-', '').replace(/-([a-z])/g, function(_, c){ return c.toUpperCase(); });
+  chk.addEventListener('change', function(){
+    secoesVisiveis[chave] = chk.checked;
+    try { localStorage.setItem(CHAVE_PREFS, JSON.stringify(secoesVisiveis)); } catch(e) {}
+    aplicarVisibilidadeSecoes();
+  });
+});
+document.getElementById('btn-config').addEventListener('click', function(e){
+  e.stopPropagation();
+  document.getElementById('popover-config').classList.toggle('aberto');
+});
+document.addEventListener('click', function(e){
+  if(!document.getElementById('config-wrap').contains(e.target)){
+    document.getElementById('popover-config').classList.remove('aberto');
+  }
+});
+aplicarVisibilidadeSecoes(); // estado inicial, já refletindo o que foi salvo
 
 function desenharVisaoGeral(){
   var todas = featuresDaVisaoGeral();
