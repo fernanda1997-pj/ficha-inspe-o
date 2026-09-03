@@ -454,6 +454,54 @@ uma preferência que pode ter sido salva com o valor errado antes:
   realmente uma preferência que faz sentido religar), tirar do código é
   mais confiável que mexer no padrão.
 
+**Toggle POR ASPECTO + múltiplas regiões juntas (2026-09-03, mais um
+pedido):** "ME [dê] A OPÇÃO DE LIGAR E DESLIGAR O ASPECTO AVALIADO DE
+ACORDO COM O QUE EU PRECISO E NA PARTE DA REGIÃO PODER LIGAR 2 REGIÕES
+JUNTAS" — dois pedidos numa mensagem só.
+
+- **Cada aspecto liga/desliga individualmente**, não só a seção "Por
+  aspecto avaliado" inteira de uma vez (aquele toggle único saiu —
+  substituído por isto). `aspectosVisiveis` (chave própria em localStorage,
+  `rta_fichas_aspectos_visiveis`, separada de `rta_fichas_secoes_visiveis`)
+  é um mapa `{grupoId: bool}`, todos `true` por padrão. `montarCheckboxesAspectos()`
+  gera um checkbox por `GRUPOS` (nunca hardcoded — puxa nome/ícone de
+  `GRUPOS`/`ICONE_ASPECTO`) dentro de `#config-aspectos`, numa sub-seção do
+  popover "O que mostrar" (`.config-secao` + `.linha-config-sub`).
+  `montarAspectosPorGrupo(feats, alvoId)` filtra `GRUPOS` por
+  `aspectosVisiveis[g.id] !== false` antes de desenhar, e esconde o
+  `<alvoId>-wrap` inteiro (label + cards) se a usuária desmarcar todos —
+  evita título "Por aspecto avaliado" sem nada embaixo.
+  **Cuidado ao mexer no popover**: o loop genérico de `secoesVisiveis`
+  (`document.querySelectorAll('#popover-config input[type=checkbox]')`)
+  precisa do `:not([data-aspecto-vis])` pra não capturar os checkboxes de
+  aspecto (que não têm `id`, só `data-aspecto-vis`) — sem isso ele tentava
+  ler `chk.id` vazio e criava uma chave `""` bugada em `secoesVisiveis`.
+- **Pílulas de região viraram multi-seleção** — antes era rádio (só uma
+  ativa, clicar em outra trocava); agora é checkbox (`alternarRegiao(regiao)`
+  entra/sai do array `regioesFiltroGeral`, substituindo a antiga variável
+  string `regiaoFiltroGeral`). "Todas" continua especial: sempre limpa a
+  seleção inteira (`regioesFiltroGeral = []`), não entra na lista. O NÚMERO
+  de regiões selecionadas decide o painel (`aplicarSelecaoDeRegioes()`):
+  - **0 (Todas) ou 2+** → dashboard agregado (`#painel-geral`), recortado
+    pro conjunto escolhido via `featuresDaVisaoGeral()` — com 2+ regiões é
+    a MESMA lógica de "Todas", só filtrando por
+    `regioesFiltroGeral.indexOf(regiao) !== -1` em vez de "sem filtro".
+  - **Exatamente 1** → funil detalhado (`#painel-regiao`, igual sempre
+    foi) — só faz sentido pra UMA região porque o funil carrega um pacote
+    região+competência específico (`window.DADOS_INSPECAO[regiao][competencia]`),
+    não dá pra ter Tipo/Trecho/S.R.E. de duas regiões misturadas.
+  - `selecionarRegiao(regiao)` (nome antigo, mantido) agora força
+    exatamente uma região (`[regiao]`) ou nenhuma (`[]`) — usada por busca,
+    link direto (`irParaTrecho`) e clique na tabela "Comparativo por
+    região", que sempre quiseram "abrir só isso aqui", nunca somar à
+    seleção. `alternarRegiao(regiao)` (nova) é só das pílulas — dá pra
+    somar/tirar uma região da seleção sem mexer nas outras.
+  - Números batendo: o dashboard de 2+ regiões soma TODAS as competências
+    já convertidas daquelas regiões (igual "Todas" sempre fez) — não é o
+    km de uma competência só, que é o que a `#resumo` do funil mostra pra
+    UMA região. Comparar os dois é comparar coisas diferentes de propósito
+    (dashboard = tudo já levantado; funil = o mês escolhido no momento).
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:

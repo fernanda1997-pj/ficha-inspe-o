@@ -209,6 +209,7 @@
     display:none; position:absolute; left:14px; top:100%; margin-top:4px; z-index:1200;
     background:var(--p-bg-3); border:1px solid var(--p-borda); border-radius:8px;
     padding:6px; box-shadow:0 8px 18px rgba(0,0,0,.45); min-width:230px;
+    max-height:min(420px, 70vh); overflow-y:auto;
   }
   #popover-config.aberto{display:block;}
   .linha-config{
@@ -217,6 +218,12 @@
   }
   .linha-config:hover{background:var(--p-bg-2);}
   .linha-config input{width:15px; height:15px; accent-color:var(--p-azul); flex:none;}
+  .config-secao{
+    font-size:10px; font-weight:700; color:var(--p-texto-2); text-transform:uppercase;
+    letter-spacing:.04em; padding:9px 8px 4px; border-top:1px solid var(--p-borda); margin-top:4px;
+  }
+  .linha-config-sub{padding-left:14px; font-size:12px;}
+  .linha-config-sub .icone{font-size:13px; margin-right:2px;}
 
   /* ---------- Cartões de KPI (grade), estilo "painel" ---------- */
   .kpis-grade{display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:4px;}
@@ -315,8 +322,9 @@
       <button id="btn-config" type="button">⚙️ O que mostrar</button>
       <div id="popover-config">
         <label class="linha-config"><input type="checkbox" id="chk-kpis"> KPIs</label>
-        <label class="linha-config"><input type="checkbox" id="chk-por-aspecto"> Por aspecto avaliado</label>
         <label class="linha-config"><input type="checkbox" id="chk-comparativo"> Comparativo por região (Todas)</label>
+        <div class="config-secao">Por aspecto avaliado</div>
+        <div id="config-aspectos"></div>
       </div>
     </div>
     <div class="conteudo" id="painel-regiao" style="display:none;">
@@ -1179,50 +1187,80 @@ var ICONE_ASPECTO = {
   sinalizacao_vertical: '🪧', plataforma: '🪨', drenagem_superficial: '💧',
 };
 
-// Filtro por região da Visão Geral (pílulas no topo — ver CSS
-// .pills-regiao). '' = Todas. Só existe nessa aba: "Por Região" já tem seu
-// próprio jeito de escolher região (select), então não reaproveita esse
-// estado.
-var regiaoFiltroGeral = '';
+// Filtro por região (pílulas no topo — ver CSS .pills-regiao). Array de
+// códigos ('R1', 'R2'...); [] = Todas. Pedido da usuária (2026-09-03):
+// "na parte da região poder ligar 2 regiões juntas" — as pílulas viraram
+// multi-seleção (igual checkbox, não mais rádio). O NÚMERO de regiões
+// escolhidas decide qual painel aparece (ver aplicarSelecaoDeRegioes):
+// 0 = "Todas" (dashboard agregado com tudo); 1 = funil detalhado
+// (#painel-regiao, Competência/Tipo/Trecho/S.R.E. — só faz sentido pra UMA
+// região porque o funil carrega um pacote região+competência específico);
+// 2+ = dashboard agregado de novo, só que recortado pro conjunto escolhido
+// em vez de tudo (sem funil — não dá pra ter um Tipo/Trecho/S.R.E. só
+// quando são regiões diferentes misturadas).
+var regioesFiltroGeral = [];
 
-// Recorta todasAsFeatures() pra região escolhida no filtro de pílulas —
+// Recorta todasAsFeatures() pras regiões escolhidas no filtro de pílulas —
 // usado tanto pela grade de aspectos quanto pelo resto da Visão Geral, pra
-// não duplicar o if(regiaoFiltroGeral) em cada função.
+// não duplicar esse filtro em cada função. [] = Todas, sem filtro.
 function featuresDaVisaoGeral(){
   var todas = todasAsFeatures();
-  if(!regiaoFiltroGeral) return todas;
-  return todas.filter(function(f){ return f.properties.regiao === regiaoFiltroGeral; });
+  if(regioesFiltroGeral.length === 0) return todas;
+  return todas.filter(function(f){ return regioesFiltroGeral.indexOf(f.properties.regiao) !== -1; });
 }
 
-// Função central de navegação — substitui a antiga trocarAba(). "Todas"
-// mostra o dashboard agregado (#painel-geral); qualquer região específica
-// mostra o funil detalhado (#painel-regiao, a antiga aba "Por Região"), só
-// que a região agora vem das pílulas, não de um <select> próprio (que
-// continua existindo escondido — ver comentário no HTML). Toda troca de
-// painel (limpar camada do mapa, fechar drawer/destaque) que antes vivia em
-// trocarAba() foi pra cá.
+// Força a seleção pra UMA região só (ou nenhuma, "Todas") — usado por
+// busca, link direto (irParaTrecho) e clique na tabela "Comparativo por
+// região": essas ações pedem um lugar específico pra abrir, não importa o
+// que estava selecionado antes. Pra alternar uma região dentro da seleção
+// atual (multi-seleção de verdade), usar alternarRegiao() — é o que as
+// pílulas chamam.
 function selecionarRegiao(regiao){
-  regiaoFiltroGeral = regiao;
-  selRegiao.value = regiao; // mantém o <select> escondido sincronizado
-  montarPillsRegiao();
+  regioesFiltroGeral = regiao ? [regiao] : [];
+  aplicarSelecaoDeRegioes();
+}
 
-  document.getElementById('painel-regiao').style.display = regiao ? '' : 'none';
-  document.getElementById('painel-geral').style.display = regiao ? 'none' : '';
+// Pílulas: alterna UMA região dentro da seleção (pode ter várias ativas ao
+// mesmo tempo). "Todas" sempre limpa a seleção inteira, não entra na lista.
+function alternarRegiao(regiao){
+  if(!regiao){
+    regioesFiltroGeral = [];
+  }else{
+    var idx = regioesFiltroGeral.indexOf(regiao);
+    if(idx === -1) regioesFiltroGeral.push(regiao); else regioesFiltroGeral.splice(idx, 1);
+  }
+  aplicarSelecaoDeRegioes();
+}
+
+// Função central de navegação — substitui a antiga trocarAba(). Decide qual
+// painel mostrar a partir de QUANTAS regiões estão selecionadas (ver
+// comentário de regioesFiltroGeral acima). Toda troca de painel (limpar
+// camada do mapa, fechar drawer/destaque) que antes vivia em trocarAba()
+// foi pra cá.
+function aplicarSelecaoDeRegioes(){
+  montarPillsRegiao();
   fecharDrawer();
   camadasDestaque.forEach(function(l){ map.removeLayer(l); });
   camadasDestaque = [];
 
-  if(!regiao){
-    camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
-    camadasNoMapa = [];
-    if(camadaRegiao){ map.removeLayer(camadaRegiao); camadaRegiao = null; }
-    carregarTodosOsDados(function(){ desenharVisaoGeral(); });
-  }else{
+  if(regioesFiltroGeral.length === 1){
+    var regiao = regioesFiltroGeral[0];
+    selRegiao.value = regiao; // mantém o <select> escondido sincronizado
+    document.getElementById('painel-regiao').style.display = '';
+    document.getElementById('painel-geral').style.display = 'none';
     if(camadaGeral){ map.removeLayer(camadaGeral); camadaGeral = null; }
     if(camadaRegioesGeral){ map.removeLayer(camadaRegioesGeral); camadaRegioesGeral = null; }
     desenharRegiao(regiao);
     montarCompetencias();
     redesenharMapa();
+  }else{
+    selRegiao.value = '';
+    document.getElementById('painel-regiao').style.display = 'none';
+    document.getElementById('painel-geral').style.display = '';
+    camadasNoMapa.forEach(function(l){ map.removeLayer(l); });
+    camadasNoMapa = [];
+    if(camadaRegiao){ map.removeLayer(camadaRegiao); camadaRegiao = null; }
+    carregarTodosOsDados(function(){ desenharVisaoGeral(); });
   }
 }
 
@@ -1232,30 +1270,34 @@ function montarPillsRegiao(){
     // Só a pílula "Todas" carrega o rótulo "Região:" na frente (igual à
     // referência que a usuária mandou) — nas outras o número já basta.
     var nome = r ? nomeRegiao(r) : 'Região: Todas';
-    return '<button type="button" class="pill-regiao'+(r === regiaoFiltroGeral ? ' ativa' : '')+
+    var ativa = r ? (regioesFiltroGeral.indexOf(r) !== -1) : (regioesFiltroGeral.length === 0);
+    return '<button type="button" class="pill-regiao'+(ativa ? ' ativa' : '')+
       '" data-regiao="'+r+'">'+nome+'</button>';
   }).join('');
   document.querySelectorAll('.pill-regiao').forEach(function(el){
-    el.addEventListener('click', function(){ selecionarRegiao(el.getAttribute('data-regiao')); });
+    el.addEventListener('click', function(){ alternarRegiao(el.getAttribute('data-regiao')); });
   });
 }
 
 // ---------------------------------------------------------------------
 // "O que mostrar" — preferência de quais seções aparecem, salva em
 // localStorage. Cada chave controla um <div>-wrapper (id abaixo) que existe
-// nas duas visões quando faz sentido (ex.: "porAspecto" esconde tanto
-// #aspectos-geral-wrap quanto #aspectos-regiao-wrap de uma vez só — é a
-// mesma decisão nas duas telas, não duas preferências separadas).
+// nas duas visões quando faz sentido (ex.: "kpis" esconde tanto
+// #kpis-geral-wrap quanto #kpis-regiao-wrap de uma vez só — é a mesma
+// decisão nas duas telas, não duas preferências separadas). "Por aspecto
+// avaliado" NÃO tem uma chave aqui — desde que a usuária pediu controle por
+// aspecto individual ("ligar e desligar de acordo com o que eu preciso"),
+// virou `aspectosVisiveis` (mais abaixo), granular por aspecto em vez de
+// esconder a seção inteira de uma vez.
 // ---------------------------------------------------------------------
 var CHAVE_PREFS = 'rta_fichas_secoes_visiveis';
 var WRAPPERS_SECAO = {
   kpis: ['kpis-geral-wrap', 'kpis-regiao-wrap'],
-  porAspecto: ['aspectos-geral-wrap', 'aspectos-regiao-wrap'],
   comparativo: ['comparativo-wrap'],
 };
 
 function carregarPreferenciasSecoes(){
-  var padrao = {kpis: true, porAspecto: true, comparativo: true};
+  var padrao = {kpis: true, comparativo: true};
   try {
     var salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS));
     return Object.assign(padrao, salvo || {});
@@ -1277,7 +1319,51 @@ function aplicarVisibilidadeSecoes(){
   });
 }
 
-document.querySelectorAll('#popover-config input[type=checkbox]').forEach(function(chk){
+// Visibilidade POR ASPECTO dentro de "Por aspecto avaliado" — pedido da
+// usuária: "me dê a opção de ligar e desligar o aspecto avaliado de acordo
+// com o que eu preciso" (ex.: só quer ver Pavimento e Drenagem agora,
+// esconde os outros 5 sem perder o dado, só reaparecem quando ela marcar
+// de novo). Preferência salva à parte de CHAVE_PREFS — é uma lista aberta
+// (um item por GRUPOS), diferente das 2 chaves fixas de secoesVisiveis.
+var CHAVE_PREFS_ASPECTOS = 'rta_fichas_aspectos_visiveis';
+function carregarAspectosVisiveis(){
+  var padrao = {};
+  GRUPOS.forEach(function(g){ if(g.id !== 'icm') padrao[g.id] = true; });
+  try {
+    var salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS_ASPECTOS));
+    return Object.assign(padrao, salvo || {});
+  } catch(e) {
+    return padrao;
+  }
+}
+var aspectosVisiveis = carregarAspectosVisiveis();
+
+// Monta os checkboxes de "Por aspecto avaliado" dentro do popover — um por
+// GRUPOS (nunca hardcoded, GRUPOS já vem do manifest.js gerado pelo
+// converter). Reaproveita ICONE_ASPECTO pra ficar consistente com os cards.
+function montarCheckboxesAspectos(){
+  document.getElementById('config-aspectos').innerHTML = GRUPOS.filter(function(g){ return g.id !== 'icm'; }).map(function(g){
+    var marcado = aspectosVisiveis[g.id] !== false;
+    return '<label class="linha-config linha-config-sub"><input type="checkbox" data-aspecto-vis="'+g.id+
+      '" '+(marcado ? 'checked' : '')+'><span class="icone">'+(ICONE_ASPECTO[g.id]||'')+'</span> '+g.nome+'</label>';
+  }).join('');
+  document.querySelectorAll('[data-aspecto-vis]').forEach(function(chk){
+    chk.addEventListener('change', function(){
+      aspectosVisiveis[chk.getAttribute('data-aspecto-vis')] = chk.checked;
+      try { localStorage.setItem(CHAVE_PREFS_ASPECTOS, JSON.stringify(aspectosVisiveis)); } catch(e) {}
+      // Só precisa re-render a lista que estiver ativa agora — trocar de
+      // região/Todas depois já redesenha a outra do zero, sem ficar velha.
+      if(regioesFiltroGeral.length === 1) montarAspectosPorGrupo(featuresParaResumo(), 'aspectos-regiao');
+      else montarAspectosPorGrupo(featuresDaVisaoGeral(), 'aspectos-geral');
+    });
+  });
+}
+montarCheckboxesAspectos();
+
+// :not([data-aspecto-vis]) exclui os checkboxes de aspecto — esses já têm
+// o listener próprio em montarCheckboxesAspectos() (chave livre, sem <id>,
+// não fariam sentido no formato chk-<chave> daqui).
+document.querySelectorAll('#popover-config input[type=checkbox]:not([data-aspecto-vis])').forEach(function(chk){
   var chave = chk.id.replace('chk-', '').replace(/-([a-z])/g, function(_, c){ return c.toUpperCase(); });
   chk.addEventListener('change', function(){
     secoesVisiveis[chave] = chk.checked;
@@ -1406,7 +1492,12 @@ function montarComparativoRegioes(todas){
 // (região específica, já recortado pelo funil Tipo/Trecho/S.R.E. — ver
 // atualizarResumoRegiao()).
 function montarAspectosPorGrupo(feats, alvoId){
-  var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm'; });
+  var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm' && aspectosVisiveis[g.id] !== false; });
+  // Some com o wrapper (label "Por aspecto avaliado" + os cards) se a
+  // usuária desmarcou todo mundo — não faz sentido mostrar um título sem
+  // nada embaixo dele.
+  var wrapper = document.getElementById(alvoId + '-wrap');
+  if(wrapper) wrapper.style.display = aspectos.length > 0 ? '' : 'none';
   document.getElementById(alvoId).innerHTML = aspectos.map(function(g){
     var r = somaPorAspecto(feats, g.id);
     var partes = r.ordemClasses.map(function(cl){
