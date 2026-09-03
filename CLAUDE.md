@@ -123,22 +123,39 @@ lado a lado). A usuária achou confuso mesmo depois de numerar as camadas e expl
 com exemplo — pediu pra tirar (2026-08-04). `turf.js` foi removido do projeto (só
 existia pro offset). Não recriar esse formato de camadas sobrepostas/deslocadas.
 
-**Seletor "Colorir mapa por" (2026-09-02):** a usuária reclamou que o Resultado Geral
-(média de todos os aspectos) escondia detalhe importante — "os dados ficavam muito
-vagos". Substituiu-se por um `<select id="sel-aspecto">` (populado a partir de
-`GRUPOS` = `GRUPOS_INSPECAO` + `{id:'icm', nome:'Resultado Geral'}`) compartilhado
-pelas duas abas: ele recolore o mapa INTEIRO por um aspecto de cada vez (nunca duas
-camadas ao mesmo tempo, sem offset). Trocar o select muda `aspectoAtual`, reseta os
-filtros de checkbox (`ativosAspectoGeral`/`ativosAspectoRegiao` — os níveis de um
-aspecto não têm relação com os de outro) e redesenha Visão Geral + Por Região. A
-generalização do que antes só existia pro I.C.M.: `classeDoAspecto(props, grupoId)` /
-`somaPorAspecto(feats, grupoId)` (paralelo a `somaIcmDe`, mas descobre os níveis a
-partir dos dados de verdade em vez de uma lista fixa tipo `CLASSES_ICM`) e
-`ordemClasses` (`[{chave,nome,cor}]`) como formato comum que alimenta a barra,
-legenda e filtro tanto pro I.C.M. quanto pra qualquer aspecto. Trecho que não tem
-aquele aspecto (ex.: `vegetacao` numa via não pavimentada) cai em `'sem_info'`, cinza
-`#94A3B8`. `montarComparativoRegioes` (a barra "Comparativo por região" na Visão
-Geral) ficou de propósito só no Resultado Geral — não segue o seletor.
+**"Colorir mapa por" (2026-09-02, virou grade de cards em 2026-09-03):** a usuária
+reclamou que o Resultado Geral (média de todos os aspectos) escondia detalhe
+importante — "os dados ficavam muito vagos". Criou-se um controle compartilhado
+pelas duas abas que recolore o mapa INTEIRO por um aspecto de cada vez (nunca duas
+camadas ao mesmo tempo, sem offset) — `GRUPOS` = `GRUPOS_INSPECAO` + `{id:'icm',
+nome:'Resultado Geral'}`. Selecionar um aspecto muda `aspectoAtual` (função
+`selecionarAspecto(id)`), reseta os filtros de checkbox (`ativosAspectoGeral`/
+`ativosAspectoRegiao` — os níveis de um aspecto não têm relação com os de outro) e
+redesenha Visão Geral + Por Região. A generalização do que antes só existia pro
+I.C.M.: `classeDoAspecto(props, grupoId)` / `somaPorAspecto(feats, grupoId)`
+(paralelo a `somaIcmDe`, mas descobre os níveis a partir dos dados de verdade em vez
+de uma lista fixa tipo `CLASSES_ICM`) e `ordemClasses` (`[{chave,nome,cor}]`) como
+formato comum que alimenta a barra, legenda e filtro tanto pro I.C.M. quanto pra
+qualquer aspecto. Trecho que não tem aquele aspecto (ex.: `vegetacao` numa via não
+pavimentada) cai em `'sem_info'`, cinza `#94A3B8`. `montarComparativoRegioes` (a
+barra "Comparativo por região" na Visão Geral) ficou de propósito só no Resultado
+Geral — não segue o seletor.
+
+Era um `<select>` simples; virou `montarGradeAspectos()` — uma esteira horizontal
+de `.card-aspecto` (um por `GRUPOS`, ícone + nome + `% coberto` + mini-barra),
+pedido da usuária: "não estou gostando desse geoportal... queria algo mais dinâmico,
+bonito". Cada card já mostra a composição daquele aspecto de relance (sem precisar
+abrir um dropdown e trocar um por um) e clicar nele chama `selecionarAspecto()`; o
+card do `aspectoAtual` fica com destaque (`.ativo`). O número do card é cobertura
+(`100 - % 'sem_info'`), não km total — km total é ~igual em todo card (mesmo
+universo de trechos) e não diferenciava nada; cobertura já separa visualmente os
+aspectos exclusivos de pavimentada (`pavimento`/`vegetacao`/`drenagem`/
+`sinalizacao_*`, cobertura ≈ % pavimentada) dos exclusivos de não pavimentada
+(`plataforma`/`drenagem_superficial`, cobertura ≈ % não pavimentada). Chamada em
+dois pontos: uma vez no carregamento do script (pintura placeholder, ainda sem
+dado) e de novo dentro de `desenharVisaoGeral()` (com os totais reais e o card
+ativo certo) — só essa função dispara recálculo de todos os 8 grupos de uma vez,
+então não precisa ser chamada em mais lugar nenhum.
 
 **Donut → barra empilhada (2026-09-03):** o gráfico de composição (km por
 classe/nível) era um donut/pizza; a usuária pediu um gráfico melhor. Virou
@@ -150,6 +167,15 @@ conversa. Assinatura da função não mudou (`somaPorClasse, total, idAlvo,
 ordemClasses`), só o nome (era `montarDonut`) e os ids/classes CSS (`geral-barra`/
 `regiao-barra`, antes `geral-donut`/`regiao-donut`; `.barra-wrap-central`, antes
 `.donut-wrap-central`).
+
+**Polish visual geral (2026-09-03):** junto com a grade de cards, um passe de
+retoque no painel todo pra parecer menos "cru" (mesmo pedido: "mais dinâmico,
+bonito") — cabeçalho com gradiente (`linear-gradient(135deg, --azul, --azul-claro)`
+em vez de cor chapada), hover com leve elevação (`translateY`/`translateX` +
+sombra) nos cards de KPI, `.comp-regiao` e `.card-aspecto`, transição suave nas
+abas/legenda/select, anel de foco azul em select/busca, e scrollbar fina
+customizada no painel e na esteira de cards. Só CSS — nenhuma mudança de dado ou
+comportamento.
 
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 

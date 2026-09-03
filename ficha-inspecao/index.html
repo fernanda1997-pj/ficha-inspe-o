@@ -19,25 +19,64 @@
     display:flex; flex-direction:column; z-index:1100; box-shadow:2px 0 8px rgba(0,0,0,.08);
   }
   #painel header{
-    background:var(--azul); color:#fff; padding:12px 14px; display:flex; align-items:center; gap:10px;
+    background:linear-gradient(135deg, var(--azul), var(--azul-claro));
+    color:#fff; padding:12px 14px; display:flex; align-items:center; gap:10px;
   }
   #painel header .logos{display:flex; gap:6px;}
   #painel header img{height:34px; background:#fff; border-radius:6px; padding:3px;}
   #painel header h1{font-size:14px; line-height:1.25;}
   #painel header small{font-weight:400; opacity:.85; font-size:11px; display:block;}
   #painel .conteudo{flex:1; overflow-y:auto; padding:12px;}
+  #painel .conteudo::-webkit-scrollbar{width:6px;}
+  #painel .conteudo::-webkit-scrollbar-thumb{background:#cbd5e1; border-radius:3px;}
+  #painel .conteudo::-webkit-scrollbar-track{background:transparent;}
 
   .abas{display:flex; border-bottom:1px solid var(--borda); flex:none;}
 
   /* Seletor "Colorir mapa por" — fica fora das duas abas (compartilhado),
      mesma cor de fundo do cabeçalho das linhas de trecho pra destacar que
-     é um controle "global" do mapa, não específico de uma aba. */
-  #aspecto-wrap{padding:8px 14px; background:var(--fundo); border-bottom:1px solid var(--borda); flex:none;}
+     é um controle "global" do mapa, não específico de uma aba. Virou uma
+     esteira horizontal de cards (2026-09-03, pedido da usuária: "algo mais
+     dinâmico, bonito") — cada card já mostra o total e a mini-barra daquele
+     aspecto, então dá pra comparar todos de relance antes de escolher qual
+     colore o mapa (o mapa em si continua só com UM aspecto por vez, pra não
+     voltar a ter linhas sobrepostas/confusas — ver histórico acima).*/
+  #aspecto-wrap{padding:10px 14px; background:var(--fundo); border-bottom:1px solid var(--borda); flex:none;}
+  .aspecto-cabeca{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .rotulo-aspecto{font-size:12px; font-weight:600; color:var(--azul);}
+  .dica-scroll{font-size:10px; color:var(--cinza); font-style:italic;}
+  .grade-aspectos{
+    display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; scroll-snap-type:x proximity;
+  }
+  .grade-aspectos::-webkit-scrollbar{height:5px;}
+  .grade-aspectos::-webkit-scrollbar-thumb{background:#cbd5e1; border-radius:3px;}
+  .grade-aspectos::-webkit-scrollbar-track{background:transparent;}
+  .card-aspecto{
+    flex:0 0 108px; scroll-snap-align:start; display:flex; flex-direction:column; gap:6px;
+    text-align:left; background:#fff; border:1.5px solid var(--borda); border-radius:10px;
+    padding:8px 9px; cursor:pointer; font-family:inherit;
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .card-aspecto:hover{transform:translateY(-2px); box-shadow:0 5px 12px rgba(30,58,114,.14);}
+  .card-aspecto.ativo{
+    border-color:var(--azul); box-shadow:0 0 0 3px rgba(30,58,114,.13), 0 5px 12px rgba(30,58,114,.16);
+  }
+  .card-aspecto .topo{display:flex; align-items:center; gap:5px;}
+  .card-aspecto .icone{font-size:15px; line-height:1; flex:none;}
+  .card-aspecto .nome{
+    font-size:10.5px; font-weight:700; color:#334155; line-height:1.25;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .card-aspecto .total{font-size:14.5px; font-weight:800; color:var(--azul); font-variant-numeric:tabular-nums;}
+  .card-aspecto .rotulo-total{font-size:9.5px; font-weight:600; color:var(--cinza); margin-left:3px;}
+  .card-aspecto .mini-barra{display:flex; gap:1px; height:6px; border-radius:3px; overflow:hidden; background:var(--borda);}
+  .card-aspecto .mini-barra span{height:100%;}
   .aba-btn{
     flex:1; padding:10px 6px; border:none; background:#fff; color:var(--cinza);
-    font-size:12.5px; font-weight:600; cursor:pointer; border-bottom:2px solid transparent;
+    font-size:12.5px; font-weight:600; cursor:pointer; border-bottom:2.5px solid transparent;
+    transition:color .15s ease, border-color .15s ease, background .15s ease;
   }
-  .aba-btn:hover{background:var(--fundo);}
+  .aba-btn:hover{background:var(--fundo); color:var(--azul);}
   .aba-btn.ativa{color:var(--azul); border-bottom-color:var(--azul);}
 
 
@@ -58,9 +97,11 @@
   .barra-empilhada span{height:100%;}
   .legenda-filtro{margin-top:8px;}
   .legenda-filtro .linha{
-    display:flex; align-items:center; gap:8px; padding:7px 2px;
-    border-bottom:1px solid var(--borda); font-size:12.5px;
+    display:flex; align-items:center; gap:8px; padding:7px 6px; margin:0 -6px;
+    border-bottom:1px solid var(--borda); font-size:12.5px; border-radius:6px;
+    transition:background .12s ease;
   }
+  .legenda-filtro .linha:hover{background:var(--fundo);}
   .legenda-filtro .linha:last-child{border-bottom:none;}
   .legenda-filtro input{width:15px; height:15px; accent-color:var(--azul); flex:none;}
   .legenda-filtro .chip{width:9px; height:9px; border-radius:50%; flex:none;}
@@ -71,8 +112,10 @@
   label.rotulo:first-child{margin-top:0;}
   select{
     width:100%; padding:7px 8px; border:1px solid var(--borda); border-radius:6px;
-    font-size:13px; font-family:inherit; background:#fff;
+    font-size:13px; font-family:inherit; background:#fff; transition:border-color .15s ease, box-shadow .15s ease;
   }
+  select:focus{outline:none; border-color:var(--azul-claro); box-shadow:0 0 0 3px rgba(30,58,114,.12);}
+  #busca-input:focus{outline:none; border-color:var(--azul-claro); box-shadow:0 0 0 3px rgba(30,58,114,.12);}
 
   #resumo-escopo{font-size:11px; color:var(--cinza); font-weight:600; margin-top:12px;}
   #resumo{
@@ -184,16 +227,18 @@
   .kpis-grade-4{grid-template-columns:repeat(2, 1fr);}
   .kpi-mini{
     background:var(--fundo); border:1px solid var(--borda); border-radius:8px;
-    padding:10px 6px; text-align:center;
+    padding:10px 6px; text-align:center; transition:transform .15s ease, box-shadow .15s ease;
   }
+  .kpi-mini:hover{transform:translateY(-2px); box-shadow:0 4px 10px rgba(30,58,114,.1);}
   .kpi-mini b{display:block; font-size:19px; color:var(--azul); font-weight:800; white-space:nowrap;}
   .kpi-mini span{font-size:10px; color:var(--cinza); line-height:1.3;}
 
   .comp-regiao{
     margin-bottom:8px; font-size:11.5px; cursor:pointer; background:#fff; border:1px solid var(--borda);
     border-left:3px solid var(--azul); border-radius:6px; padding:8px 10px;
+    transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
   }
-  .comp-regiao:hover{background:var(--fundo);}
+  .comp-regiao:hover{background:var(--fundo); transform:translateX(2px); box-shadow:0 3px 8px rgba(30,58,114,.1);}
   .comp-regiao .topo{display:flex; justify-content:space-between; margin-bottom:5px; color:#334155;}
   .comp-regiao .topo b{color:var(--azul);}
   .comp-regiao .barra{display:flex; height:14px; border-radius:4px; overflow:hidden; background:var(--fundo);}
@@ -262,8 +307,11 @@
       <button class="aba-btn" data-aba="regiao">Por Região</button>
     </div>
     <div id="aspecto-wrap">
-      <label class="rotulo" for="sel-aspecto" style="margin-top:0;">Colorir mapa por</label>
-      <select id="sel-aspecto"></select>
+      <div class="aspecto-cabeca">
+        <span class="rotulo-aspecto">Colorir mapa por</span>
+        <span class="dica-scroll">arraste ← →</span>
+      </div>
+      <div class="grade-aspectos" id="grade-aspectos"></div>
     </div>
     <div class="conteudo" id="painel-regiao" style="display:none;">
       <label class="rotulo" for="sel-regiao">Região</label>
@@ -1143,29 +1191,65 @@ function somaPorAspecto(feats, grupoId){
 }
 
 // ---------------------------------------------------------------------
-// Seletor "Colorir mapa por" — Resultado Geral (padrão) ou um aspecto
+// Grade "Colorir mapa por" — Resultado Geral (padrão) ou um aspecto
 // específico (Pavimento, Vegetação, Drenagem...). Troca a cor de TODO o
 // mapa, nas duas abas, pro aspecto escolhido, em vez de só a média —
 // pedido explícito da usuária (2026-09): a média escondia detalhe que ela
 // precisava ver (ex.: trecho Bom no geral mas sinalização péssima).
 // Tentativa anterior de mostrar os aspectos (camadas por aspecto
-// deslocadas ~6m lado a lado) foi removida por confusa — esse seletor é o
-// substituto: um aspecto de cada vez, sem sobrepor linha nenhuma.
-var selAspecto = document.getElementById('sel-aspecto');
-selAspecto.innerHTML = GRUPOS.map(function(g){ return '<option value="'+g.id+'">'+g.nome+'</option>'; }).join('');
-var aspectoAtual = 'icm';
-selAspecto.value = aspectoAtual; // começa em Resultado Geral, igual sempre foi
-selAspecto.addEventListener('change', function(){
-  aspectoAtual = selAspecto.value;
+// deslocadas ~6m lado a lado) foi removida por confusa — o mapa continua
+// só com UM aspecto por vez. Era um <select> simples; virou uma esteira de
+// cards (2026-09-03, "algo mais dinâmico, bonito") — cada card já mostra o
+// total e a composição daquele aspecto (mini-barra), então dá pra comparar
+// todos de relance sem precisar abrir um dropdown e trocar um por um.
+var ICONE_ASPECTO = {
+  pavimento: '🛣️', vegetacao: '🌿', drenagem: '🌊', sinalizacao_horizontal: '🎨',
+  sinalizacao_vertical: '🪧', plataforma: '🪨', drenagem_superficial: '💧', icm: '📊',
+};
+var aspectoAtual = 'icm'; // começa em Resultado Geral, igual sempre foi
+
+function selecionarAspecto(id){
+  aspectoAtual = id;
   // Reseta o filtro por checkbox — os níveis do aspecto novo não têm
   // relação com os do aspecto anterior (ex.: ICM tem 5 classes, Vegetação
   // só 2), então força tudo marcado de novo em vez de tentar herdar estado.
   ativosAspectoGeral = {};
   ativosAspectoRegiao = {};
-  desenharVisaoGeral();
+  desenharVisaoGeral(); // já chama montarGradeAspectos() de novo, atualizando o card ativo
   atualizarResumoRegiao();
   redesenharMapa();
-});
+}
+
+// O total em km é sempre ~igual em todo card (é o mesmo universo de trechos
+// levantados) — não ajuda a diferenciar aspecto nenhum. Cobertura (%) é bem
+// mais informativa: mostra quanto daquele total tem marcação real pra ESSE
+// aspecto (ex.: Vegetação só existe em via pavimentada, então cobertura
+// baixa ali é esperado).
+function semInfoKm(r){
+  return r.somaPorClasse['sem_info'] !== undefined ? r.somaPorClasse['sem_info'] : (r.somaPorClasse['Sem Informação'] || 0);
+}
+
+function montarGradeAspectos(){
+  var todas = todasAsFeatures();
+  document.getElementById('grade-aspectos').innerHTML = GRUPOS.map(function(g){
+    var r = somaPorAspecto(todas, g.id);
+    var cobertura = r.total > 0 ? (100 * (r.total - semInfoKm(r)) / r.total) : 0;
+    var segmentos = r.ordemClasses.map(function(cl){
+      var pct = r.total > 0 ? (100 * (r.somaPorClasse[cl.chave]||0) / r.total) : 0;
+      return pct > 0 ? '<span style="width:'+pct+'%; background:'+cl.cor+'"></span>' : '';
+    }).join('');
+    return '<button type="button" class="card-aspecto'+(g.id === aspectoAtual ? ' ativo' : '')+
+      '" data-aspecto="'+g.id+'" title="'+g.nome+' — '+Math.round(r.total).toLocaleString('pt-BR')+' km levantados">' +
+      '<span class="topo"><span class="icone">'+ICONE_ASPECTO[g.id]+'</span><span class="nome">'+g.nome+'</span></span>' +
+      '<span class="total">'+Math.round(cobertura)+'%<span class="rotulo-total">coberto</span></span>' +
+      '<span class="mini-barra">'+segmentos+'</span>' +
+    '</button>';
+  }).join('');
+  document.querySelectorAll('.card-aspecto').forEach(function(el){
+    el.addEventListener('click', function(){ selecionarAspecto(el.getAttribute('data-aspecto')); });
+  });
+}
+montarGradeAspectos(); // primeira pintura (ainda sem dado — vira placeholder até desenharVisaoGeral rodar)
 
 function desenharVisaoGeral(){
   var todas = todasAsFeatures();
@@ -1173,6 +1257,8 @@ function desenharVisaoGeral(){
   geralSomaPorClasse = r.somaPorClasse;
   geralTotal = r.total;
   geralOrdemClasses = r.ordemClasses;
+
+  montarGradeAspectos(); // re-pinta com os totais reais + destaca o card ativo
 
   document.getElementById('geral-total').textContent =
     r.total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
