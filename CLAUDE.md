@@ -313,12 +313,19 @@ cards CLICÁVEL que mudava a cor do mapa (isso continua fora — mapa sempre
 Resultado Geral), mas queria sim ver o dado de cada aspecto separado, só que
 como LEITURA, não como controle.
 
-- **Card "Resultado geral" → `montarAspectosGeral(feats)`:** troca a barra
-  única (Bom/Regular/Ruim/Péssimo/Sem Informação) por uma `.aspecto-linha`
-  pra cada um dos 7 aspectos reais (`GRUPOS` sem o `icm`) — ícone, km total,
-  barra + legenda própria (níveis de severidade daquele aspecto, via
-  `somaPorAspecto`). Sem checkbox, sem clique — só consulta. `ICONE_ASPECTO`
-  voltou a existir só pra isso (tinha sido removido junto com a grade).
+- **Card "Resultado geral" → `montarAspectosPorGrupo(feats, alvoId)`:** troca
+  a barra única (Bom/Regular/Ruim/Péssimo/Sem Informação) por uma
+  `.aspecto-linha` pra cada um dos 7 aspectos reais (`GRUPOS` sem o `icm`) —
+  ícone, km total, barra + legenda própria (níveis de severidade daquele
+  aspecto, via `somaPorAspecto`). Sem checkbox, sem clique — só consulta.
+  `ICONE_ASPECTO` voltou a existir só pra isso (tinha sido removido junto
+  com a grade). **`alvoId` genérico desde o pedido seguinte no mesmo dia**
+  ("faça aspecto avaliado para cada região tbm") — a mesma função alimenta
+  `#aspectos-geral` (chamada de `desenharVisaoGeral()`, com
+  `featuresDaVisaoGeral()`) e `#aspectos-regiao` (chamada de
+  `atualizarResumoRegiao()`, com `featuresParaResumo()` — já recortado pelo
+  funil Tipo/Trecho/S.R.E., então escolher "Não pavimentada" faz Pavimento/
+  Vegetação/Drenagem virarem 100% Sem Informação ali, é o esperado).
 - **Tabela "Comparativo por região" → colunas viraram aspectos:** era
   Região × classe do Resultado Geral; virou Região × aspecto, célula = % na
   MELHOR classe daquele aspecto naquela região (`ordemClasses[0]` que não é
@@ -329,11 +336,13 @@ como LEITURA, não como controle.
   coluna abreviados (`NOME_CURTO_ASPECTO` — "Sinal. H", "Dren. Superf."...)
   porque 7 colunas + região não cabem nos 460px do painel; `#comparativo-regioes{overflow-x:auto}`
   deixa rolar na horizontal em vez de espremer o texto.
-- **O que NÃO mudou:** o mapa da Visão Geral ("Todas") continua sempre
-  Resultado Geral — isso é sobre os CARDS/TABELA, não o mapa (a grade de
-  cards que trocava a cor do mapa continua removida, ver entrada anterior).
-  A aba de região específica (barra/legenda/checkbox do Resultado Geral em
-  `#regiao-barra`/`#regiao-legenda`) também não mudou — só a "Todas".
+- **O que NÃO mudou:** o mapa continua sempre Resultado Geral, em Todas E em
+  qualquer região — isso é sobre os CARDS/TABELA/LISTA, não o mapa (a grade
+  de cards clicável que trocava a cor do mapa continua removida, ver entrada
+  anterior). A barra/legenda COM checkbox do Resultado Geral
+  (`#regiao-barra`/`#regiao-legenda`, que filtra o mapa da região) também não
+  mudou nem sumiu — "Por aspecto avaliado" entrou como uma lista A MAIS
+  logo abaixo dela dentro da região, não em troca.
 - **Ficou órfão e foi removido junto:** `montarLegendaFiltroIcm`,
   `atualizarDonutGeralFiltrado`, `ativosAspectoGeral`, `geralSomaPorClasse`/
   `geralTotal`/`geralOrdemClasses` — eram só pro checkbox-filtro da barra

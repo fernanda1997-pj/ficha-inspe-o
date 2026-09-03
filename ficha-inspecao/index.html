@@ -79,9 +79,11 @@
 
   /* "Por aspecto avaliado" (2026-09-03) — pedido da usuária: em vez de um
      Resultado Geral só, uma barra por aspecto (Pavimento, Vegetação,
-     Drenagem...). Só leitura, sem checkbox — o mapa da "Todas" continua
-     sempre pelo Resultado Geral; quem quer filtrar o mapa abre uma região.
-     Ver montarAspectosGeral(). */
+     Drenagem...). Aparece em "Todas" (#aspectos-geral) e dentro de cada
+     região (#aspectos-regiao, recortado pelo funil). Só leitura, sem
+     checkbox — o mapa continua sempre pelo Resultado Geral; quem quer
+     filtrar o mapa por classe usa a barra/legenda de cima (com checkbox).
+     Ver montarAspectosPorGrupo(). */
   .aspecto-linha{
     background:var(--p-bg-2); border:1px solid var(--p-borda); border-radius:10px;
     padding:10px 12px; margin-bottom:8px;
@@ -345,6 +347,9 @@
         <div id="regiao-barra"></div>
       </div>
       <div class="legenda-filtro" id="regiao-legenda"></div>
+
+      <label class="rotulo" style="margin-top:16px;">Por aspecto avaliado</label>
+      <div id="aspectos-regiao"></div>
 
       <hr class="separador">
 
@@ -748,6 +753,7 @@ function atualizarResumoRegiao(){
   var r = somaPorAspecto(feats, aspectoAtual);
   atualizarDonutRegiao(r.somaPorClasse, r.total, r.ordemClasses);
   montarLegendaFiltroRegiao(r.somaPorClasse, r.total, r.ordemClasses);
+  montarAspectosPorGrupo(feats, 'aspectos-regiao');
 
   var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
   var escopo = 'Região inteira';
@@ -1186,7 +1192,7 @@ function somaPorAspecto(feats, grupoId){
 // 2026-09-03, removido a pedido da usuária junto com a reforma do cabeçalho
 // por região (queria menos coisa, não mais, no MAPA). O detalhe por aspecto
 // continua em 3 lugares: popup do trecho, tabela do funil, e a lista "Por
-// aspecto avaliado" da Visão Geral (montarAspectosGeral, mais abaixo) — só
+// aspecto avaliado" (Todas E cada região, montarAspectosPorGrupo, mais abaixo) — só
 // saiu do CONTROLE DE COR do mapa. `estiloDoSegmento`/`classeDoAspecto`/
 // `somaPorAspecto` continuam genéricos (aceitam qualquer grupoId) por baixo
 // do capô; não recriar a grade de cards (clicável, muda o mapa) sem pedido
@@ -1268,7 +1274,7 @@ function desenharVisaoGeral(){
   document.getElementById('geral-total').textContent =
     somaIcmDe(todas).total.toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' km';
 
-  montarAspectosGeral(todas);
+  montarAspectosPorGrupo(todas, 'aspectos-geral');
   desenharTodasAsRegioes();
   redesenharMapaGeral(todas);
 
@@ -1378,14 +1384,17 @@ function montarBarra(somaPorClasse, total, idAlvo, ordemClasses){
 // "Por aspecto avaliado" — uma barra + legenda por aspecto (Pavimento,
 // Vegetação, Drenagem, Sinalização H/V, Plataforma, Drenagem Superficial),
 // em vez de uma barra só com a média do Resultado Geral (pedido da usuária:
-// "deixa específico de cada um"). Só leitura — sem checkbox de filtro, já
-// que o mapa da "Todas" sempre mostra o Resultado Geral mesmo (quem quer
-// filtrar o mapa por classe abre uma região específica, que continua com
-// esse filtro). ICM fica de fora da lista (é o que virou "Comparativo por
-// região" logo abaixo, com o mesmo espírito).
-function montarAspectosGeral(feats){
+// "deixa específico de cada um" / "faça pra cada região tbm"). Só
+// leitura — sem checkbox de filtro, já que o mapa continua sempre pelo
+// Resultado Geral (a barra/legenda COM checkbox que filtra o mapa da região
+// é outra, ver montarLegendaFiltroRegiao). ICM fica de fora da lista (é o
+// que já aparece na barra do Resultado Geral / "Comparativo por região",
+// com o mesmo espírito). `alvoId` deixa a mesma função servir tanto
+// #aspectos-geral ("Todas") quanto #aspectos-regiao (região específica,
+// já recortado pelo funil Tipo/Trecho/S.R.E. — ver atualizarResumoRegiao()).
+function montarAspectosPorGrupo(feats, alvoId){
   var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm'; });
-  document.getElementById('aspectos-geral').innerHTML = aspectos.map(function(g){
+  document.getElementById(alvoId).innerHTML = aspectos.map(function(g){
     var r = somaPorAspecto(feats, g.id);
     var partes = r.ordemClasses.map(function(cl){
       var pct = r.total > 0 ? (100 * (r.somaPorClasse[cl.chave]||0) / r.total) : 0;
