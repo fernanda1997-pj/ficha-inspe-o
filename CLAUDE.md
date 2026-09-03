@@ -201,6 +201,55 @@ Se pedir pra alargar mais ou mudar pra modal/aba cheia depois, o registro de
 alternativas consideradas está na resposta que ofereceu as 3 opções — a usuária
 escolheu explicitamente "alargar o painel" em vez de modal ou 3ª aba.
 
+**Tema escuro + filtro por região + tabela heatmap (2026-09-03, ainda o mesmo
+dia):** a grade de cards larga ainda não agradou — a usuária mandou print de um
+dashboard SaaS de referência (fundo escuro, pílulas de filtro, cards de KPI,
+tabela com célula colorida por intensidade) e disse "algo mais assim". Mostrei
+outro mockup reproduzindo esse visual com os dados reais do site (sem os banners
+de alerta — pediu pra tirar) e ela confirmou tema escuro + gostou do filtro por
+região do topo; a pergunta em aberto foi só "como encaixar o mapa" — escolheu
+**adicionar uma opção de mapa escuro** (não trocar o padrão nem manter só claro).
+
+- **Tema escuro só no `#painel`:** variáveis `--p-bg`/`--p-bg-2`/`--p-bg-3`/
+  `--p-borda`/`--p-texto`/`--p-texto-2`/`--p-azul`/`--p-trilha` declaradas
+  DENTRO do seletor `#painel` (não em `:root`) — os tokens globais
+  (`--azul`/`--fundo`/`--borda`/`--cinza`) continuam intactos e usados por
+  `#drawer`/`.popup-insp`/controles do Leaflet, que ficam CLAROS de propósito
+  — o basemap "Padrão" continua claro por padrão, e o mapa escuro é uma opção
+  que a usuária escolhe (ver basemap "Escuro" abaixo), não o padrão forçado.
+  Cores de status (verde/amarelo/laranja/vermelho) não mudaram — já liam bem em
+  fundo escuro.
+- **Basemap "Escuro":** `baseEscuro` usa
+  `Canvas/World_Dark_Gray_Base` do ArcGIS REST (mesma família Esri do
+  `World_Light_Gray_Base` já usado antes pro "Padrão" em algum momento) — não
+  precisa de API key, ao contrário do CARTO Dark Matter (CARTO já deu problema
+  de API key em produção nesse projeto, ver histórico de basemap). Registrado
+  como 3º radio em `L.control.layers`, ao lado de Padrão/Satélite; Padrão
+  continua OpenStreetMap (bate com mapa-levantamento, isso não mudou).
+- **Filtro por pílulas de região (`.pills-regiao`, só na Visão Geral):**
+  "gostei da parte de cima que separa por região" — pedido novo, não é só CSS.
+  `regiaoFiltroGeral` (`''` = Todas) recorta `todasAsFeatures()` via
+  `featuresDaVisaoGeral()`, usado por `montarGradeAspectos()` e
+  `desenharVisaoGeral()` — filtra KPIs, Resultado Geral, grade de aspectos E O
+  MAPA (reaproveita `redesenharMapaGeral`, que já dá `fitBounds` sozinho).
+  `montarComparativoRegioes()` continua recebendo `todasAsFeatures()` SEM
+  filtro de propósito — ela existe pra comparar regiões entre si, filtrar pra
+  uma só a esvaziaria. Diferente da aba "Por Região" (`selRegiao`): esse filtro
+  é rápido, sem trocar de aba nem afetar Tipo/Trecho/S.R.E.
+- **"Comparativo por região" virou tabela heatmap:** era uma lista de cartões
+  com barrinha (`.comp-regiao`, removido); virou `<table class="tabela-heatmap">`
+  — uma linha por região, uma coluna por classe do Resultado Geral, célula
+  colorida pela cor de STATUS da própria classe (`corHeatmap()`: mistura a cor
+  com transparência proporcional ao %) em vez de uma escala neutra genérica tipo
+  a referência — mantém a mesma linguagem de cor (verde=Bom, vermelho=Péssimo)
+  do resto do site. Clicar na linha ainda leva pra "Por Região" com a região
+  certa (mesmo comportamento de antes, só mudou de `<div>` pra `<tr>`).
+- **Não implementado (recusado explicitamente):** os banners de alerta/insight
+  do mockup ("Cobertura baixa em vias não pavimentadas", "5 S.R.E. sem
+  geometria") eram ilustrativos pra mostrar o estilo — a usuária disse "deixa
+  sem alertas". Não recriar sem pedido explícito; se pedir depois, envolve
+  lógica nova (regras de quando/o que virar alerta), não é só visual.
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:
