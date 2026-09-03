@@ -393,6 +393,33 @@ padrão em código é o que garante que ISSO comece escondido em qualquer
 lugar que ela abra o site, não só onde ela já tinha desmarcado manualmente
 antes.
 
+**Bug real: "Sem Informação" inflado por trecho do tipo de via ERRADO
+(2026-09-03, ainda o mesmo dia):** a usuária estranhou "Por aspecto
+avaliado" mostrando uns 40–50% "Sem Informação" em quase todo aspecto — não
+entendeu o que era. Causa raiz: `somaPorAspecto()` jogava no balde
+`sem_info` tanto (a) trecho que devia ter o dado e a ficha não marcou
+QUANTO (b) trecho do tipo de via ERRADO pra aquele aspecto (ex.: uma via
+não pavimentada não tem `vegetacao` — o campo nem existe nela, por design,
+ver a tabela de grupos mais acima). Como pavimentada/não pavimentada é
+quase meio a meio, isso inflava TODO aspecto pra ~50% "Sem Informação" só
+por causa da metade da malha que era do tipo errado — mascarava totalmente
+os gaps de dado reais (que eram bem menores, 1–5%).
+
+Corrigido com `TIPO_VIA_DO_ASPECTO` (`index.html`, perto de
+`somaPorAspecto`): mapa aspecto → tipo de via que ele pertence (mesma tabela
+do CLAUDE.md, "Grupo (`id`)" acima). `somaPorAspecto()` agora PULA (nem
+soma no total) trecho do tipo errado — só quem é do tipo certo e mesmo
+assim não tem o dado vira "Sem Informação". Efeito colateral bom: o "km
+total" de cada card em "Por aspecto avaliado" deixou de ser sempre
+12.591 km pra todo aspecto — agora é o km da malha realmente aplicável
+(ex.: Pavimento/Vegetação/Drenagem/Sinalização ~6.543 km = só via
+pavimentada; Plataforma/Drenagem Superficial ~6.048 km = só não
+pavimentada), e a tabela "Comparativo por região" (que já usava
+`somaPorAspecto` por baixo) também ficou mais precisa sem precisar mexer
+nela. `classeDoAspecto()` (usada só quando `aspectoAtual` != `'icm'`, hoje
+sempre `'icm'` — ver histórico do seletor removido) NÃO foi alterada, seria
+o mesmo ajuste se algum dia o mapa voltar a colorir por aspecto específico.
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:

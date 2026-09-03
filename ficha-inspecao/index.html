@@ -1198,16 +1198,36 @@ function classeDoAspecto(props, grupoId){
   return String(info.severidade);
 }
 
+// Cada aspecto só existe no modelo de ficha de UM tipo de via — pavimento/
+// vegetação/drenagem/sinalização só em pavimentada, plataforma/drenagem
+// superficial só em não pavimentada (ver tabela no CLAUDE.md). Usado em
+// somaPorAspecto pra separar "não se aplica" (tipo de via errado pra esse
+// aspecto — nem devia contar) de "Sem Informação" de verdade (tipo certo,
+// mas a ficha não marcou) — sem isso os dois caíam juntos e todo aspecto
+// mostrava uns 50% "Sem Informação" só por causa da metade da malha que
+// nem tem esse campo, o que só confundia (2026-09-03, "eu não estou
+// entendendo o que seria essa Sem Informação").
+var TIPO_VIA_DO_ASPECTO = {
+  pavimento: 'pavimentada', vegetacao: 'pavimentada', drenagem: 'pavimentada',
+  sinalizacao_horizontal: 'pavimentada', sinalizacao_vertical: 'pavimentada',
+  plataforma: 'nao_pavimentada', drenagem_superficial: 'nao_pavimentada',
+};
+
 // Soma km por classe/nível pro aspecto escolhido — generaliza somaIcmDe pra
 // qualquer grupo (pavimento/vegetação/drenagem/...). Os níveis e o rótulo de
 // cada um são descobertos a partir dos dados de verdade (o texto que a
 // ficha usou), não de uma lista fixa — funciona igual pra qualquer aspecto
-// sem precisar duplicar a tabela de severidades do converter aqui.
+// sem precisar duplicar a tabela de severidades do converter aqui. Trecho do
+// tipo de via ERRADO pra esse aspecto nem entra no total (ver
+// TIPO_VIA_DO_ASPECTO acima) — só quem podia ter o dado e não tem vira
+// "Sem Informação".
 function somaPorAspecto(feats, grupoId){
   if(grupoId === 'icm') return somaIcmDe(feats);
+  var tipoEsperado = TIPO_VIA_DO_ASPECTO[grupoId];
   var porNivel = {}; // nivel (Number) -> {km, rotulo}
   var kmSemInfo = 0;
   feats.forEach(function(f){
+    if(tipoEsperado && f.properties.tipo_via !== tipoEsperado) return; // não se aplica — fora do total
     var info = f.properties[grupoId];
     var km = f.properties.km_fim - f.properties.km_ini;
     if(!info || info.severidade === null || info.severidade === undefined){
