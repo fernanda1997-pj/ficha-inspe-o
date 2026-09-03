@@ -502,6 +502,46 @@ JUNTAS" — dois pedidos numa mensagem só.
     UMA região. Comparar os dois é comparar coisas diferentes de propósito
     (dashboard = tudo já levantado; funil = o mês escolhido no momento).
 
+**Cards de "Por aspecto avaliado" viraram clicáveis — controlam o mapa
+(2026-09-03, mais um pedido no mesmo dia):** "ASPECTO AVALIADO, TBM ME A
+[O]PÇÃO DE LIGA E DESLIGA NO MAPA". Perguntei que efeito ela esperava no
+mapa ao ligar um aspecto — resposta: "ATIVA IGUAL EU ATIVEI POR REGIÕES,
+DEIXA POR ASPECTO AVALIADO" — ou seja, mesmo padrão de interação das
+pílulas de região (clique tipo checkbox, várias podem ficar "ativas" ao
+mesmo tempo, não é rádio).
+
+- **`aspectosNoMapa`** (array de `grupoId`) guarda quais cards estão
+  "ligados pro mapa" — independente de `aspectosVisiveis` (que só controla
+  se o card APARECE na lista; um aspecto pode estar visível na lista sem
+  estar ligado no mapa, e vice-versa não existe — se não tá visível não dá
+  pra clicar nele). `recalcularAspectoAtual()` resolve a regra de fallback:
+  **exatamente 1** aspecto ligado → `aspectoAtual` vira aquele grupoId, o
+  mapa inteiro colore por ele; **0 ou 2+** → `aspectoAtual` volta pra
+  `'icm'` (Resultado Geral). Motivo do fallback em 2+: não dá pra colorir
+  uma linha por dois aspectos ao mesmo tempo sem confundir — mesmo
+  problema de fundo das camadas deslocadas já rejeitadas antes, só que
+  agora resolvido como regra de fallback (deixa clicar em quantos quiser,
+  só avisa visualmente — ícone 🗺️ no card — qual efetivamente está valendo)
+  em vez de proibir o multi-clique.
+- **`aspectoAtual` deixou de ser constante** (tinha virado fixo `'icm'`
+  quando a grade de cards foi removida) — voltou a ser dinâmico, só que
+  agora o gatilho é `alternarAspectoNoMapa(grupoId)` (chamado pelo clique
+  no `.aspecto-linha`) em vez de um seletor dedicado. Toda a maquinaria
+  genérica que já existia por baixo (`estiloDoSegmento`, `classeDoAspecto`,
+  `redesenharMapaGeral`, `redesenharMapa`) não precisou mudar nada — só
+  passou a receber um `aspectoAtual` que de fato varia de novo.
+- **Não confundir com a barra/legenda com checkbox da região**
+  (`#regiao-barra`/`#regiao-legenda`, com filtro por CLASSE) — são
+  mecanismos diferentes: aquela filtra quais CLASSES do aspecto atual
+  aparecem no mapa (dentro do mesmo aspecto); esta troca QUAL ASPECTO
+  colore o mapa inteiro. Os dois convivem: escolha o aspecto clicando no
+  card, depois filtre as classes daquele aspecto na barra de cima.
+- Clicar num card sempre chama `alternarAspectoNoMapa` e re-renderiza via
+  `montarAspectosPorGrupo` (que já roda dentro de `desenharVisaoGeral()`/
+  `atualizarResumoRegiao()`) — por isso não precisa recriar os cards à
+  parte, o destaque `.ativo` e o ícone 🗺️ vêm de graça na próxima
+  renderização.
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:

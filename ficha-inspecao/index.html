@@ -43,18 +43,29 @@
   /* "Por aspecto avaliado" (2026-09-03) — pedido da usuária: em vez de um
      Resultado Geral só, uma barra por aspecto (Pavimento, Vegetação,
      Drenagem...). Aparece em "Todas" (#aspectos-geral) e dentro de cada
-     região (#aspectos-regiao, recortado pelo funil). Só leitura, sem
-     checkbox — o mapa continua sempre pelo Resultado Geral; quem quer
-     filtrar o mapa por classe usa a barra/legenda de cima (com checkbox).
-     Ver montarAspectosPorGrupo(). */
+     região (#aspectos-regiao, recortado pelo funil). Cada card é clicável
+     (2026-09-03, "tbm me a apção de liga e desliga no mapa" — igual as
+     pílulas de região, multi-clicável, não exclusivo) — clicar liga/desliga
+     esse aspecto pro MAPA (aspectosNoMapa); com exatamente 1 ativo o mapa
+     inteiro colore por ele, com 0 ou 2+ volta pro Resultado Geral (não dá
+     pra colorir por dois aspectos na mesma linha sem confundir). Ver
+     montarAspectosPorGrupo() e alternarAspectoNoMapa(). Quem quer filtrar
+     por CLASSE (não trocar de aspecto) usa a barra/legenda de cima (com
+     checkbox), essa continua só na região. */
   .aspecto-linha{
-    background:var(--p-bg-2); border:1px solid var(--p-borda); border-radius:10px;
-    padding:10px 12px; margin-bottom:8px;
+    display:block; width:100%; background:var(--p-bg-2); border:1px solid var(--p-borda);
+    border-radius:10px; padding:10px 12px; margin-bottom:8px; text-align:left; cursor:pointer;
+    font-family:inherit; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .aspecto-linha:hover{transform:translateY(-1px); box-shadow:0 5px 12px rgba(0,0,0,.35);}
+  .aspecto-linha.ativo{
+    border-color:var(--p-azul); box-shadow:0 0 0 3px rgba(96,165,250,.22), 0 5px 12px rgba(0,0,0,.35);
   }
   .aspecto-linha .topo{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
   .aspecto-linha .nome{font-size:12.5px; font-weight:700; color:var(--p-texto); display:flex; align-items:center; gap:6px;}
   .aspecto-linha .icone{font-size:14px; line-height:1;}
-  .aspecto-linha .total{font-size:11px; color:var(--p-texto-2); font-variant-numeric:tabular-nums; flex:none;}
+  .aspecto-linha .total{font-size:11px; color:var(--p-texto-2); font-variant-numeric:tabular-nums; flex:none; display:flex; align-items:center; gap:5px;}
+  .aspecto-linha .marca-mapa{font-size:12px;}
   .aspecto-linha .barra{display:flex; gap:2px; height:14px; border-radius:4px; overflow:hidden; background:var(--p-trilha);}
   .aspecto-linha .barra span{height:100%;}
   .aspecto-linha .legenda{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:10.5px; color:var(--p-texto-2);}
@@ -365,7 +376,9 @@
       <select id="sel-sre"><option value="">Selecione…</option></select>
 
       <div class="dica">
-        O mapa mostra o Resultado Geral de cada trecho. Escolha um Trecho/S.R.E.
+        O mapa mostra o Resultado Geral por padrão — clique num card de "Por
+        aspecto avaliado" acima pra colorir o mapa por aquele aspecto (clique
+        de novo pra voltar ao Resultado Geral). Escolha um Trecho/S.R.E.
         acima (ou "Todos") pra dar zoom nele e ver a tabela completa com
         pavimento, vegetação, drenagem e sinalização — ou clique direto num
         trecho no mapa.
@@ -393,10 +406,9 @@
       </div>
 
       <div class="dica">
-        Soma de todas as regiões e competências já convertidas. O mapa mostra
-        sempre o Resultado Geral — o detalhe por aspecto aqui é só pra
-        consulta; pra ver no mapa, abra uma região e use o funil ou clique
-        direto no trecho.
+        Soma de todas as regiões e competências já convertidas. Clique num
+        card de "Por aspecto avaliado" acima pra colorir o mapa por aquele
+        aspecto (clique de novo pra voltar ao Resultado Geral).
       </div>
     </div>
   </div>
@@ -1169,18 +1181,41 @@ function somaPorAspecto(feats, grupoId){
   return {somaPorClasse: somaPorClasse, total: total, ordemClasses: ordemClasses};
 }
 
-// Mapa sempre colorido pelo Resultado Geral (I.C.M.) — teve um seletor
-// "Colorir mapa por" (grade de cards por aspecto) entre 2026-09-02 e
-// 2026-09-03, removido a pedido da usuária junto com a reforma do cabeçalho
-// por região (queria menos coisa, não mais, no MAPA). O detalhe por aspecto
-// continua em 3 lugares: popup do trecho, tabela do funil, e a lista "Por
-// aspecto avaliado" (Todas E cada região, montarAspectosPorGrupo, mais abaixo) — só
-// saiu do CONTROLE DE COR do mapa. `estiloDoSegmento`/`classeDoAspecto`/
-// `somaPorAspecto` continuam genéricos (aceitam qualquer grupoId) por baixo
-// do capô; não recriar a grade de cards (clicável, muda o mapa) sem pedido
-// explícito — mas listas/tabelas só de leitura como as duas acima já
-// respondem ao pedido de "mostrar específico de cada aspecto".
+// Mapa colorido pelo Resultado Geral por padrão — teve um seletor "Colorir
+// mapa por" (grade de cards dedicada) entre 2026-09-02 e 2026-09-03,
+// removido a pedido da usuária ("queria menos coisa" na época). Mais tarde
+// no mesmo dia ela pediu de volta, só que integrado nos cards de "Por
+// aspecto avaliado" em vez de um controle à parte: "tbm me a apção de liga
+// e desliga no mapa" — "ativa igual eu ativei por regiões" (multi-clicável,
+// não radio). `aspectoAtual` deixou de ser constante — ver
+// `aspectosNoMapa`/`recalcularAspectoAtual()` logo abaixo.
 var aspectoAtual = 'icm';
+
+// Quais aspectos estão "ligados pro mapa" (clicando no card em "Por
+// aspecto avaliado" — ver montarAspectosPorGrupo). Clique é tipo checkbox,
+// igual as pílulas de região (várias ativas ao mesmo tempo), mas o mapa só
+// consegue mostrar UMA cor por vez: com exatamente 1 aspecto ligado o mapa
+// inteiro colore por ele; com 0 (nenhum) ou 2+ (mistura sem sentido única)
+// volta pro Resultado Geral — mesmo raciocínio de "não dá pra sobrepor
+// linha" que já valia pra grade removida, só que agora expresso como
+// regra de fallback em vez de proibir o multi-clique.
+var aspectosNoMapa = [];
+function recalcularAspectoAtual(){
+  aspectoAtual = aspectosNoMapa.length === 1 ? aspectosNoMapa[0] : 'icm';
+}
+function alternarAspectoNoMapa(grupoId){
+  var idx = aspectosNoMapa.indexOf(grupoId);
+  if(idx === -1) aspectosNoMapa.push(grupoId); else aspectosNoMapa.splice(idx, 1);
+  recalcularAspectoAtual();
+  // Só redesenha a visão que estiver ativa no momento (Todas/múltiplas
+  // regiões ou uma região específica) — as duas são mutuamente exclusivas.
+  if(regioesFiltroGeral.length === 1){
+    atualizarResumoRegiao();
+    redesenharMapa();
+  }else{
+    desenharVisaoGeral();
+  }
+}
 
 var ICONE_ASPECTO = {
   pavimento: '🛣️', vegetacao: '🌿', drenagem: '🌊', sinalizacao_horizontal: '🎨',
@@ -1478,17 +1513,16 @@ function montarComparativoRegioes(todas){
 // "Por aspecto avaliado" — uma barra + legenda por aspecto (Pavimento,
 // Vegetação, Drenagem, Sinalização H/V, Plataforma, Drenagem Superficial),
 // em vez de uma barra só com a média do Resultado Geral (pedido da usuária:
-// "deixa específico de cada um" / "faça pra cada região tbm"). Só
-// leitura — sem checkbox de filtro; a barra/legenda do Resultado Geral com
-// checkbox (que filtrava o mapa) foi removida de vez em 2026-09-03 ("TIRA
-// POR REGIÃO ISSO" — a usuária já tinha pedido só desligado por padrão
-// antes, mas continuava vendo por causa da própria preferência salva no
-// navegador dela; a solução definitiva foi tirar a seção do código, não só
-// mudar o padrão). O mapa continua sempre colorido pelo Resultado Geral,
-// sem filtro por checkbox nenhum, em nenhuma das duas visões. ICM fica de
-// fora da lista de "Por aspecto avaliado" (é o que já aparece no
-// "Comparativo por região", com o mesmo espírito). `alvoId` deixa a mesma
-// função servir tanto #aspectos-geral ("Todas") quanto #aspectos-regiao
+// "deixa específico de cada um" / "faça pra cada região tbm"). Cada card é
+// clicável — liga/desliga esse aspecto pro MAPA (aspectosNoMapa, ver
+// alternarAspectoNoMapa acima); com exatamente 1 ligado o mapa inteiro
+// colore por ele, com 0 ou 2+ volta pro Resultado Geral. Isso é diferente
+// do filtro por CLASSE com checkbox que existe na barra/legenda de cima
+// (só na região, filtra o mapa dentro do MESMO aspecto Resultado Geral) —
+// aqui troca-se QUAL aspecto colore o mapa inteiro. ICM fica de fora da
+// lista (é o que já aparece na barra do Resultado Geral / "Comparativo por
+// região", com o mesmo espírito). `alvoId` deixa a mesma função servir
+// tanto #aspectos-geral ("Todas"/múltiplas regiões) quanto #aspectos-regiao
 // (região específica, já recortado pelo funil Tipo/Trecho/S.R.E. — ver
 // atualizarResumoRegiao()).
 function montarAspectosPorGrupo(feats, alvoId){
@@ -1508,15 +1542,20 @@ function montarAspectosPorGrupo(feats, alvoId){
     var legenda = partes.map(function(p){
       return '<span><span class="chip" style="background:'+p.cl.cor+'"></span>'+p.cl.nome+' · '+Math.round(p.pct)+'%</span>';
     }).join('');
-    return '<div class="aspecto-linha">' +
+    var ativo = aspectosNoMapa.indexOf(g.id) !== -1;
+    return '<button type="button" class="aspecto-linha'+(ativo ? ' ativo' : '')+
+      '" data-aspecto-mapa="'+g.id+'" title="'+(ativo ? 'Tirar do mapa' : 'Colorir o mapa por este aspecto')+'">' +
       '<div class="topo">' +
         '<span class="nome">'+(ICONE_ASPECTO[g.id]||'')+' '+g.nome+'</span>' +
-        '<span class="total">'+Math.round(r.total).toLocaleString('pt-BR')+' km</span>' +
+        '<span class="total">'+(ativo ? '<span class="marca-mapa">🗺️</span>' : '')+Math.round(r.total).toLocaleString('pt-BR')+' km</span>' +
       '</div>' +
       '<div class="barra">'+barra+'</div>' +
       '<div class="legenda">'+legenda+'</div>' +
-    '</div>';
+    '</button>';
   }).join('');
+  document.querySelectorAll('#'+alvoId+' .aspecto-linha').forEach(function(el){
+    el.addEventListener('click', function(){ alternarAspectoNoMapa(el.getAttribute('data-aspecto-mapa')); });
+  });
 }
 
 function redesenharMapaGeral(todas){
