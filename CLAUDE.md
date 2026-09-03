@@ -374,14 +374,24 @@ inteira com um menu de controle — escolheu a segunda.
   partir do id do checkbox automaticamente, não precisa editar mais nada).
 - **Preferência salva em `localStorage`** (chave `rta_fichas_secoes_visiveis`)
   — sobrevive a reload, é por navegador/dispositivo (não sincroniza entre
-  máquinas). Padrão é tudo visível (`true`) se nunca configurado ou se
-  `localStorage` estiver bloqueado (`carregarPreferenciasSecoes()` cai pro
-  padrão em vez de quebrar).
+  máquinas). Padrão (`carregarPreferenciasSecoes()`, sem nada salvo ainda,
+  ou `localStorage` bloqueado) é **tudo visível MENOS `resultadoGeral`**, que
+  já nasce desligado.
 - Aplicado por `aplicarVisibilidadeSecoes()` — só mexe em `style.display`
   dos wrappers (que existem fixos no HTML); as funções que já preenchiam o
   CONTEÚDO desses wrappers (`atualizarResumoRegiao`, `desenharVisaoGeral`
   etc.) não precisaram mudar nada — continuam escrevendo normalmente,
   escondido ou não.
+
+**`resultadoGeral` virou padrão DESLIGADO (2026-09-03, minutos depois):** a
+usuária mandou o MESMO print de novo (a barra/legenda do Resultado Geral
+dentro de uma região) só que agora "PODE TIRAR ISSO" em caixa alta — não
+queria só a opção de desligar, queria que já viesse desligado (ela pode
+religar em "O que mostrar" se quiser; o controle continua existindo, só o
+padrão mudou). `localStorage` é por navegador/aparelho — então mudar o
+padrão em código é o que garante que ISSO comece escondido em qualquer
+lugar que ela abra o site, não só onde ela já tinha desmarcado manualmente
+antes.
 
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 

@@ -1325,12 +1325,17 @@ var WRAPPERS_SECAO = {
 };
 
 function carregarPreferenciasSecoes(){
-  var padrao = {kpis: true, resultadoGeral: true, porAspecto: true, comparativo: true};
+  // resultadoGeral começa DESLIGADO (2026-09-03, pedido repetido da usuária
+  // mandando o mesmo print de novo, "PODE TIRAR ISSO") — ela pode ligar de
+  // volta em "O que mostrar" se quiser, mas o padrão de quem abre o site
+  // (ou troca de navegador/aparelho, já que é por localStorage) é sem essa
+  // seção. As outras 3 continuam começando ligadas.
+  var padrao = {kpis: true, resultadoGeral: false, porAspecto: true, comparativo: true};
   try {
     var salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS));
     return Object.assign(padrao, salvo || {});
   } catch(e) {
-    return padrao; // localStorage bloqueado/corrompido — segue com tudo visível
+    return padrao; // localStorage bloqueado/corrompido — segue com o padrão acima
   }
 }
 var secoesVisiveis = carregarPreferenciasSecoes();
