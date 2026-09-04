@@ -581,6 +581,32 @@ duplicada ali dentro).
   (`comparativoMensal` em `WRAPPERS_SECAO`, controla as duas telas juntas,
   igual `kpis`/`porAspecto` já faziam) — ligado por padrão.
 
+**"Comparativo por região" removido DE VEZ (2026-09-04, no dia seguinte):**
+"pode tirara: Comparativo por região (% na melhor classe)" — pedido direto,
+sem meio-termo. Aprendendo com o episódio do Resultado Geral da região (ver
+"removida DE VEZ, não só desligada" mais acima — mudar só o padrão do
+toggle não bastou por causa de `localStorage` de sessões antigas), foi
+direto pra remoção no código, sem passar por "desliga por padrão" primeiro:
+
+- **HTML removido:** `#comparativo-wrap` (label + `#comparativo-regioes`)
+  e a linha `chk-comparativo` do popover.
+- **JS removido:** a função `montarComparativoRegioes` inteira (a chamada
+  dentro de `desenharVisaoGeral()` também) e a chave `comparativo` de
+  `WRAPPERS_SECAO`/`carregarPreferenciasSecoes()`. Se alguém tiver
+  `comparativo` salvo no `localStorage` de antes, fica lá sem efeito —
+  nada mais lê essa chave.
+- **O que NÃO saiu, porque a tabela "Comparativo mês a mês" ainda usa:**
+  `pctMelhorClasse()`, `corHeatmap()`, `NOME_CURTO_ASPECTO`, a classe CSS
+  `.tabela-heatmap`. Só o `#comparativo-regioes{overflow-x:auto}` virou
+  `#comparativo-mensal-geral{overflow-x:auto}` +
+  `#comparativo-mensal-regiao{overflow-x:auto}` (esse ajuste de rolagem
+  horizontal nunca tinha sido replicado pra tabela mensal — corrigido de
+  passagem aqui).
+- **Lição confirmada:** pra remover uma seção controlada por
+  `localStorage` de vez (não é algo que a usuária vá querer religar), pular
+  direto pra tirar do código em vez de só desligar o padrão — economiza um
+  ciclo inteiro de "ela ainda vê, pede de novo".
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:

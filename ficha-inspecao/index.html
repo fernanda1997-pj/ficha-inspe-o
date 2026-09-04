@@ -247,15 +247,17 @@
   .kpi-mini b{display:block; font-size:19px; color:#fff; font-weight:800; white-space:nowrap;}
   .kpi-mini span{font-size:10px; color:var(--p-texto-2); line-height:1.3;}
 
-  /* ---------- Comparativo por região — tabela "heatmap" ---------- */
-  /* Era uma lista de cartões com barrinha; virou tabela com célula colorida
-     por intensidade (mesma ideia da referência de dashboard escuro). Colunas
-     viraram os aspectos (2026-09-03, "deixa específico de cada um" — antes
-     eram as classes do Resultado Geral) — célula = % na melhor classe daquele
-     aspecto naquela região, verde mais forte = melhor. Ver
-     montarComparativoRegioes(). 7 colunas + região não cabe nos 460px do
-     painel — rola na horizontal (overflow-x) em vez de espremer o texto. */
-  #comparativo-regioes{overflow-x:auto;}
+  /* ---------- Tabelas "heatmap" (comparativo mês a mês) ---------- */
+  /* Célula colorida por intensidade (mesma ideia da referência de dashboard
+     escuro que a usuária mandou) — célula = % na melhor classe daquele
+     aspecto, verde mais forte = melhor (ver pctMelhorClasse() e
+     montarComparativoMensal()). 7 colunas de aspecto + a coluna do mês não
+     cabe nos 460px do painel — rola na horizontal (overflow-x) em vez de
+     espremer o texto. "Comparativo por região" (rows=região) usava esse
+     mesmo estilo, removida em 2026-09-04 a pedido da usuária — só sobrou o
+     comparativo por MÊS. */
+  #comparativo-mensal-geral{overflow-x:auto;}
+  #comparativo-mensal-regiao{overflow-x:auto;}
   .tabela-heatmap{width:100%; border-collapse:separate; border-spacing:0 4px; font-size:11.5px; white-space:nowrap;}
   .tabela-heatmap th{
     text-align:center; color:var(--p-texto-2); font-weight:600; padding:2px 5px 6px;
@@ -333,7 +335,6 @@
       <button id="btn-config" type="button">⚙️ O que mostrar</button>
       <div id="popover-config">
         <label class="linha-config"><input type="checkbox" id="chk-kpis"> KPIs</label>
-        <label class="linha-config"><input type="checkbox" id="chk-comparativo"> Comparativo por região (Todas)</label>
         <label class="linha-config"><input type="checkbox" id="chk-comparativo-mensal"> Comparativo mês a mês</label>
         <div class="config-secao">Por aspecto avaliado</div>
         <div id="config-aspectos"></div>
@@ -405,11 +406,6 @@
       </div>
 
       <hr class="separador">
-
-      <div id="comparativo-wrap">
-        <label class="rotulo">Comparativo por região (% na melhor classe)</label>
-        <div id="comparativo-regioes"></div>
-      </div>
 
       <div id="comparativo-mensal-geral-wrap">
         <label class="rotulo">Comparativo mês a mês (% na melhor classe)</label>
@@ -1346,12 +1342,11 @@ function montarPillsRegiao(){
 var CHAVE_PREFS = 'rta_fichas_secoes_visiveis';
 var WRAPPERS_SECAO = {
   kpis: ['kpis-geral-wrap', 'kpis-regiao-wrap'],
-  comparativo: ['comparativo-wrap'],
   comparativoMensal: ['comparativo-mensal-geral-wrap', 'comparativo-mensal-regiao-wrap'],
 };
 
 function carregarPreferenciasSecoes(){
-  var padrao = {kpis: true, comparativo: true, comparativoMensal: true};
+  var padrao = {kpis: true, comparativoMensal: true};
   try {
     var salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS));
     return Object.assign(padrao, salvo || {});
@@ -1465,11 +1460,7 @@ function desenharVisaoGeral(){
   document.getElementById('geral-pct-pav').textContent =
     kmTotalTipo > 0 ? Math.round(100 * kmPav / kmTotalTipo) + '%' : '—';
 
-  // Sempre com TODAS as regiões, mesmo se o filtro de pílulas estiver
-  // recortando pra uma só — essa tabela existe pra comparar regiões entre
-  // si, filtrar pra uma só a esvaziaria sem sentido.
-  montarComparativoRegioes(todasAsFeatures());
-  // Já esse aqui SEGUE o filtro de pílulas (featuresDoMesGeral já olha pra
+  // Segue o filtro de pílulas (featuresDoMesGeral já olha pra
   // regioesFiltroGeral) — comparar mês a mês faz mais sentido escopado no
   // que está sendo visto no momento.
   montarComparativoMensal(featuresDoMesGeral, 'comparativo-mensal-geral');
@@ -1501,44 +1492,14 @@ var NOME_CURTO_ASPECTO = {
 
 // % na melhor classe daquele aspecto, pro conjunto de features dado —
 // primeira classe que não é "sem_info" é sempre a melhor (ordemClasses vem
-// ordenada 0→pior, ver somaPorAspecto). Usado nas duas tabelas heatmap
-// (por região, por mês) — "quanto maior, melhor" em ambas, por isso as
-// duas usam a mesma cor verde fixa em vez de variar por coluna.
+// ordenada 0→pior, ver somaPorAspecto). Usado pela tabela heatmap
+// "Comparativo mês a mês" (montarComparativoMensal) — cor verde fixa
+// porque é sempre "quanto maior, melhor", não varia por coluna.
 function pctMelhorClasse(feats, grupoId){
   var r = somaPorAspecto(feats, grupoId);
   var melhor = r.ordemClasses.find(function(cl){ return cl.chave !== 'sem_info'; });
   var pct = (melhor && r.total > 0) ? (100 * (r.somaPorClasse[melhor.chave]||0) / r.total) : 0;
   return {pct: pct, nomeClasse: melhor ? melhor.nome : null};
-}
-
-function montarComparativoRegioes(todas){
-  var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm'; });
-  var regioesVistas = {};
-  todas.forEach(function(f){ regioesVistas[f.properties.regiao] = true; });
-  var regioes = Object.keys(regioesVistas).sort(function(a, b){
-    return parseInt(a.replace(/^R/i, ''), 10) - parseInt(b.replace(/^R/i, ''), 10);
-  });
-  if(regioes.length === 0){
-    document.getElementById('comparativo-regioes').innerHTML = '<div class="vazio">Nenhum dado ainda.</div>';
-    return;
-  }
-  var cabecalho = '<tr><th>Região</th>' +
-    aspectos.map(function(g){ return '<th>'+(NOME_CURTO_ASPECTO[g.id]||g.nome)+'</th>'; }).join('') + '</tr>';
-  var linhas = regioes.map(function(regiao){
-    var featsRegiao = todas.filter(function(f){ return f.properties.regiao === regiao; });
-    var celulas = aspectos.map(function(g){
-      var m = pctMelhorClasse(featsRegiao, g.id);
-      var titulo = m.nomeClasse ? (g.nome+' — '+m.nomeClasse+': '+Math.round(m.pct)+'%') : (g.nome+' — sem dado');
-      return '<td style="background:'+corHeatmap('#0ca30c', m.pct)+'" title="'+titulo+'">'+Math.round(m.pct)+'%</td>';
-    }).join('');
-    return '<tr data-regiao="'+regiao+'"><td>'+nomeRegiao(regiao)+'</td>'+celulas+'</tr>';
-  }).join('');
-  document.getElementById('comparativo-regioes').innerHTML =
-    '<table class="tabela-heatmap"><thead>'+cabecalho+'</thead><tbody>'+linhas+'</tbody></table>';
-
-  document.querySelectorAll('#comparativo-regioes tr[data-regiao]').forEach(function(el){
-    el.addEventListener('click', function(){ selecionarRegiao(el.getAttribute('data-regiao')); });
-  });
 }
 
 // Todas as competências já convertidas (qualquer região), em ordem
@@ -1568,8 +1529,9 @@ function featuresDoMesGeral(competencia){
 }
 
 // "Comparativo mês a mês" — pedido da usuária depois do "Comparativo por
-// região": mesma tabela heatmap, só que as linhas viram os MESES em vez
-// das regiões (colunas continuam os aspectos). `getFeats(competencia)` é
+// região" (removido em 2026-09-04, ver histórico no CLAUDE.md): mesma
+// tabela heatmap, linhas são os MESES em vez de regiões, colunas continuam
+// os aspectos. `getFeats(competencia)` é
 // quem decide o escopo — featuresDoMesGeral (Todas/múltiplas regiões) ou
 // featuresParaResumo(competencia) (uma região, já recortada pelo funil
 // Tipo/Trecho/S.R.E. também) — ver as duas chamadas mais abaixo.
