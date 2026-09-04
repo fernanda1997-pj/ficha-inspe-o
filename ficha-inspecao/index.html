@@ -334,6 +334,7 @@
       <div id="popover-config">
         <label class="linha-config"><input type="checkbox" id="chk-kpis"> KPIs</label>
         <label class="linha-config"><input type="checkbox" id="chk-comparativo"> Comparativo por região (Todas)</label>
+        <label class="linha-config"><input type="checkbox" id="chk-comparativo-mensal"> Comparativo mês a mês</label>
         <div class="config-secao">Por aspecto avaliado</div>
         <div id="config-aspectos"></div>
       </div>
@@ -362,6 +363,11 @@
       <div id="aspectos-regiao-wrap">
         <label class="rotulo" style="margin-top:16px;">Por aspecto avaliado</label>
         <div id="aspectos-regiao"></div>
+      </div>
+
+      <div id="comparativo-mensal-regiao-wrap">
+        <label class="rotulo">Comparativo mês a mês (% na melhor classe)</label>
+        <div id="comparativo-mensal-regiao"></div>
       </div>
 
       <hr class="separador">
@@ -403,6 +409,11 @@
       <div id="comparativo-wrap">
         <label class="rotulo">Comparativo por região (% na melhor classe)</label>
         <div id="comparativo-regioes"></div>
+      </div>
+
+      <div id="comparativo-mensal-geral-wrap">
+        <label class="rotulo">Comparativo mês a mês (% na melhor classe)</label>
+        <div id="comparativo-mensal-geral"></div>
       </div>
 
       <div class="dica">
@@ -743,8 +754,14 @@ function rodoviaCurta(nome){
 // Filtra o pacote da região/competência atual pelo que já foi escolhido no
 // funil (Tipo/Trecho/S.R.E.) — cada nível ainda vazio simplesmente não filtra,
 // então sem nada escolhido isso é a região inteira.
-function featuresParaResumo(){
-  var pacote = pacoteAtual();
+// `competenciaOverride` deixa pegar o funil (Tipo/Trecho/S.R.E.) aplicado a
+// um MÊS diferente do que está selecionado no momento — usado pelo
+// comparativo mensal, pra saber "esse trecho/S.R.E. em julho" mesmo com
+// agosto selecionado no dropdown de Competência.
+function featuresParaResumo(competenciaOverride){
+  var regiao = selRegiao.value;
+  var competencia = competenciaOverride || selCompetencia.value;
+  var pacote = window.DADOS_INSPECAO && window.DADOS_INSPECAO[regiao] && window.DADOS_INSPECAO[regiao][competencia];
   if(!pacote) return [];
   var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
   return pacote.features.filter(function(f){
@@ -765,6 +782,7 @@ function atualizarResumoRegiao(){
   document.getElementById('resumo-ext').textContent = extKm.toLocaleString('pt-BR', {maximumFractionDigits: 1});
   document.getElementById('resumo-n').textContent = feats.length;
   montarAspectosPorGrupo(feats, 'aspectos-regiao');
+  montarComparativoMensal(featuresParaResumo, 'comparativo-mensal-regiao');
 
   var tipo = selTipo.value, trecho = selTrecho.value, sre = selSre.value;
   var escopo = 'Região inteira';
@@ -1329,10 +1347,11 @@ var CHAVE_PREFS = 'rta_fichas_secoes_visiveis';
 var WRAPPERS_SECAO = {
   kpis: ['kpis-geral-wrap', 'kpis-regiao-wrap'],
   comparativo: ['comparativo-wrap'],
+  comparativoMensal: ['comparativo-mensal-geral-wrap', 'comparativo-mensal-regiao-wrap'],
 };
 
 function carregarPreferenciasSecoes(){
-  var padrao = {kpis: true, comparativo: true};
+  var padrao = {kpis: true, comparativo: true, comparativoMensal: true};
   try {
     var salvo = JSON.parse(localStorage.getItem(CHAVE_PREFS));
     return Object.assign(padrao, salvo || {});
@@ -1450,6 +1469,10 @@ function desenharVisaoGeral(){
   // recortando pra uma só — essa tabela existe pra comparar regiões entre
   // si, filtrar pra uma só a esvaziaria sem sentido.
   montarComparativoRegioes(todasAsFeatures());
+  // Já esse aqui SEGUE o filtro de pílulas (featuresDoMesGeral já olha pra
+  // regioesFiltroGeral) — comparar mês a mês faz mais sentido escopado no
+  // que está sendo visto no momento.
+  montarComparativoMensal(featuresDoMesGeral, 'comparativo-mensal-geral');
 }
 
 // Mistura a cor de status da própria classe (verde=Bom, vermelho=Péssimo...)
@@ -1476,6 +1499,18 @@ var NOME_CURTO_ASPECTO = {
   plataforma: 'Plataforma', drenagem_superficial: 'Dren. Superf.',
 };
 
+// % na melhor classe daquele aspecto, pro conjunto de features dado —
+// primeira classe que não é "sem_info" é sempre a melhor (ordemClasses vem
+// ordenada 0→pior, ver somaPorAspecto). Usado nas duas tabelas heatmap
+// (por região, por mês) — "quanto maior, melhor" em ambas, por isso as
+// duas usam a mesma cor verde fixa em vez de variar por coluna.
+function pctMelhorClasse(feats, grupoId){
+  var r = somaPorAspecto(feats, grupoId);
+  var melhor = r.ordemClasses.find(function(cl){ return cl.chave !== 'sem_info'; });
+  var pct = (melhor && r.total > 0) ? (100 * (r.somaPorClasse[melhor.chave]||0) / r.total) : 0;
+  return {pct: pct, nomeClasse: melhor ? melhor.nome : null};
+}
+
 function montarComparativoRegioes(todas){
   var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm'; });
   var regioesVistas = {};
@@ -1492,13 +1527,9 @@ function montarComparativoRegioes(todas){
   var linhas = regioes.map(function(regiao){
     var featsRegiao = todas.filter(function(f){ return f.properties.regiao === regiao; });
     var celulas = aspectos.map(function(g){
-      var r = somaPorAspecto(featsRegiao, g.id);
-      // Primeira classe que não é "sem_info" é sempre a melhor (ordemClasses
-      // vem ordenada 0→pior, ver somaPorAspecto) — % dela = % em boa condição.
-      var melhor = r.ordemClasses.find(function(cl){ return cl.chave !== 'sem_info'; });
-      var pct = (melhor && r.total > 0) ? (100 * (r.somaPorClasse[melhor.chave]||0) / r.total) : 0;
-      var titulo = melhor ? (g.nome+' — '+melhor.nome+': '+Math.round(pct)+'%') : (g.nome+' — sem dado');
-      return '<td style="background:'+corHeatmap('#0ca30c', pct)+'" title="'+titulo+'">'+Math.round(pct)+'%</td>';
+      var m = pctMelhorClasse(featsRegiao, g.id);
+      var titulo = m.nomeClasse ? (g.nome+' — '+m.nomeClasse+': '+Math.round(m.pct)+'%') : (g.nome+' — sem dado');
+      return '<td style="background:'+corHeatmap('#0ca30c', m.pct)+'" title="'+titulo+'">'+Math.round(m.pct)+'%</td>';
     }).join('');
     return '<tr data-regiao="'+regiao+'"><td>'+nomeRegiao(regiao)+'</td>'+celulas+'</tr>';
   }).join('');
@@ -1508,6 +1539,60 @@ function montarComparativoRegioes(todas){
   document.querySelectorAll('#comparativo-regioes tr[data-regiao]').forEach(function(el){
     el.addEventListener('click', function(){ selecionarRegiao(el.getAttribute('data-regiao')); });
   });
+}
+
+// Todas as competências já convertidas (qualquer região), em ordem
+// cronológica — "2026-07" < "2026-08" já ordena certo como string, não
+// precisa converter data. Usado pra montar as LINHAS do comparativo mensal.
+function competenciasGlobais(){
+  var vistas = {};
+  var lista = [];
+  MANIFEST.forEach(function(m){
+    if(!vistas[m.competencia]){ vistas[m.competencia] = m.competencia_label; lista.push(m.competencia); }
+  });
+  lista.sort();
+  return lista.map(function(c){ return {competencia: c, label: vistas[c]}; });
+}
+
+// Features de UM mês (todas as regiões carregadas, ou só as selecionadas
+// nas pílulas se alguma estiver ativa) — equivalente a featuresDaVisaoGeral,
+// só que pra uma competência específica em vez de somar todas juntas.
+function featuresDoMesGeral(competencia){
+  var regioesAlvo = regioesFiltroGeral.length > 0 ? regioesFiltroGeral : regioesDisponiveis();
+  var todas = [];
+  regioesAlvo.forEach(function(regiao){
+    var pacote = window.DADOS_INSPECAO && window.DADOS_INSPECAO[regiao] && window.DADOS_INSPECAO[regiao][competencia];
+    if(pacote) todas = todas.concat(pacote.features);
+  });
+  return todas;
+}
+
+// "Comparativo mês a mês" — pedido da usuária depois do "Comparativo por
+// região": mesma tabela heatmap, só que as linhas viram os MESES em vez
+// das regiões (colunas continuam os aspectos). `getFeats(competencia)` é
+// quem decide o escopo — featuresDoMesGeral (Todas/múltiplas regiões) ou
+// featuresParaResumo(competencia) (uma região, já recortada pelo funil
+// Tipo/Trecho/S.R.E. também) — ver as duas chamadas mais abaixo.
+function montarComparativoMensal(getFeats, alvoId){
+  var competencias = competenciasGlobais();
+  var aspectos = GRUPOS.filter(function(g){ return g.id !== 'icm'; });
+  if(competencias.length === 0){
+    document.getElementById(alvoId).innerHTML = '<div class="vazio">Nenhum dado ainda.</div>';
+    return;
+  }
+  var cabecalho = '<tr><th>Mês</th>' +
+    aspectos.map(function(g){ return '<th>'+(NOME_CURTO_ASPECTO[g.id]||g.nome)+'</th>'; }).join('') + '</tr>';
+  var linhas = competencias.map(function(c){
+    var feats = getFeats(c.competencia);
+    var celulas = aspectos.map(function(g){
+      var m = pctMelhorClasse(feats, g.id);
+      var titulo = m.nomeClasse ? (g.nome+' — '+m.nomeClasse+': '+Math.round(m.pct)+'%') : (g.nome+' — sem dado');
+      return '<td style="background:'+corHeatmap('#0ca30c', m.pct)+'" title="'+titulo+'">'+Math.round(m.pct)+'%</td>';
+    }).join('');
+    return '<tr><td>'+c.label+'</td>'+celulas+'</tr>';
+  }).join('');
+  document.getElementById(alvoId).innerHTML =
+    '<table class="tabela-heatmap"><thead>'+cabecalho+'</thead><tbody>'+linhas+'</tbody></table>';
 }
 
 // "Por aspecto avaliado" — uma barra + legenda por aspecto (Pavimento,

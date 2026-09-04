@@ -542,6 +542,45 @@ mesmo tempo, não é rádio).
   parte, o destaque `.ativo` e o ícone 🗺️ vêm de graça na próxima
   renderização.
 
+**"Comparativo mês a mês" (2026-09-04, dia seguinte):** "como podemos fazer
+o comparativo mes a mes?" — perguntei o formato (tabela mês×região estilo
+heatmap, evolução só da região aberta, ou por aspecto) e ela escolheu "por
+aspecto, não só Resultado Geral". Virou uma tabela heatmap gêmea da
+"Comparativo por região" — mesmas colunas (aspectos, `NOME_CURTO_ASPECTO`),
+só que as LINHAS agora são os meses (`competencia_label` do `MANIFEST`,
+"Julho/2026", "Agosto/2026"...) em vez das regiões. Célula = % na melhor
+classe daquele aspecto naquele mês (`pctMelhorClasse()`, extraído de dentro
+de `montarComparativoRegioes` pras duas tabelas heatmap reaproveitarem —
+antes a lógica de "acha a primeira classe que não é sem_info" tava
+duplicada ali dentro).
+
+- **Aparece nas DUAS telas**, com escopo diferente (ao contrário de
+  "Comparativo por região", que é sempre TODAS as regiões de propósito):
+  - `#comparativo-mensal-geral` (Todas/múltiplas regiões) — usa
+    `featuresDoMesGeral(competencia)`, que respeita `regioesFiltroGeral`
+    (filtra pelas pílulas ativas, ou todas as regiões carregadas se
+    nenhuma). Diferente da "Comparativo por região": aqui faz sentido
+    escopar pelo filtro, porque a pergunta é "como esse conjunto evoluiu",
+    não "como as regiões se comparam entre si".
+  - `#comparativo-mensal-regiao` (região específica) — usa
+    `featuresParaResumo(competencia)`, que agora aceita um `competencia`
+    OPCIONAL (por padrão pega `selCompetencia.value`, a que estiver
+    escolhida no dropdown — mas o comparativo passa cada mês explicitamente,
+    pra pegar o funil Tipo/Trecho/S.R.E. aplicado a TODOS os meses, não só
+    ao selecionado). Um comparativo mês a mês do trecho/S.R.E. que estiver
+    filtrado no momento, não só da região inteira.
+  - `montarComparativoMensal(getFeats, alvoId)` é genérica — recebe a
+    função de escopo como parâmetro, não hardcoded, exatamente pra servir
+    as duas telas com a diferença de escopo acima.
+- **`competenciasGlobais()`**: lê competências únicas de `MANIFEST`,
+  ordena com **sort de string simples** (`"2026-07" < "2026-08"` já ordena
+  cronológico certo porque o formato é `YYYY-MM`) — não precisa parsear
+  data. Se um dia vier um mês de ANO diferente (ex.: "2027-01"), continua
+  ordenando certo pelo mesmo motivo.
+- Toggle "Comparativo mês a mês" no popover "O que mostrar"
+  (`comparativoMensal` em `WRAPPERS_SECAO`, controla as duas telas juntas,
+  igual `kpis`/`porAspecto` já faziam) — ligado por padrão.
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:
