@@ -300,6 +300,23 @@
     font-size:18px; cursor:pointer;
   }
 
+  /* ---------- Aviso de falha ao carregar dados (arquivo dados/*.js
+     404 ou rede caiu no meio) — antes disso o app falhava calado: o
+     onload do <script> injetado nunca disparava e a tela ficava
+     parecendo carregada (ou travada) sem nenhuma pista do problema. */
+  #gp-erro-dados{
+    display:none; position:fixed; top:0; left:0; right:0; z-index:99999;
+    background:#d03b3b; color:#fff; font:12.5px/1.4 'Segoe UI',system-ui,sans-serif;
+    padding:8px 14px; align-items:flex-start; justify-content:space-between; gap:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
+  }
+  #gp-erro-dados-lista div{margin:2px 0;}
+  #gp-erro-dados button{
+    background:none; border:none; color:#fff; font-size:14px; cursor:pointer;
+    opacity:.85; flex:none; padding:0 2px;
+  }
+  #gp-erro-dados button:hover{opacity:1;}
+
   /* ---------- Responsivo (celular/tablet) ---------- */
   @media (max-width: 768px){
     #btn-menu{display:block;}
@@ -325,6 +342,10 @@
 </div>
 <style>@keyframes gp-rot{to{transform:rotate(360deg)}}
 #gp-loading.oculto{opacity:0;pointer-events:none;}</style>
+<div id="gp-erro-dados">
+  <div id="gp-erro-dados-lista"></div>
+  <button id="gp-erro-dados-fechar" title="Fechar aviso">✕</button>
+</div>
 <button id="btn-menu" title="Abrir painel">☰</button>
 <div id="app">
   <div id="painel">
@@ -720,6 +741,29 @@ function montarCompetencias(){
   carregarSelecionado();
 }
 
+// ---------------------------------------------------------------------
+// Aviso de falha ao carregar um arquivo dados/insp_*.js (404, rede caiu
+// no meio, manifest.js apontando pra um arquivo que não existe mais).
+// Sem isso o app falhava CALADO: o onload do <script> injetado nunca
+// disparava e a tela ficava parecendo carregada (ou travada, no caso da
+// splash inicial) sem nenhuma pista do que deu errado. Loga no console
+// (debug) E mostra um aviso visível (a usuária não teria como
+// adivinhar sozinha que um mês/região específico não carregou).
+// ---------------------------------------------------------------------
+function avisarFalhaCarregamento(msg){
+  console.error('[ficha-inspecao] ' + msg);
+  var lista = document.getElementById('gp-erro-dados-lista');
+  var wrap = document.getElementById('gp-erro-dados');
+  if(!lista || !wrap) return;
+  var linha = document.createElement('div');
+  linha.textContent = '⚠️ ' + msg;
+  lista.appendChild(linha);
+  wrap.style.display = 'flex';
+}
+document.getElementById('gp-erro-dados-fechar').addEventListener('click', function(){
+  document.getElementById('gp-erro-dados').style.display = 'none';
+});
+
 function carregarSelecionado(){
   var regiao = selRegiao.value;
   var competencia = selCompetencia.value;
@@ -733,6 +777,10 @@ function carregarSelecionado(){
   var s = document.createElement('script');
   s.src = 'dados/' + item.arquivo;
   s.onload = function(){ arquivosCarregados[item.arquivo] = true; aoCarregarDados(item); };
+  s.onerror = function(){
+    avisarFalhaCarregamento('Não consegui carregar os dados de ' + regiao + '/' +
+      item.competencia_label + ' (arquivo "' + item.arquivo + '" não encontrado).');
+  };
   document.body.appendChild(s);
 }
 
@@ -1115,10 +1163,22 @@ function carregarTodosOsDados(callback){
   var pendentes = MANIFEST.filter(function(m){ return !arquivosCarregados[m.arquivo]; });
   if(pendentes.length === 0){ callback(); return; }
   var restantes = pendentes.length;
+  function umTerminou(){ if(--restantes === 0) callback(); }
   pendentes.forEach(function(m){
     var s = document.createElement('script');
     s.src = 'dados/' + m.arquivo;
-    s.onload = function(){ arquivosCarregados[m.arquivo] = true; if(--restantes === 0) callback(); };
+    s.onload = function(){ arquivosCarregados[m.arquivo] = true; umTerminou(); };
+    // Conta como "terminado" mesmo falhando — senão UM arquivo com
+    // problema (404, deploy incompleto) trava o callback pra sempre e o
+    // dashboard "Todas" nunca desenha nada, sem explicação nenhuma.
+    // Melhor mostrar os outros meses/regiões que carregaram OK + avisar
+    // qual faltou do que travar tudo por causa de um só.
+    s.onerror = function(){
+      avisarFalhaCarregamento('Não consegui carregar os dados de ' + m.regiao + '/' +
+        m.competencia_label + ' (arquivo "' + m.arquivo + '" não encontrado) — os ' +
+        'demais meses/regiões continuam disponíveis.');
+      umTerminou();
+    };
     document.body.appendChild(s);
   });
 }

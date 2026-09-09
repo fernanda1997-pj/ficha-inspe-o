@@ -634,6 +634,45 @@ entre os outros cards. Agora usa preenchimento sólido:
   (`#aspectos-regiao [data-aspecto-mapa="drenagem"]`), sem erro no console;
   conferido também no viewport mobile (375×812).
 
+**Aviso visível quando um arquivo `dados/insp_*.js` falha ao carregar
+(2026-09-10):** não foi pedido pela usuária — achado numa revisão de "o que
+dá pra melhorar" (ela perguntou, apontei alguns pontos, ela confirmou "pode
+corrigir"). `carregarSelecionado()` e `carregarTodosOsDados()` injetam um
+`<script src="dados/...">` por região+competência e só tinham `s.onload` —
+sem `s.onerror`. Se um arquivo não existir de verdade (manifest.js
+desatualizado apontando pra um `.js` renomeado/apagado, deploy incompleto
+que subiu o manifest mas não subiu todos os dados), o `onload` nunca
+dispara:
+
+- Em `carregarTodosOsDados` (roda no boot, carrega TODOS os arquivos do
+  `MANIFEST` de uma vez): o contador `restantes` nunca chegava a zero →
+  `callback()` nunca rodava → o dashboard "Todas" nunca desenhava nada. A
+  splash inicial (`#gp-loading`) tem uma rede de segurança de 8s que
+  esconde o overlay de qualquer jeito, então o resultado prático era pior
+  que "travado": a tela parecia carregada, mas vazia/quebrada, sem
+  nenhuma pista do que aconteceu.
+- Em `carregarSelecionado()` (troca de região/competência manual): o
+  funil daquele mês simplesmente não atualizava, sem mensagem nenhuma.
+
+Corrigido com `s.onerror` nas duas funções, mais uma função nova
+`avisarFalhaCarregamento(msg)`: loga `console.error` (debug) e mostra um
+banner vermelho fixo no topo (`#gp-erro-dados`, HTML logo depois do
+`#gp-loading`) com a lista de arquivos que falharam + botão de fechar.
+Em `carregarTodosOsDados`, o arquivo que falha **ainda conta como
+"terminado"** (`umTerminou()` chamado tanto no `onload` quanto no
+`onerror`) — um mês/região com problema não trava mais os outros que
+carregaram OK; o dashboard desenha com o que deu certo e avisa o que
+faltou. Testado renomeando temporariamente um arquivo real do manifest
+(`dados/insp_R2_2026-07.js` → 404 de propósito) e confirmando via
+`fetch()`/script injetado isolado que o navegador dispara `onerror`
+corretamente pra um recurso 404 nesse setup (o teste end-to-end com o
+código do app em si não disparou o banner na mesma aba porque o
+navegador já tinha esse arquivo em cache HTTP de um load anterior bem-
+sucedido — artefato do método de teste, não do código; a lógica em si
+foi conferida por leitura + pelo teste isolado do `onerror`). Banner
+também conferido visualmente (conteúdo + botão fechar) em viewport
+mobile 400×300.
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:
@@ -655,19 +694,17 @@ Cores fixas (paleta de status, não a escala verde→vinho de severidade): Bom
 `#0ca30c`, Regular `#fab219`, Ruim `#ec835a`, Péssimo `#d03b3b`, Sem Informação
 `#94A3B8` (`CORES_ICM` no `index.html`).
 
-Aparece em 3 lugares:
+Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
+citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
+existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado
+Geral da região removida DE VEZ" mais acima. Corrigido aqui pra não repetir
+a confusão em sessão futura):
 - **Mapa inteiro** (Todas ou qualquer região): sempre colorido por `icm` — o
   seletor "Colorir mapa por" que trocava isso existiu por um dia (2026-09-02/03)
-  e foi removido a pedido da usuária, ver seção acima.
-- **Barra + legenda com checkbox**: só numa região específica agora
-  (`#regiao-barra`/`#regiao-legenda`, escopo = o que estiver selecionado no
-  funil Tipo/Trecho/S.R.E., ou a região inteira se nada escolhido —
-  `atualizarResumoRegiao()`). A legenda **dobra de filtro do mapa** —
-  desmarcar uma classe some com ela do gráfico e do mapa ao mesmo tempo
-  (`ativosAspectoRegiao`). Em "Todas" isso não existe mais desde
-  2026-09-03 — virou a lista "Por aspecto avaliado" (sem checkbox, sem
-  filtro de mapa, ver seção acima); quem quer filtrar o mapa por classe do
-  Resultado Geral abre uma região.
+  e foi removido a pedido da usuária, ver seção acima. Não tem mais nenhuma
+  barra/legenda com checkbox filtrando por classe do Resultado Geral em
+  lugar nenhum (nem "Todas" nem região específica) — quem quer o detalhe por
+  classe usa "Por aspecto avaliado" (lista de leitura, sem filtro de mapa).
 - Clicar em qualquer trecho abre um popup com "Resultado geral" em destaque + o
   detalhe dos grupos que existem naquele segmento + tag "Pavimentada"/"Não
   pavimentada".
