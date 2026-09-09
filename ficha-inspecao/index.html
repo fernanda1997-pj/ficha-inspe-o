@@ -58,9 +58,23 @@
     font-family:inherit; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
   }
   .aspecto-linha:hover{transform:translateY(-1px); box-shadow:0 5px 12px rgba(0,0,0,.35);}
+  /* "Ligado" precisa destacar igual as pílulas de região (preenchimento
+     sólido, não só uma borda fina) — pedido da usuária: "deixa mais
+     destacado o que esta ligado e desligado... igual esta na parte da
+     região" (2026-09-09). Usa o azul escuro original (--azul, #1E3A72) como
+     preenchimento — mais forte que o cinza-azulado padrão do card, mas
+     ainda escuro o bastante pra texto claro em cima continuar legível
+     (diferente do --p-azul claro das pílulas, que é pensado pra texto
+     ESCURO em cima e não dá pra usar como fundo de um card cheio de
+     conteúdo). */
   .aspecto-linha.ativo{
-    border-color:var(--p-azul); box-shadow:0 0 0 3px rgba(96,165,250,.22), 0 5px 12px rgba(0,0,0,.35);
+    background:var(--azul); border-color:var(--p-azul);
+    box-shadow:0 0 0 3px rgba(96,165,250,.28), 0 6px 14px rgba(0,0,0,.4);
   }
+  .aspecto-linha.ativo .nome{color:#fff;}
+  .aspecto-linha.ativo .total{color:#cfe0ff;}
+  .aspecto-linha.ativo .legenda{color:#cfe0ff;}
+  .aspecto-linha.ativo .barra{background:rgba(255,255,255,.18);}
   .aspecto-linha .topo{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
   .aspecto-linha .nome{font-size:12.5px; font-weight:700; color:var(--p-texto); display:flex; align-items:center; gap:6px;}
   .aspecto-linha .icone{font-size:14px; line-height:1;}

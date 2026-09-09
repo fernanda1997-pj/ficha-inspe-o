@@ -607,6 +607,33 @@ direto pra remoção no código, sem passar por "desliga por padrão" primeiro:
   direto pra tirar do código em vez de só desligar o padrão — economiza um
   ciclo inteiro de "ela ainda vê, pede de novo".
 
+**Card "ligado" no mapa com destaque forte, igual pílula de região
+(2026-09-09):** "deixa mais destacado o que esta ligado e desligado" e, na
+sequência, a usuária apontou o padrão a seguir: "igual esta na parte da
+região". Antes, um card `.aspecto-linha` ativo (clicado pra colorir o mapa
+por aquele aspecto) só ganhava borda + sombra sutis — fácil de não notar
+entre os outros cards. Agora usa preenchimento sólido:
+
+- `.aspecto-linha.ativo{background:var(--azul); ...}` — usa o **azul escuro
+  original** (`--azul`, `#1E3A72`, do `:root` global) como fundo, não o
+  `--p-azul` (azul claro, `#60a5fa`) que o painel escuro declara pra si
+  mesmo. Motivo: `--p-azul` foi pensado pra texto/acento sobre fundo escuro,
+  não pra virar o fundo de um card inteiro (com o texto escuro do card em
+  cima ficaria ilegível). `--azul` já era usado como preenchimento das
+  pílulas de região ativas — reaproveitar o mesmo token garante o mesmo
+  peso visual "igual esta na parte da região".
+- Junto, texto/ícones do card viram claros pra continuar legíveis em cima do
+  azul escuro: `.nome{color:#fff}`, `.total{color:#cfe0ff}`,
+  `.legenda{color:#cfe0ff}`, `.barra{background:rgba(255,255,255,.18)}`.
+- Funciona igual nas duas telas onde a lista "Por aspecto avaliado"
+  aparece: `#aspectos-geral` (Todas) e `#aspectos-regiao` (dentro do funil
+  de uma região específica) — é o mesmo seletor CSS, não precisou duplicar
+  nada.
+- Testado: computed style confere fundo `rgb(30,58,114)` e cores de texto
+  claras, tanto num card da tela "Todas" quanto num card dentro da Região 2
+  (`#aspectos-regiao [data-aspecto-mapa="drenagem"]`), sem erro no console;
+  conferido também no viewport mobile (375×812).
+
 ## Resultado Geral (I.C.M. / I.C.M.N.P.)
 
 Índice único por segmento, combinando todos os aspectos daquele modelo de ficha:
