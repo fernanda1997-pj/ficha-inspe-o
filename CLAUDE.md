@@ -730,6 +730,42 @@ idêntico.
   (Ruim) e `rgb(12,163,12)` (Bom) que apareciam na mesma tabela — sem
   erro no console; conferido também em viewport mobile (375×812).
 
+**O "AMARELO DIFERENTE" avisado acima também virou vermelho, mesmo dia
+(2026-09-15, poucos minutos depois):** exatamente o cenário previsto na
+entrada anterior — ela mandou print dos cards "Por aspecto avaliado" (as
+barras de Pavimento/Vegetação/Drenagem/Sinalização/Plataforma) e confirmou:
+"o que eu quero que muda e a cor desse amarelo para vermelho". Dessa vez é
+o `CORES_SEVERIDADE`, não o `CORES_ICM` — uma paleta genérica de 5
+posições (0=boa condição → 4=pior) COMPARTILHADA por todos os 7 aspectos,
+usada tanto nesses cards quanto na cor do MAPA quando um aspecto é
+selecionado (`aspectosNoMapa`) e nos badges do popup/gaveta.
+
+- `CORES_SEVERIDADE[1]` mudou de `#EAB308` (amarelo) pra `#e05a5a` — o
+  MESMO vermelho claro usado em `CORES_ICM['Regular']` (não inventei um
+  terceiro tom; reaproveitar deixa a "linguagem de cor" do site
+  consistente: esse tom = "atenção, mas não é o pior").
+  `CORES_SEVERIDADE[2]` (`#F97316` laranja) e `[3]`/`[4]` (`#DC2626`
+  vermelho / `#7F1D1D` vinho) não mudaram.
+- **Motivo de não usar o mesmo `#DC2626` da posição 3**: como essa escala
+  é compartilhada, aspectos com 4-5 níveis (`pavimento`: Bom·Remendo
+  isolado·Remendo em lâmina·Buraco isolado·Buraco em lâmina; `plataforma`:
+  Bom·Regular·Ruim·Péssima) usam a posição 1 E a posição 3 ao mesmo
+  tempo — cor idêntica juntaria visualmente "Remendo isolado"/"Regular"
+  (defeito leve) com "Buraco isolado"/"Péssima" (defeito grave) na MESMA
+  barra. Perguntei e ela confirmou querer um vermelho mais claro,
+  distinguível — igual já tinha decidido pro Resultado Geral.
+- Aspectos com só 2-3 níveis (`vegetacao`, `drenagem`,
+  `sinalizacao_horizontal`, `sinalizacao_vertical`, `drenagem_superficial`)
+  não usam a posição 3/4 dessa escala, então pra eles não tinha esse
+  risco de colisão — mas a cor é a mesma variável pra todo mundo, não dava
+  pra mudar só pra uns.
+- Testado: busquei um segmento com `pavimento.severidade === 1` (achado:
+  R1/2026-08, S.R.E. `010ETO0650`) e conferi que o badge "REM. I." saiu
+  `rgb(224, 90, 90)` — igual ao `Regular` do Resultado Geral, diferente do
+  laranja/vermelho-escuro das posições seguintes na mesma barra; conferido
+  visualmente no dashboard "Todas" (barras dos 7 cards) e em viewport
+  mobile (375×812, gaveta do S.R.E. acima) — sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado

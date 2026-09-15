@@ -483,8 +483,17 @@
 
 // ---------------------------------------------------------------------
 // Paleta de severidade: posição 0 = condição boa, cresce até a pior.
+// Posição 1 era amarelo (#EAB308) — pedido da usuária (2026-09-15, print
+// dos cards "Por aspecto avaliado"): "o que eu quero que muda e a cor
+// desse amarelo para vermelho". Usa o MESMO vermelho claro (#e05a5a) já
+// usado em CORES_ICM['Regular'] — não o mesmo vermelho da posição 3
+// (#DC2626): em Pavimento (5 níveis) e Plataforma (4 níveis) as duas
+// posições convivem na mesma escala, cor idêntica juntaria "Remendo
+// isolado"/"Regular" (posição 1, mais leve) com "Buraco isolado"/
+// "Péssima" (posição 3, bem mais grave) — ela confirmou querer um tom
+// diferente e distinguível, igual fez pro Resultado Geral.
 // ---------------------------------------------------------------------
-var CORES_SEVERIDADE = ['#16A34A', '#EAB308', '#F97316', '#DC2626', '#7F1D1D'];
+var CORES_SEVERIDADE = ['#16A34A', '#e05a5a', '#F97316', '#DC2626', '#7F1D1D'];
 
 var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não pavimentada'};
 
