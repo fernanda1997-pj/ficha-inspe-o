@@ -691,8 +691,44 @@ Guardado em `properties.icm = {classe, valor}` de cada feature — nome interno 
 código continua "I.C.M.", mas a sigla foi tirada de todo rótulo visível na tela
 (2026-08-27, pedido da usuária: "sem sigla") — na UI é só **"Resultado Geral"**.
 Cores fixas (paleta de status, não a escala verde→vinho de severidade): Bom
-`#0ca30c`, Regular `#fab219`, Ruim `#ec835a`, Péssimo `#d03b3b`, Sem Informação
+`#0ca30c`, Regular `#e05a5a` (era `#fab219`/amarelo até 2026-09-15, ver
+entrada abaixo), Ruim `#ec835a`, Péssimo `#d03b3b`, Sem Informação
 `#94A3B8` (`CORES_ICM` no `index.html`).
+
+**"Regular" (Resultado Geral) virou vermelho, não é mais amarelo
+(2026-09-15):** "quero mudar a cor o que esta em aamarelo deixar em
+vermelho" — pedido vago, tinha 2 amarelos idênticos (`#fab219`) em
+lugares diferentes: `CORES_ICM['Regular']` (Resultado Geral: Bom·Regular·
+Ruim·Péssimo) e `CORES_PONTO_CRITICO['Em execução']` (status de Pontos
+Críticos: Crítico·Em execução·Resolvido). Perguntei qual dos dois — "Regular
+(Resultado Geral)". Avisei que usar o MESMO vermelho do Péssimo
+(`#d03b3b`) deixaria as duas classes idênticas no mapa/legenda/tabela —
+ela confirmou querer um vermelho mais claro e distinguível, não o
+idêntico.
+
+- Só `CORES_ICM['Regular']` mudou, de `#fab219` pra `#e05a5a` (vermelho
+  mais claro que o `#d03b3b` do Péssimo, e com matiz mais "vermelho puro"
+  que o `#ec835a` laranja-salmão do Ruim — os três continuam
+  distinguíveis a olho). `CORES_PONTO_CRITICO['Em execução']` **não
+  mudou**, continua `#fab219` amarelo — não foi o que ela pediu.
+- **Cuidado, existe um AMARELO DIFERENTE que não foi tocado**: além dos
+  dois `#fab219` acima, cada aspecto individual (Pavimento, Sinalização
+  Horizontal, Plataforma etc.) tem sua própria escala de severidade
+  genérica `CORES_SEVERIDADE = ['#16A34A','#EAB308','#F97316','#DC2626',
+  '#7F1D1D']` (verde·amarelo·laranja·vermelho·vinho, por posição da
+  coluna na ficha) — QUALQUER aspecto cuja 2ª severidade se chame
+  "Regular" (ex.: `sinalizacao_horizontal`: Bom·Regular·Inexistente;
+  `plataforma`: Bom·Regular·Ruim·Péssima) ainda aparece em amarelo
+  `#EAB308` na tabela do funil/gaveta — é uma paleta e um "Regular"
+  totalmente diferentes do Resultado Geral, não fazem parte deste pedido.
+  Se um dia ela reclamar de "ainda tem amarelo" apontando pra uma coluna
+  de aspecto específico (não a coluna "Resultado geral"), é esse o lugar.
+- Testado: busquei nos dados reais carregados (`window.DADOS_INSPECAO`)
+  um segmento com `icm.classe === 'Regular'` (achado: R1/2026-07,
+  S.R.E. `126ETO0130`) e conferi na gaveta que o selo "Resultado geral"
+  saiu `rgb(224, 90, 90)` (o `#e05a5a` novo), diferente do `rgb(236,131,90)`
+  (Ruim) e `rgb(12,163,12)` (Bom) que apareciam na mesma tabela — sem
+  erro no console; conferido também em viewport mobile (375×812).
 
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se

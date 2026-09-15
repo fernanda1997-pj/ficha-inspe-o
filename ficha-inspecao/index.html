@@ -493,7 +493,13 @@ var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não paviment
 // de status (não é a mesma escala verde→vinho da severidade).
 var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
 var CORES_ICM = {
-  'Bom': '#0ca30c', 'Regular': '#fab219', 'Ruim': '#ec835a',
+  // 'Regular' era amarelo (#fab219) — pedido da usuária: "quero mudar a
+  // cor o que esta em aamarelo deixar em vermelho" (2026-09-15). Usa um
+  // vermelho mais claro que o do 'Péssimo' (não o mesmo #d03b3b) pra
+  // continuar dando pra diferenciar as duas classes no mapa/legenda —
+  // ela confirmou essa opção quando avisei que a cor idêntica juntaria
+  // Regular com Péssimo visualmente.
+  'Bom': '#0ca30c', 'Regular': '#e05a5a', 'Ruim': '#ec835a',
   'Péssimo': '#d03b3b', 'Sem Informação': '#94A3B8',
 };
 
