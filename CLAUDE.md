@@ -1003,6 +1003,17 @@ Inexistente/Ausente) e até redefinindo o cinza de "Sem Informação".
   texto branco"); conferido visualmente no dashboard "Todas", gaveta de
   S.R.E. e mapa, desktop e mobile (375×812); sem erro no console.
 
+**Sujo/Obstruída virou marrom escuro de verdade, minutos depois
+(2026-09-23):** pedido pontual e direto — "MUDANÇA: Sujeira / Obstrução
+SUJO, OBSTRUÍDA Marrom Escuro #4E2A1E". O `#A1887F` (marrom-taupe claro)
+do ajuste anterior não agradou; trocado por `COR_SUJEIRA = '#4E2A1E'`
+(constante nova, mesmo padrão das outras `COR_*`), usado em
+`drenagem[1]` (Sujos) e `drenagem_superficial[1]` (Obstruída) — os únicos
+2 lugares que usavam aquele marrom-taupe. Testado: `getComputedStyle`
+confere `rgb(78,42,30)` nos dois aspectos; texto branco do selo "SUJOS"
+continua legível (fundo ainda mais escuro que antes, contraste só
+melhorou); conferido em desktop e mobile (375×812); sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado
