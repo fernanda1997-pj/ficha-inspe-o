@@ -1170,6 +1170,16 @@ as condições marcadas em cada um (só as colunas do modelo de ficha correspond
 mais a coluna "Resultado Geral (I.C.M.)"). Quando mostra mais de um S.R.E. de uma vez
 ("Todos"), a tabela ganha colunas extras de Trecho e S.R.E. no início.
 
+**`.dica` (texto de ajuda) movida pra ANTES do funil, não depois
+(2026-09-23):** "deixa essa parte mais em cima" — a usuária mandou print
+mostrando Tipo de via/Trecho/S.R.E. com o texto de ajuda logo abaixo
+deles; queria o texto ANTES, como introdução, não como rodapé depois dos
+3 selects. HTML de `#painel-regiao`: o `<div class="dica">` saiu de
+depois do `<select id="sel-sre">` pra logo depois do `<hr
+class="separador">`, antes do `<label>`/`<select>` de "Tipo de via" —
+mesmo texto, só ajustado "acima"→"abaixo" já que agora os selects vêm
+DEPOIS dela, não antes. Nada de JS mudou, só ordem no HTML.
+
 ## Fluxo de trabalho — ficha nova chegou
 
 Todo mês chegam **até 12 arquivos** (pavimentada + não pavimentada × 6 regiões), mas não
