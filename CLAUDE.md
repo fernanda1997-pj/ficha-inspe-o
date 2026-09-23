@@ -1170,31 +1170,43 @@ as condições marcadas em cada um (só as colunas do modelo de ficha correspond
 mais a coluna "Resultado Geral (I.C.M.)"). Quando mostra mais de um S.R.E. de uma vez
 ("Todos"), a tabela ganha colunas extras de Trecho e S.R.E. no início.
 
-**`.dica` (texto de ajuda) movida pra ANTES do funil, não depois
-(2026-09-23):** "deixa essa parte mais em cima" — a usuária mandou print
-mostrando Tipo de via/Trecho/S.R.E. com o texto de ajuda logo abaixo
-deles; queria o texto ANTES, como introdução, não como rodapé depois dos
-3 selects. HTML de `#painel-regiao`: o `<div class="dica">` saiu de
-depois do `<select id="sel-sre">` pra logo depois do `<hr
-class="separador">`, antes do `<label>`/`<select>` de "Tipo de via" —
-mesmo texto, só ajustado "acima"→"abaixo" já que agora os selects vêm
-DEPOIS dela, não antes. Nada de JS mudou, só ordem no HTML.
+**Funil (Tipo de via/Trecho/S.R.E.) subiu pra logo após Competência — 2
+tentativas erradas antes de acertar o pedido (2026-09-23):** "deixa essa
+parte mais em cima", com print mostrando Tipo de via/Trecho/S.R.E.
+seguidos do texto de ajuda (`.dica`). Interpretei errado 2 vezes
+seguidas: 1ª tentativa moveu a `.dica` pra antes do funil; ela pediu de
+novo pra subir mais ("sobe oq eu pedi, deixa em cima de região intira"),
+2ª tentativa subiu a `.dica` ainda mais, pra logo após Competência. Só
+aí foi que ela corrigiu de vez: **"vc entendeu errado, isso que eu quero
+mais em cima, o textinho pode manter em ultimo, por favor"** — "essa
+parte" do pedido original era o FUNIL (Tipo de via/Trecho/S.R.E.), não a
+`.dica`; a `.dica` devia ficar onde sempre esteve, por ÚLTIMO.
 
-**Dica subiu de novo, ainda mais pra cima, mesmo dia (2026-09-23):** "as
-cores esta ok, agr preciso que vc sobe oq eu pedi, deixa em cima de
-região intira" — o ajuste anterior só tinha subido a dica pra antes do
-FUNIL (Tipo/Trecho/S.R.E.); ela queria mais alto ainda, ACIMA do
-`#kpis-regiao-wrap` (o bloco que mostra o texto "Região inteira" +
-km/segmentos). `<div class="dica">` saiu de depois do `<hr
-class="separador">` pra logo depois do `<select id="sel-competencia">`
-— agora é praticamente a PRIMEIRA coisa que aparece ao abrir uma região
-(só atrás do próprio select de mês). Texto ajustado de novo: "Por
-aspecto avaliado" (que antes ficava ACIMA da dica) agora também fica
-abaixo, então virou "clique num card ... abaixo" em vez de "acima".
-Continua só reordenação de HTML, nenhum JS mudou. Testado: ordem no DOM
-confere `#sel-competencia` → `.dica` → `#kpis-regiao-wrap` →
-`#resumo-escopo`; conferido visualmente em desktop e mobile (375×812);
-sem erro no console.
+- **Lição**: quando o pedido vem com um print mostrando VÁRIOS elementos
+  juntos ("deixa essa parte mais em cima" apontando pra uma região da
+  tela com 2 coisas diferentes — funil E texto de ajuda), não assumir
+  qual delas é "essa parte" só pela posição do texto no print (o texto de
+  ajuda aparecia por último no print, mas o pedido era sobre o bloco
+  ACIMA dele) — vale confirmar antes de mexer, ou pelo menos prestar
+  atenção em qual elemento é mais provável de ser "uma parte" (um bloco
+  de controles) vs. um texto solto de rodapé.
+- **Estado final**: `#sel-tipo`/`#sel-trecho`/`#sel-sre` saíram de depois
+  do `<hr class="separador">` (que ficava perto do fim do painel) pra
+  logo depois do `<select id="sel-competencia">`, no topo — agora é a
+  segunda coisa que aparece ao abrir uma região, logo após escolher o
+  mês. O `<hr class="separador">` acompanhou o funil (ainda separa
+  "controles de seleção" de "resumo/aspectos/comparativo", só que agora
+  esse bloco de resumo vem DEPOIS do funil, não antes). `<div
+  class="dica">` voltou pro fim do painel — texto ORIGINAL restaurado
+  ("acima" volta a valer pros dois, "Por aspecto avaliado" e "Trecho/
+  S.R.E.", já que os dois ficam de novo acima dela).
+- Testado: ordem no DOM confere `#sel-competencia` → `#sel-tipo` →
+  `.separador` → `#kpis-regiao-wrap` → `#aspectos-regiao-wrap` →
+  `#comparativo-mensal-regiao-wrap` → `.dica` (por último); testei
+  escolher um Tipo de via e confirmei que `#sel-trecho` populou opções
+  normalmente (funil continua funcionando, só mudou de lugar no HTML);
+  conferido visualmente em desktop e mobile (375×812); sem erro no
+  console.
 
 ## Fluxo de trabalho — ficha nova chegou
 

@@ -388,21 +388,26 @@
       <label class="rotulo" for="sel-competencia">Competência (mês da ficha)</label>
       <select id="sel-competencia"></select>
 
-      <!-- Dica subiu mais uma vez — 1º pedido ("deixa essa parte mais em
-           cima") tinha movido só pra antes do funil (Tipo/Trecho/S.R.E.);
-           a usuária pediu de novo: "sobe oq eu pedi, deixa em cima de
-           região intira" — ou seja, ACIMA do #kpis-regiao-wrap (o bloco
-           que mostra "Região inteira" + km/segmentos), logo depois do
-           select de Competência. Texto ajustado: "Por aspecto avaliado"
-           e o funil agora ficam todos ABAIXO da dica, não só o funil. -->
-      <div class="dica">
-        O mapa mostra o Resultado Geral por padrão — clique num card de "Por
-        aspecto avaliado" abaixo pra colorir o mapa por aquele aspecto (clique
-        de novo pra voltar ao Resultado Geral). Escolha um Trecho/S.R.E. mais
-        abaixo (ou "Todos") pra dar zoom nele e ver a tabela completa com
-        pavimento, vegetação, drenagem e sinalização — ou clique direto num
-        trecho no mapa.
-      </div>
+      <!-- Os 2 ajustes anteriores mexeram na coisa errada: eu tinha
+           movido a `.dica` (texto de ajuda) pra cima, mas a usuária
+           corrigiu: "vc entendeu errado, isso que eu quero mais em cima,
+           o textinho pode manter em ultimo, por favor" — o pedido
+           original ("deixa essa parte mais em cima", com print mostrando
+           Tipo de via/Trecho/S.R.E.) era sobre o FUNIL, não a dica. Funil
+           subiu pra logo depois de Competência (antes de "Região
+           inteira"/aspectos/comparativo); dica voltou pro fim do painel,
+           texto original restaurado ("acima" volta a fazer sentido pros
+           dois — aspectos E funil ficam acima dela de novo). -->
+      <label class="rotulo" for="sel-tipo">Tipo de via</label>
+      <select id="sel-tipo"><option value="">Selecione…</option></select>
+
+      <label class="rotulo" for="sel-trecho">Trecho</label>
+      <select id="sel-trecho"><option value="">Selecione…</option></select>
+
+      <label class="rotulo" for="sel-sre">S.R.E.</label>
+      <select id="sel-sre"><option value="">Selecione…</option></select>
+
+      <hr class="separador">
 
       <div id="kpis-regiao-wrap">
         <div id="resumo-escopo">Região inteira</div>
@@ -422,16 +427,14 @@
         <div id="comparativo-mensal-regiao"></div>
       </div>
 
-      <hr class="separador">
-
-      <label class="rotulo" for="sel-tipo">Tipo de via</label>
-      <select id="sel-tipo"><option value="">Selecione…</option></select>
-
-      <label class="rotulo" for="sel-trecho">Trecho</label>
-      <select id="sel-trecho"><option value="">Selecione…</option></select>
-
-      <label class="rotulo" for="sel-sre">S.R.E.</label>
-      <select id="sel-sre"><option value="">Selecione…</option></select>
+      <div class="dica">
+        O mapa mostra o Resultado Geral por padrão — clique num card de "Por
+        aspecto avaliado" acima pra colorir o mapa por aquele aspecto (clique
+        de novo pra voltar ao Resultado Geral). Escolha um Trecho/S.R.E.
+        acima (ou "Todos") pra dar zoom nele e ver a tabela completa com
+        pavimento, vegetação, drenagem e sinalização — ou clique direto num
+        trecho no mapa.
+      </div>
     </div>
 
     <div class="conteudo" id="painel-geral">
