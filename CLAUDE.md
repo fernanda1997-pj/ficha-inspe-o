@@ -766,6 +766,41 @@ selecionado (`aspectosNoMapa`) e nos badges do popup/gaveta.
   visualmente no dashboard "Todas" (barras dos 7 cards) e em viewport
   mobile (375×812, gaveta do S.R.E. acima) — sem erro no console.
 
+**`CORES_SEVERIDADE` redesenhada de vez — sem laranja, tudo vermelho
+gradativo (2026-09-23):** a correção acima (só a posição 1) não resolveu
+o problema de fundo — ela mandou o MESMO print de novo (os 7 cards "Por
+aspecto avaliado") e desta vez foi sobre a paleta inteira, não só o
+amarelo: "não esta bom essas cores, preciso de cores armonicas que
+combinam, verde para o bom, vermelho mais forte, uma combinações
+melhores". A escala tinha virado uma mistura sem lógica de matiz (verde ·
+vermelho-claro · **laranja** · vermelho · vinho) — o laranja no meio
+quebrava a progressão de cor, mesmo a paleta sendo tecnicamente
+"correta" (cada posição distinguível da vizinha).
+
+- Mostrei 2 mockups (widget `visualize`, fora do site, reproduzindo o
+  card real com HTML/CSS igual ao `index.html`) comparando "Opção A"
+  (vermelho suave, transição gradual) com "Opção B" (vermelho mais
+  saturado desde a 1ª posição de defeito, salto maior) — ela escolheu
+  **Opção B**.
+- `CORES_SEVERIDADE` virou `['#16A34A', '#EF4444', '#DC2626', '#B91C1C',
+  '#7F1D1D']` — **tirou o laranja de vez** (posição 2 não é mais
+  `#F97316`). Da posição 1 em diante é tudo vermelho, só mais escuro/
+  saturado a cada posição — uma única família de cor pra "tem defeito",
+  intensidade crescente = gravidade crescente. Só a posição 0 (Bom)
+  continua verde (`#16A34A`, não mudou).
+- **`CORES_ICM['Regular']` (Resultado Geral) NÃO foi tocado nesta
+  rodada** — continua `#e05a5a`, o tom mais claro escolhido em
+  2026-09-15. As duas paletas ficaram levemente inconsistentes entre si
+  (tom de vermelho da posição 1 diferente entre "Por aspecto avaliado" e
+  "Resultado Geral") — se ela reclamar de novo apontando pro Resultado
+  Geral, é só alinhar `CORES_ICM['Regular']` pro mesmo `#EF4444` desta
+  paleta.
+- Testado: `getComputedStyle` nas barras dos cards confirma
+  `rgb(22,163,74)` (Bom) → `rgb(239,68,68)` → `rgb(220,38,38)` →
+  `rgb(185,28,28)` → `rgb(127,29,29)` (Buraco em lâmina/pior), sem laranja
+  em lugar nenhum; conferido visualmente no dashboard "Todas" (desktop e
+  mobile 375×812); sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado
