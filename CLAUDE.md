@@ -949,6 +949,60 @@ sua própria identidade visual".
   Resultado Geral, mostrando o âmbar novo), desktop e mobile (375×812);
   sem erro no console.
 
+**Paleta categórica refinada pra versão definitiva, mesmo dia
+(2026-09-23, 6º e último ajuste desta sequência):** a usuária mandou uma
+versão mais completa e já organizada em 4 FAIXAS por ela mesma —
+"Verde/Ok", "Alertas leves e médios", "Defeitos e danos", "Crítico e
+ausente" — cobrindo posições que o ajuste anterior tinha preenchido só
+com escolha própria (Remendo isolado/em lâmina, Sujos/Obstruída,
+Inexistente/Ausente) e até redefinindo o cinza de "Sem Informação".
+
+- **Novas cores** (substituem `CORES_SEVERIDADE` inteira):
+  `COR_BOM='#2E7D32'`, `COR_REGULAR='#FBC02D'`, `COR_DEFEITO='#E53935'`
+  (RUIM/INAD/DANIF, unificados numa cor só — antes eram 3 cores
+  diferentes), `COR_CRITICO='#4A148C'` (só Péssima-atoleiro da
+  Plataforma), `COR_AUSENTE='#424242'` (INEX/AUSENTE, antes era
+  `#37474F` azulado, agora cinza neutro), `COR_SEM_INFO='#9E9E9E'`
+  (era `#94A3B8` — trocado em TODOS os lugares que liam esse valor:
+  `CORES_ICM`, `corDoSegmento`, `somaPorAspecto`, EXCETO
+  `CORES_PONTO_CRITICO['Sem atualização']`, que é outra funcionalidade,
+  não fazia parte do pedido). Pavimento ganhou 2 cores próprias novas só
+  dele: `#FFB74D` (Remendo isolado) e `#FB8C00` (Remendo em lâmina) —
+  antes reusavam âmbar/`COR_RUIM` antigo. Drenagem/Drenagem Superficial
+  ganharam `#A1887F` (marrom-taupe) pra Sujos/Obstruída, antes eram
+  marrons diferentes cada um. Buraco isolado mudou de `#FF1744` pra
+  `#D81B60` (rosa-vermelho, pedido dela).
+- **1 inferência não 100% explícita**: ela deu cor só pra "PÉSSIMA
+  (ATOLEIRO)" (a pior classe da Plataforma), não repetiu pro "Péssimo"
+  GENÉRICO do Resultado Geral (`CORES_ICM`). Aplicado `COR_CRITICO`
+  (roxo) pros dois — como ela separou "defeito" (vermelho) de "crítico"
+  (roxo) como 2 FAIXAS diferentes (não só 2 tons do mesmo vermelho),
+  fez sentido o Péssimo genérico cair na faixa "crítico" igual à
+  Péssima-atoleiro. Se ela achar que Péssimo devia ser outra cor, é só
+  trocar `CORES_ICM['Péssimo']`.
+- **Tabela final por aspecto** (posição 0→pior):
+  - `pavimento`: Bom·Remendo isolado·Remendo em lâmina·Buraco isolado·
+    Buraco em lâmina → verde·`#FFB74D`·`#FB8C00`·`#D81B60`·`#880E4F`
+  - `vegetacao`: Adequada·Inadequada → verde·`COR_DEFEITO`
+  - `drenagem`: Limpos·Sujos·Danificados → verde·`#A1887F`·`COR_DEFEITO`
+  - `sinalizacao_horizontal`: Bom·Regular·Inexistente →
+    verde·`COR_REGULAR`·`COR_AUSENTE`
+  - `sinalizacao_vertical`: Bom·Poucas·Inexistente →
+    verde·`#00ACC1`·`COR_AUSENTE`
+  - `plataforma`: Bom·Regular·Ruim·Péssima →
+    verde·`COR_REGULAR`·`COR_DEFEITO`·`COR_CRITICO`
+  - `drenagem_superficial`: Limpa·Obstruída·Ausente →
+    verde·`#A1887F`·`COR_AUSENTE`
+- Testado: `getComputedStyle` confere as 7 paletas (`rgb(255,183,77)`,
+  `rgb(251,140,0)`, `rgb(216,27,96)` no Pavimento; `rgb(74,20,140)` roxo
+  em Plataforma; `rgb(158,158,158)` no "Sem Informação" novo, em vez do
+  cinza-azulado antigo) e o texto certo (claro/escuro) nos selos —
+  inclusive "INAD." em cima do novo vermelho `#E53935` saiu com texto
+  ESCURO (a função calculou mais contraste assim: ~4.9:1 contra ~4.3:1
+  no branco — resultado correto, ainda que menos usual que "vermelho com
+  texto branco"); conferido visualmente no dashboard "Todas", gaveta de
+  S.R.E. e mapa, desktop e mobile (375×812); sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado

@@ -482,71 +482,65 @@
 'use strict';
 
 // ---------------------------------------------------------------------
-// Paleta de severidade — 5º ajuste, 2026-09-23: a usuária mandou uma
-// paleta pronta, com uma cor por CATEGORIA/PALAVRA específica (BOM verde,
-// REGULAR âmbar, RUIM laranja escuro, PESSIMO vermelho, INAD roxo, SUJO
-// marrom, POUC ciano, BUR.I. vermelho vivo, BUR.L. vinho) — não é mais
-// "clareando/escurecendo o mesmo tom" (que gerou os 4 ajustes anteriores
-// nesta mesma paleta), é uma cor DISTINTA por tipo de achado.
+// Paleta de severidade — 6º ajuste, 2026-09-23: a usuária refinou a
+// paleta categórica do ajuste anterior com uma versão mais completa e
+// definitiva, em 4 faixas nomeadas por ela mesma — "Verde/Ok", "Alertas
+// leves e médios", "Defeitos e danos", "Crítico e ausente":
+//   Verde/Ok: BOM/ADEQ/LIMP/LIMPA
+//   Leve/médio: REGULAR/REG (âmbar), REM.I. (laranja claro),
+//     REM.L. (laranja escuro), SUJO/OBSTRUÍDA (marrom-taupe), POUC. (ciano)
+//   Defeito/dano: RUIM/INAD/DANIF (vermelho), BUR.I. (rosa-vermelho),
+//     BUR.L. (vinho)
+//   Crítico/ausente: PÉSSIMA-ATOLEIRO (roxo escuro), INEX/AUSENTE
+//     (cinza escuro neutro), Sem Informação (cinza médio — TROCOU de
+//     #94A3B8 pro #9E9E9E que ela deu, ver `COR_SEM_INFO` abaixo)
 //
-// **Por que virou um objeto por aspecto, e não um dicionário de texto
-// exato:** o texto de `info.status` vem direto do cabeçalho da coluna na
-// planilha da ficha, e ele VARIA — mesmo campo aparece como "REGULAR",
-// "REG." ou "REG. (ATÉ 10 IRR./KM)" dependendo do arquivo; "BUR. I",
-// "BUR. I." ou "REM. I."; tem até o erro de digitação conhecido
-// "INADED." (ver `TIPO_VIA_DO_ASPECTO` acima). Um mapa `{texto: cor}`
-// quebraria (cairia no cinza de "sem cor") toda vez que uma ficha nova
-// escrevesse o mesmo achado com uma palavra ligeiramente diferente. Em
-// vez disso, a cor é indexada por `[grupoId][severidade]` — a MESMA
-// posição numérica (0,1,2...) que já usávamos antes e que o converter
-// sempre preenche de forma limpa, não importa como a ficha escreveu o
-// rótulo daquele mês.
+// Igual ao ajuste anterior, indexado por `[grupoId][severidade]`
+// (posição numérica), não por texto exato de `info.status` — o texto
+// vem do cabeçalho da própria planilha e varia mês a mês/região a região
+// ("REGULAR" vs "REG." vs "REG. (ATÉ 10 IRR./KM)", "BUR. I" vs "BUR. I.",
+// o typo conhecido "INADED." etc., confirmado via grep nos dados reais).
+// A posição numérica é sempre limpa, a palavra exata não.
 //
-// Isso também respeita a intenção da usuária: cada `grupoId` só usa uma
-// cor específica (roxo/marrom/ciano/vermelho-vivo/vinho) na posição que
-// ela realmente indicou (Inadequada, Sujos, Poucas, Buraco isolado,
-// Buraco em lâmina); as posições que ela NÃO especificou (Remendo
-// isolado/em lâmina do Pavimento; Adequada/Limpos/Limpa; Danificados;
-// Inexistente da Sinalização H/V; Obstruída/Ausente da Drenagem
-// Superficial) usam o gradiente genérico Bom→Regular→Ruim→Péssimo dela
-// mesma (verde/âmbar/laranja/vermelho) ou, quando o achado é "a coisa
-// simplesmente não existe" (Inexistente, Ausente), um cinza-azulado
-// escuro à parte — não é alerta quente, é um "vazio" (diferente do
-// cinza claro `#94A3B8` de "Sem Informação", que é FALTA DE DADO, não um
-// achado real). Nada disso foi pedido explicitamente; são escolhas
-// razoáveis pra completar o que ela não cobriu — avisado na entrega.
+// **1 inferência que não estava explícita nesta lista**: ela deu cor pra
+// "PÉSSIMA (ATOLEIRO)" — que é especificamente a pior classe da
+// Plataforma — mas não repetiu isso pro "Péssimo" GENÉRICO do Resultado
+// Geral (`CORES_ICM`, que também tem só Bom/Regular/Ruim/Péssimo). Usei
+// a mesma cor roxa pros dois: como ela separou "defeito" (vermelho) de
+// "crítico" (roxo) como duas FAIXAS diferentes, não só 2 tons do mesmo
+// vermelho, faz sentido o Péssimo genérico cair na faixa "crítico" igual
+// a Péssima-atoleiro — mas é uma extensão minha, não foi pedida
+// palavra-por-palavra; avisado na entrega.
 // ---------------------------------------------------------------------
-var COR_BOM = '#2E7D32', COR_REGULAR = '#FBC02D', COR_RUIM = '#E65100',
-    COR_PESSIMO = '#B71C1C', COR_INEXISTENTE = '#37474F';
+var COR_BOM = '#2E7D32', COR_REGULAR = '#FBC02D', COR_DEFEITO = '#E53935',
+    COR_CRITICO = '#4A148C', COR_AUSENTE = '#424242', COR_SEM_INFO = '#9E9E9E';
 var CORES_SEVERIDADE = {
   // Bom · Remendo isolado · Remendo em lâmina · Buraco isolado · Buraco em lâmina
-  pavimento: [COR_BOM, COR_REGULAR, COR_RUIM, '#FF1744', '#880E4F'],
+  pavimento: [COR_BOM, '#FFB74D', '#FB8C00', '#D81B60', '#880E4F'],
   // Adequada · Inadequada
-  vegetacao: [COR_BOM, '#8E24AA'],
+  vegetacao: [COR_BOM, COR_DEFEITO],
   // Limpos · Sujos · Danificados
-  drenagem: [COR_BOM, '#6D4C41', '#3E2723'],
+  drenagem: [COR_BOM, '#A1887F', COR_DEFEITO],
   // Bom · Regular · Inexistente
-  sinalizacao_horizontal: [COR_BOM, COR_REGULAR, COR_INEXISTENTE],
+  sinalizacao_horizontal: [COR_BOM, COR_REGULAR, COR_AUSENTE],
   // Bom · Poucas · Inexistente
-  sinalizacao_vertical: [COR_BOM, '#00ACC1', COR_INEXISTENTE],
-  // Bom · Regular (até 10 irreg./km) · Ruim (+10 irreg./km) · Péssima
-  plataforma: [COR_BOM, COR_REGULAR, COR_RUIM, COR_PESSIMO],
+  sinalizacao_vertical: [COR_BOM, '#00ACC1', COR_AUSENTE],
+  // Bom · Regular (até 10 irreg./km) · Ruim (+10 irreg./km) · Péssima (atoleiro/pto. crítico)
+  plataforma: [COR_BOM, COR_REGULAR, COR_DEFEITO, COR_CRITICO],
   // Limpa · Obstruída · Ausente
-  drenagem_superficial: [COR_BOM, COR_REGULAR, COR_INEXISTENTE],
+  drenagem_superficial: [COR_BOM, '#A1887F', COR_AUSENTE],
 };
 
 var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não pavimentada'};
 
 // Resultado geral (I.C.M./I.C.M.N.P.) — combinação normalizada de todos os
 // aspectos de cada segmento (ver converter_fichas.py::calcular_icm).
-// Alinhado em 2026-09-23 com o gradiente Bom/Regular/Ruim/Péssimo que a
-// usuária deu pra severidade por aspecto (mesma ideia, mesmas 4 cores) —
-// antes disso Regular e Péssimo aqui eram dois vermelhos diferentes,
-// sobra de ajustes anteriores feitos só nessa paleta.
+// Cores alinhadas com as 4 faixas da paleta por aspecto (ver nota acima
+// sobre Péssimo/crítico ser uma extensão minha, não pedido explícito).
 var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
 var CORES_ICM = {
-  'Bom': COR_BOM, 'Regular': COR_REGULAR, 'Ruim': COR_RUIM,
-  'Péssimo': COR_PESSIMO, 'Sem Informação': '#94A3B8',
+  'Bom': COR_BOM, 'Regular': COR_REGULAR, 'Ruim': COR_DEFEITO,
+  'Péssimo': COR_CRITICO, 'Sem Informação': COR_SEM_INFO,
 };
 
 // Pontos Críticos (erosão, bueiro, talude etc. — dados/pontos_criticos.js,
@@ -1132,12 +1126,12 @@ function fecharDrawer(){
 function corDoSegmento(props, grupoId){
   if(grupoId === 'icm'){
     var classe = props.icm && props.icm.classe;
-    return classe ? (CORES_ICM[classe] || '#94A3B8') : '#94A3B8';
+    return classe ? (CORES_ICM[classe] || COR_SEM_INFO) : COR_SEM_INFO;
   }
   var info = props[grupoId];
-  if(!info || info.severidade === null || info.severidade === undefined) return '#94A3B8';
+  if(!info || info.severidade === null || info.severidade === undefined) return COR_SEM_INFO;
   var paleta = CORES_SEVERIDADE[grupoId] || [];
-  return paleta[Math.min(info.severidade, paleta.length-1)] || '#94A3B8';
+  return paleta[Math.min(info.severidade, paleta.length-1)] || COR_SEM_INFO;
 }
 
 // .badge/.badge-tab sempre tinham texto branco fixo (CSS) — funcionava
@@ -1178,7 +1172,7 @@ function montarPopup(props){
   }).join('');
   var tipoVia = NOME_TIPO_VIA[props.tipo_via] || '';
   var classeIcm = props.icm && props.icm.classe;
-  var corIcm = classeIcm ? (CORES_ICM[classeIcm] || '#94A3B8') : null;
+  var corIcm = classeIcm ? (CORES_ICM[classeIcm] || COR_SEM_INFO) : null;
   return (
     '<div class="popup-insp">'+
       '<h3>'+(props.sre||'')+(tipoVia ? ' <span style="font-size:10.5px; font-weight:600; color:#64748B;">· '+tipoVia+'</span>' : '')+'</h3>'+
@@ -1337,10 +1331,10 @@ function somaPorAspecto(feats, grupoId){
   var paleta = CORES_SEVERIDADE[grupoId] || [];
   var ordemClasses = niveis.map(function(n){
     somaPorClasse[String(n)] = porNivel[n].km;
-    return {chave: String(n), nome: porNivel[n].rotulo, cor: paleta[Math.min(n, paleta.length-1)] || '#94A3B8'};
+    return {chave: String(n), nome: porNivel[n].rotulo, cor: paleta[Math.min(n, paleta.length-1)] || COR_SEM_INFO};
   });
   somaPorClasse.sem_info = kmSemInfo;
-  ordemClasses.push({chave: 'sem_info', nome: 'Sem Informação', cor: '#94A3B8'});
+  ordemClasses.push({chave: 'sem_info', nome: 'Sem Informação', cor: COR_SEM_INFO});
   var total = niveis.reduce(function(s, n){ return s + porNivel[n].km; }, 0) + kmSemInfo;
   return {somaPorClasse: somaPorClasse, total: total, ordemClasses: ordemClasses};
 }
