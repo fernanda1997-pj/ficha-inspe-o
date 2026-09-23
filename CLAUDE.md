@@ -1014,6 +1014,30 @@ confere `rgb(78,42,30)` nos dois aspectos; texto branco do selo "SUJOS"
 continua legível (fundo ainda mais escuro que antes, contraste só
 melhorou); conferido em desktop e mobile (375×812); sem erro no console.
 
+**"Poucas" (Sinalização Vertical) deixou de ser ciano (2026-09-23, mesmo
+dia):** feedback (via outra ferramenta de IA, colado na conversa) de que
+o ciano "destoava da gradação lógica do painel, parecendo um indicador
+positivo" — Poucas é estado intermediário entre Bom e Inexistente, não
+devia ler como algo bom/neutro. Trocado `sinalizacao_vertical[1]` de
+`'#00ACC1'` pra `COR_REGULAR` (o mesmo âmbar já usado em
+`sinalizacao_horizontal[1]`/`plataforma[1]`) — reaproveita a cor que o
+painel já usa pra "problema leve/moderado" em vez de introduzir mais um
+tom novo, coerente com o resto da paleta categórica. Testado:
+`getComputedStyle` confere `rgb(251,192,45)`; sem erro no console.
+
+**Pendente, não implementado**: a mesma mensagem trazia mais 2
+sugestões que **não** foram aplicadas porque mexem em constantes
+COMPARTILHADAS por vários aspectos (não são exclusivas da Sinalização
+Vertical) e vieram sem uma escolha única e clara:
+- Trocar `COR_AUSENTE` (hoje `#424242`, usado por `sinalizacao_horizontal[2]`,
+  `sinalizacao_vertical[2]` E `drenagem_superficial[2]`) — a sugestão dava
+  2 opções sem decidir (`#AA00FF` violeta OU `#0D47A1` azul-cobalto).
+- Trocar `COR_SEM_INFO` (hoje `#9E9E9E`, usado em TODO lugar do site,
+  não só nesta tabela) pra `#546E7A` — like a sugestão trata como se
+  fosse só da Sinalização Vertical, mas é uma cor global.
+Se a usuária confirmar que quer aplicar (e decidir entre as 2 opções de
+`COR_AUSENTE`), lembrar que ambas mudam MAIS de um aspecto de uma vez.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado
