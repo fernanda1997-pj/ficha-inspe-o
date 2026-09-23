@@ -513,7 +513,32 @@
 // palavra-por-palavra; avisado na entrega.
 // ---------------------------------------------------------------------
 var COR_BOM = '#2E7D32', COR_REGULAR = '#FBC02D', COR_DEFEITO = '#E53935',
-    COR_CRITICO = '#4A148C', COR_AUSENTE = '#424242', COR_SEM_INFO = '#9E9E9E',
+    COR_CRITICO = '#4A148C',
+    // COR_AUSENTE era '#424242' (cinza neutro) — sugestão (via outra
+    // ferramenta de IA) de trocar por algo que destacasse mais
+    // "ausência" de "sem dado"; ela pediu "coloca o que vc achar
+    // melhor". Decidi NÃO usar as 2 opções oferecidas: violeta
+    // `#AA00FF` é vibrante demais e fica na mesma família de matiz do
+    // roxo já usado em `COR_CRITICO` (#4A148C) — colocaria "não existe"
+    // e "crítico" como se fossem parentes visuais, quando são conceitos
+    // diferentes. Cobalto `#0D47A1` (azul vivo) arrisca confundir com
+    // rio/água do próprio basemap OpenStreetMap ("Padrão" usa tiles OSM
+    // de verdade, que pintam hidrografia em azul). Escolhi um azul-
+    // acinzentado escuro e dessaturado (`#37474F`, mesma família mas bem
+    // mais escuro/discreto que o cobalto sugerido) — lê como "vazio/
+    // sério" sem ser um azul vivo passível de confusão com água no mapa,
+    // e sem repetir o matiz do roxo crítico.
+    COR_AUSENTE = '#37474F',
+    // COR_SEM_INFO ('#9E9E9E') — a mesma sugestão pedia pra trocar por
+    // '#546E7A' (também azul-acinzentado), mas essa cor é usada em TODO
+    // aspecto + Resultado Geral pra "falta de dado" (bem mais lugares
+    // que só a Sinalização Vertical de onde a sugestão veio). Mantive
+    // cinza neutro de propósito: se também virasse azul-acinzentado,
+    // ficaria parecido com o COR_AUSENTE acima e confundiria duas coisas
+    // bem diferentes — "não sei" (falta de dado) vs "conferi e não
+    // existe" (achado real). Cinza neutro sem matiz nenhum continua
+    // sendo o sinal mais claro de "neutro/incerto".
+    COR_SEM_INFO = '#9E9E9E',
     // Sujo/Obstruída era '#A1887F' (marrom-taupe claro) — pedido da
     // usuária: "MUDANÇA: Sujeira / Obstrução ... Marrom Escuro #4E2A1E"
     // (2026-09-23).

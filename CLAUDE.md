@@ -1038,6 +1038,36 @@ Vertical) e vieram sem uma escolha única e clara:
 Se a usuária confirmar que quer aplicar (e decidir entre as 2 opções de
 `COR_AUSENTE`), lembrar que ambas mudam MAIS de um aspecto de uma vez.
 
+**Pendência resolvida — "coloca o que vc achar melhor" (2026-09-23,
+mesmo dia):** ela devolveu a decisão. Em vez de usar uma das 2 opções
+oferecidas (violeta `#AA00FF` ou cobalto `#0D47A1`), escolhi uma
+alternativa própria pros dois pontos, justificada:
+
+- **`COR_AUSENTE`**: `#424242` → `#37474F` (azul-acinzentado escuro e
+  dessaturado — Material "Blue Grey 800"). Não usei violeta porque fica
+  na mesma família de matiz do `COR_CRITICO` (roxo `#4A148C`) —
+  colocaria "não existe" e "crítico" como parentes visuais, sendo
+  conceitos diferentes. Não usei o cobalto vívido porque o basemap
+  "Padrão" é OpenStreetMap de verdade (`L.tileLayer` com tile do OSM,
+  não um basemap sintético) — pinta rio/hidrografia em azul, e um azul
+  vivo na cor do segmento arriscava confundir com água de fundo no
+  mapa. O azul-acinzentado escolhido é escuro/dessaturado o bastante
+  pra não ter esse risco.
+- **`COR_SEM_INFO`**: mantido em `#9E9E9E` (cinza neutro), **não**
+  trocado pro `#546E7A` sugerido. Motivo: essa cor é usada em TODO
+  aspecto + Resultado Geral pra "falta de dado" — bem mais abrangente
+  que só a Sinalização Vertical de onde a sugestão veio. Se também
+  virasse azul-acinzentado (mesma família do `COR_AUSENTE` novo),
+  ficaria parecido o bastante pra confundir "não sei" (falta de dado)
+  com "conferi e não existe" (achado real, `COR_AUSENTE`) — cinza
+  neutro sem matiz nenhum continua sendo o sinal mais claro de "não
+  decidido".
+- Testado: `getComputedStyle` confere `rgb(55,71,79)` nas 3 posições que
+  usam `COR_AUSENTE` (Sinalização Horizontal/Vertical, Drenagem
+  Superficial) e `rgb(158,158,158)` mantido em "Sem Informação"; badge
+  "INEXIST." confere texto branco legível; conferido em desktop e
+  mobile (375×812); sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado
