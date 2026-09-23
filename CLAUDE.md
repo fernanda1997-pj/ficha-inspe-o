@@ -1180,6 +1180,22 @@ class="separador">`, antes do `<label>`/`<select>` de "Tipo de via" —
 mesmo texto, só ajustado "acima"→"abaixo" já que agora os selects vêm
 DEPOIS dela, não antes. Nada de JS mudou, só ordem no HTML.
 
+**Dica subiu de novo, ainda mais pra cima, mesmo dia (2026-09-23):** "as
+cores esta ok, agr preciso que vc sobe oq eu pedi, deixa em cima de
+região intira" — o ajuste anterior só tinha subido a dica pra antes do
+FUNIL (Tipo/Trecho/S.R.E.); ela queria mais alto ainda, ACIMA do
+`#kpis-regiao-wrap` (o bloco que mostra o texto "Região inteira" +
+km/segmentos). `<div class="dica">` saiu de depois do `<hr
+class="separador">` pra logo depois do `<select id="sel-competencia">`
+— agora é praticamente a PRIMEIRA coisa que aparece ao abrir uma região
+(só atrás do próprio select de mês). Texto ajustado de novo: "Por
+aspecto avaliado" (que antes ficava ACIMA da dica) agora também fica
+abaixo, então virou "clique num card ... abaixo" em vez de "acima".
+Continua só reordenação de HTML, nenhum JS mudou. Testado: ordem no DOM
+confere `#sel-competencia` → `.dica` → `#kpis-regiao-wrap` →
+`#resumo-escopo`; conferido visualmente em desktop e mobile (375×812);
+sem erro no console.
+
 ## Fluxo de trabalho — ficha nova chegou
 
 Todo mês chegam **até 12 arquivos** (pavimentada + não pavimentada × 6 regiões), mas não

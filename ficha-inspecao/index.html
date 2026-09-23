@@ -388,6 +388,22 @@
       <label class="rotulo" for="sel-competencia">Competência (mês da ficha)</label>
       <select id="sel-competencia"></select>
 
+      <!-- Dica subiu mais uma vez — 1º pedido ("deixa essa parte mais em
+           cima") tinha movido só pra antes do funil (Tipo/Trecho/S.R.E.);
+           a usuária pediu de novo: "sobe oq eu pedi, deixa em cima de
+           região intira" — ou seja, ACIMA do #kpis-regiao-wrap (o bloco
+           que mostra "Região inteira" + km/segmentos), logo depois do
+           select de Competência. Texto ajustado: "Por aspecto avaliado"
+           e o funil agora ficam todos ABAIXO da dica, não só o funil. -->
+      <div class="dica">
+        O mapa mostra o Resultado Geral por padrão — clique num card de "Por
+        aspecto avaliado" abaixo pra colorir o mapa por aquele aspecto (clique
+        de novo pra voltar ao Resultado Geral). Escolha um Trecho/S.R.E. mais
+        abaixo (ou "Todos") pra dar zoom nele e ver a tabela completa com
+        pavimento, vegetação, drenagem e sinalização — ou clique direto num
+        trecho no mapa.
+      </div>
+
       <div id="kpis-regiao-wrap">
         <div id="resumo-escopo">Região inteira</div>
         <div id="resumo">
@@ -407,19 +423,6 @@
       </div>
 
       <hr class="separador">
-
-      <!-- Dica movida pra ANTES do funil (era depois do S.R.E.) — pedido
-           da usuária: "deixa essa parte mais em cima" (2026-09-23). Faz
-           mais sentido como introdução ("é assim que funciona") antes
-           dos selects, não como rodapé depois deles. -->
-      <div class="dica">
-        O mapa mostra o Resultado Geral por padrão — clique num card de "Por
-        aspecto avaliado" acima pra colorir o mapa por aquele aspecto (clique
-        de novo pra voltar ao Resultado Geral). Escolha um Trecho/S.R.E.
-        abaixo (ou "Todos") pra dar zoom nele e ver a tabela completa com
-        pavimento, vegetação, drenagem e sinalização — ou clique direto num
-        trecho no mapa.
-      </div>
 
       <label class="rotulo" for="sel-tipo">Tipo de via</label>
       <select id="sel-tipo"><option value="">Selecione…</option></select>
