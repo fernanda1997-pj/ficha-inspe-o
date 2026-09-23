@@ -581,6 +581,43 @@ duplicada ali dentro).
   (`comparativoMensal` em `WRAPPERS_SECAO`, controla as duas telas juntas,
   igual `kpis`/`porAspecto` já faziam) — ligado por padrão.
 
+**Cor de verdade (não só opacidade) + seta de tendência mês a mês
+(2026-09-23):** perguntei "oq vc acha dessa parte? sera que n tem algum
+dado mais importante p colocar? ou ficar mais bonito?" (print da tabela)
+— ela topou as duas sugestões que dei.
+
+- **Cor**: `corHeatmap(hex, pct)` (sempre o mesmo verde `#0ca30c`, só a
+  opacidade variava com o %) foi SUBSTITUÍDA por `corEscalaPct(pct)` —
+  interpola de verdade entre `COR_DEFEITO` (vermelho, 0%) → `COR_REGULAR`
+  (âmbar, 50%) → `COR_BOM` (verde, 100%), reaproveitando a mesma
+  linguagem semafórica já usada no resto do site (a mesma paleta
+  categórica trabalhada nos commits anteriores desta sessão). Motivo da
+  troca: opacidade variável sobre o fundo ESCURO do painel quase não
+  aparecia — uma célula de 7% e uma de 74% liam quase igual (escurecer
+  um verde sobre fundo já escuro não contrasta como empalidecer um verde
+  sobre fundo claro contrastaria). Cor de verdade resolve isso.
+- **Contraste do texto**: cada célula agora escolhe a cor do texto via
+  `corTextoContraste()` (a mesma função de outros ajustes desta sessão)
+  em vez do `color:#fff` fixo do CSS — necessário porque a escala nova
+  passa por âmbar (claro), que precisa de texto escuro.
+- **Tendência**: cada célula (exceto o 1º mês, que não tem com o que
+  comparar) ganha uma legenda pequena embaixo do % — `▲N`/`▼N`/`—`
+  comparando com o MESMO aspecto no mês anterior (arredondado, mesmo
+  valor exibido — evita "mudou a seta mas o % na tela é igual"). Direto
+  no propósito da tabela ("comparativo mês a mês"), que antes só
+  mostrava o valor absoluto de cada mês, exigindo comparar linha por
+  linha de cabeça.
+- `montarComparativoMensal()` ganhou uma variável `anterior` (o `atual`
+  do mês processado antes, por `grupoId`) — atualizada a cada linha,
+  função continua genérica pras duas telas (`#comparativo-mensal-geral`/
+  `#comparativo-mensal-regiao`), nenhuma mudança de assinatura.
+- Testado: `getComputedStyle` confere fundo/texto variando de vermelho
+  (`rgb(232,77,52)`, 7%) a esverdeado (`rgb(168,165,47)`, 70%); "Agosto/
+  2026" mostra `▲2`/`▲4`/`▲1`/`—` batendo com a diferença real vs.
+  "Julho/2026" (que não mostra seta, é o 1º mês); tooltip do `title`
+  confere "(+2pp vs. mês anterior)"; conferido nas duas telas (Todas e
+  dentro de uma região) e em mobile (375×812); sem erro no console.
+
 **"Comparativo por região" removido DE VEZ (2026-09-04, no dia seguinte):**
 "pode tirara: Comparativo por região (% na melhor classe)" — pedido direto,
 sem meio-termo. Aprendendo com o episódio do Resultado Geral da região (ver
