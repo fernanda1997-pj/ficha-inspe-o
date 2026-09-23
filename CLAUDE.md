@@ -841,6 +841,26 @@ laranja, que ela já tinha pedido pra tirar 2x):
   dashboard "Todas" e gaveta de S.R.E. conferidos em desktop e mobile
   (375×812); sem erro no console.
 
+**4º ajuste — só a posição 1 (terracota), minutos depois (2026-09-23):**
+feedback direto e específico dessa vez: "esse terracorta que não esta
+bom". Diagnóstico: `#E2725B` puxava pra ALARANJADO (canal G alto demais
+pra ser "vermelho de verdade"), destoando das outras 3 posições (romã/
+tijolo/vinho, que são vermelho puro, sem nada de laranja) — o problema
+não era a paleta inteira de novo, era só essa cor específica quebrando a
+família.
+
+- Posição 1 trocada de `#E2725B` (terracota) pra `#CD5C5C` ("indian
+  red" — tom clássico, R e B/G equilibrados o bastante pra não ter viés
+  de matiz pra laranja nem pra rosa). `CORES_SEVERIDADE` final:
+  `['#16A34A', '#CD5C5C', '#C0392B', '#922B21', '#641E16']`. Posições
+  0 e 2-4 não mudaram.
+- Contraste do texto branco do badge melhorou nessa troca (mais escuro
+  que o terracota anterior), sem precisar verificar de novo com cautela
+  extra.
+- Testado: `getComputedStyle` confirma `rgb(205,92,92)`; conferido
+  visualmente no dashboard "Todas" e na gaveta de S.R.E., desktop e
+  mobile (375×812); sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado
