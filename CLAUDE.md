@@ -801,6 +801,46 @@ quebrava a progressão de cor, mesmo a paleta sendo tecnicamente
   em lugar nenhum; conferido visualmente no dashboard "Todas" (desktop e
   mobile 375×812); sem erro no console.
 
+**3º ajuste na MESMA paleta, minutos depois — "muito tudo vermelho" não
+era só intensidade (2026-09-23):** a Opção B acima (vermelho Tailwind
+puro — 500/600/700/900, todos o MESMO matiz, só variando de claro pra
+escuro) ainda não agradou: "agora esta muio tudo vermelho, me da uma
+opção sobre deixa isso bonito, pelo amor de deus". Diagnóstico: o
+problema nunca foi só "vermelho demais" — era a paleta ter 4 posições no
+mesmo matiz exato ("vermelho de sinal de trânsito"), sem nenhuma variação
+de TOM entre elas, só de claridade. Isso lê como "tudo igual, só mais
+escuro", cansativo visualmente, mesmo cada posição sendo tecnicamente
+distinguível.
+
+Dessa vez não mostrei mockup de novo (ela já tinha escolhido uma vez e
+não resolveu — pedir pra escolher de novo entre opções seria repetir o
+ciclo) — implementei direto uma progressão com variação de MATIZ, não só
+de claridade, dentro da mesma família quente (sem reintroduzir amarelo/
+laranja, que ela já tinha pedido pra tirar 2x):
+
+- `CORES_SEVERIDADE` virou `['#16A34A', '#E2725B', '#C0392B', '#922B21',
+  '#641E16']` — terracota → vermelho-romã (o "pomegranate" da paleta
+  Flat UI Colors, tom bem conhecido por ficar elegante) → tijolo → vinho
+  escuro. Cada posição tem um matiz levemente diferente da anterior
+  (não só a mesma cor mais escura), o que cria variedade visual mesmo
+  todas sendo "vermelho".
+- Continua sem amarelo/laranja — só a posição 0 (Bom) é verde, igual
+  sempre foi.
+- **Cuidado de contraste**: `.badge-tab` (selos na gaveta/funil) tem
+  `color:#fff` fixo — testei que mesmo a posição 1 (`#E2725B`, a mais
+  clara das 4 novas) mantém texto branco legível (contraste ~3:1,
+  mesma faixa que a posição 1 já aprovada da rodada anterior); não dá
+  pra usar tons muito mais claros que isso sem trocar a cor do texto
+  do badge também.
+- `CORES_ICM['Regular']` continua `#e05a5a`, sem mudar — a
+  inconsistência com o Resultado Geral (nota da entrada anterior)
+  segue de pé.
+- Testado: `getComputedStyle` confirma `rgb(226,114,91)` →
+  `rgb(192,57,43)` → `rgb(146,43,33)` → `rgb(100,30,22)`; texto branco
+  dos badges "INAD."/"SUJO"/"POUC." conferido legível visualmente;
+  dashboard "Todas" e gaveta de S.R.E. conferidos em desktop e mobile
+  (375×812); sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado

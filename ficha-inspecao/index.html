@@ -483,17 +483,18 @@
 
 // ---------------------------------------------------------------------
 // Paleta de severidade: posição 0 = condição boa, cresce até a pior.
-// Redesenhada em 2026-09-23 — "não esta bom essas cores, preciso de
-// cores armonicas que combinam, verde para o bom, vermelho mais forte,
-// uma combinações melhores" (print dos cards "Por aspecto avaliado", que
-// misturavam vermelho claro + laranja + vermelho + vinho, uma combinação
-// sem harmonia). Mostrei 2 opções (mockup) — ela escolheu "Opção B":
-// tira o laranja de vez (uma família só de vermelho, mais saturada desde
-// a 1ª posição de defeito) em vez de suavizar a transição. Posições 1–4
-// agora são todas tons de vermelho, cada uma mais escura/saturada que a
-// anterior — só a posição 0 (Bom) continua verde.
+// 3º ajuste na mesma paleta, ainda 2026-09-23 — a Opção B (vermelho
+// Tailwind puro, 4 tons quase idênticos em matiz, só variando de claro
+// pra escuro) ficou "muito tudo vermelho" pra usuária: "me da uma opção
+// sobre deixa isso bonito". O problema não era só a intensidade — era a
+// falta de VARIAÇÃO DE MATIZ entre as 4 posições (todas o mesmo vermelho
+// "de sinal de trânsito", sem nenhuma diferença de tom, só de claridade).
+// Troquei pra uma progressão terracota → vermelho-romã → tijolo → vinho
+// (mesma família quente, mas cada posição com um matiz levemente
+// diferente, não só mais escuro) — verde continua intocado na posição 0.
+// Não reintroduzi amarelo/laranja: ela pediu pra tirar 2x antes disso.
 // ---------------------------------------------------------------------
-var CORES_SEVERIDADE = ['#16A34A', '#EF4444', '#DC2626', '#B91C1C', '#7F1D1D'];
+var CORES_SEVERIDADE = ['#16A34A', '#E2725B', '#C0392B', '#922B21', '#641E16'];
 
 var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não pavimentada'};
 
