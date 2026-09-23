@@ -501,6 +501,10 @@ JUNTAS" — dois pedidos numa mensagem só.
     km de uma competência só, que é o que a `#resumo` do funil mostra pra
     UMA região. Comparar os dois é comparar coisas diferentes de propósito
     (dashboard = tudo já levantado; funil = o mês escolhido no momento).
+    **⚠️ Só é bem assim por PADRÃO** desde 2026-09-23 — ver "Filtro de
+    competência na Visão Geral" mais abaixo: o dashboard agregado ganhou
+    um seletor de mês, então "soma tudo" deixou de ser a única opção,
+    virou só o valor inicial ("Todas" no select).
 
 **Cards de "Por aspecto avaliado" viraram clicáveis — controlam o mapa
 (2026-09-03, mais um pedido no mesmo dia):** "ASPECTO AVALIADO, TBM ME A
@@ -617,6 +621,48 @@ dado mais importante p colocar? ou ficar mais bonito?" (print da tabela)
   "Julho/2026" (que não mostra seta, é o 1º mês); tooltip do `title`
   confere "(+2pp vs. mês anterior)"; conferido nas duas telas (Todas e
   dentro de uma região) e em mobile (375×812); sem erro no console.
+
+**Filtro de competência na Visão Geral ("Todas") (2026-09-23, mesmo
+dia):** "na opção de todas as regiões me da a opção de escolher o mes"
+— até aqui, o dashboard "Todas"/2+ regiões só sabia somar TODAS as
+competências já convertidas de uma vez (ver nota de 2026-09-03 logo
+acima, "Números batendo") — não tinha como isolar um mês só, diferente
+do funil de uma região específica (que sempre teve `#sel-competencia`).
+
+- **`<select id="sel-competencia-geral">`** novo, topo do `#painel-geral`
+  (antes dos KPIs) — `<option value="">Todas</option>` primeiro (padrão,
+  mesmo comportamento de sempre: soma tudo) + uma `<option>` por
+  `competenciasGlobais()` (a mesma função já usada pra montar as LINHAS
+  do "Comparativo mês a mês" — nada novo aí).
+- **`competenciaFiltroGeral`** (`''` = Todas) — variável irmã de
+  `regioesFiltroGeral`, mas INDEPENDENTE: os dois filtros (região e mês)
+  se combinam ao mesmo tempo, um não reseta o outro. `featuresDaVisaoGeral()`
+  ganhou o filtro por `f.properties.competencia === competenciaFiltroGeral`
+  ANTES do filtro de região (mesma feature já carrega `competencia` nas
+  properties, gerado pelo converter — não precisou mexer em Python).
+  `montarCompetenciasGerais()` preenche o `<select>` (com guard de
+  tamanho — só roda de verdade na primeira vez, senão recriar as
+  `<option>` a cada `desenharVisaoGeral()` apagaria a escolha do
+  usuário); chamada do início de `desenharVisaoGeral()`, ao lado de
+  `montarPillsRegiao()`.
+- **O que NÃO mudou**: "Comparativo mês a mês" continua mostrando TODOS
+  os meses de qualquer jeito (usa `featuresDoMesGeral(competencia)` —
+  passa a competência de CADA LINHA explicitamente, nunca olhou pra um
+  "mês atual" selecionado, então nem precisou mudar) — faz sentido, é
+  literalmente a tabela que compara os meses entre si, filtrar ela pra
+  um mês só não faria sentido.
+- `.dica` do painel geral atualizada: "todas as competências... (`Todas`
+  no seletor acima); escolha um mês específico pra ver só aquele."
+- Testado: com "Julho/2026" selecionado, `geral-total` caiu de
+  "12.591,3 km" pra "6.295,7 km" (~metade, esperado — 2 meses
+  carregados) e o card de aspecto também recalculou (6.543km→3.272km);
+  `geral-n-trechos`/`geral-n-sre` continuaram iguais nos dois meses (155/
+  387) — esperado, é a MESMA malha física sendo reinspecionada, não
+  muda de mês pra mês. Testei combinado com 2 pílulas de região
+  (R1+R2) — filtro de competência se manteve ao trocar região, os dois
+  se somaram. "Comparativo mês a mês" continuou mostrando Julho E Agosto
+  independente do filtro. Voltar pra "Todas" restaurou o total original.
+  Conferido em desktop e mobile (375×812); sem erro no console.
 
 **"Comparativo por região" removido DE VEZ (2026-09-04, no dia seguinte):**
 "pode tirara: Comparativo por região (% na melhor classe)" — pedido direto,

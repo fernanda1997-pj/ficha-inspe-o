@@ -443,6 +443,14 @@
     </div>
 
     <div class="conteudo" id="painel-geral">
+      <!-- Pedido da usuária: "na opção de todas as regiões me da a opção
+           de escolher o mes" (2026-09-23) — "Todas" antes só somava TODA
+           competência já convertida, sem jeito de ver um mês isolado.
+           "Todas" (value="") continua o padrão — mesma soma de sempre,
+           não muda nada pra quem não mexer no select. -->
+      <label class="rotulo" for="sel-competencia-geral">Competência</label>
+      <select id="sel-competencia-geral"><option value="">Todas</option></select>
+
       <div id="kpis-geral-wrap" class="kpis-grade kpis-grade-4">
         <div class="kpi-mini"><b id="geral-total">—</b><span>km levantados</span></div>
         <div class="kpi-mini"><b id="geral-n-trechos">—</b><span>trechos</span></div>
@@ -463,9 +471,11 @@
       </div>
 
       <div class="dica">
-        Soma de todas as regiões e competências já convertidas. Clique num
-        card de "Por aspecto avaliado" acima pra colorir o mapa por aquele
-        aspecto (clique de novo pra voltar ao Resultado Geral).
+        Soma de todas as regiões — e, por padrão, todas as competências já
+        convertidas ("Todas" no seletor acima); escolha um mês específico
+        pra ver só aquele. Clique num card de "Por aspecto avaliado" acima
+        pra colorir o mapa por aquele aspecto (clique de novo pra voltar
+        ao Resultado Geral).
       </div>
     </div>
   </div>
@@ -1444,11 +1454,38 @@ var ICONE_ASPECTO = {
 // quando são regiões diferentes misturadas).
 var regioesFiltroGeral = [];
 
+// Filtro por competência (mês) na Visão Geral/"Todas" — pedido da
+// usuária: "na opção de todas as regiões me da a opção de escolher o
+// mes" (2026-09-23). '' = Todas as competências já convertidas (padrão
+// de sempre, soma tudo); um valor tipo '2026-08' recorta pra só aquele
+// mês. Independente de `regioesFiltroGeral` — os dois filtros (região e
+// competência) se combinam, não um substitui o outro.
+var competenciaFiltroGeral = '';
+var selCompetenciaGeral = document.getElementById('sel-competencia-geral');
+selCompetenciaGeral.onchange = function(){
+  competenciaFiltroGeral = selCompetenciaGeral.value;
+  desenharVisaoGeral();
+};
+
+// Preenche o select uma vez só (`competenciasGlobais()` não muda depois
+// do boot — carregarTodosOsDados já trouxe tudo) — chamada de dentro de
+// desenharVisaoGeral() a cada render, mas o guard de tamanho evita
+// recriar as <option> e perder a seleção atual do usuário toda vez.
+function montarCompetenciasGerais(){
+  if(selCompetenciaGeral.options.length > 1) return;
+  var comps = competenciasGlobais();
+  selCompetenciaGeral.innerHTML = '<option value="">Todas</option>' +
+    comps.map(function(c){ return '<option value="'+c.competencia+'">'+c.label+'</option>'; }).join('');
+}
+
 // Recorta todasAsFeatures() pras regiões escolhidas no filtro de pílulas —
 // usado tanto pela grade de aspectos quanto pelo resto da Visão Geral, pra
 // não duplicar esse filtro em cada função. [] = Todas, sem filtro.
 function featuresDaVisaoGeral(){
   var todas = todasAsFeatures();
+  if(competenciaFiltroGeral){
+    todas = todas.filter(function(f){ return f.properties.competencia === competenciaFiltroGeral; });
+  }
   if(regioesFiltroGeral.length === 0) return todas;
   return todas.filter(function(f){ return regioesFiltroGeral.indexOf(f.properties.regiao) !== -1; });
 }
@@ -1627,6 +1664,7 @@ document.addEventListener('click', function(e){
 aplicarVisibilidadeSecoes(); // estado inicial, já refletindo o que foi salvo
 
 function desenharVisaoGeral(){
+  montarCompetenciasGerais();
   var todas = featuresDaVisaoGeral();
 
   montarPillsRegiao();
