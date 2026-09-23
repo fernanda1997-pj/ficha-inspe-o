@@ -1068,6 +1068,34 @@ alternativa própria pros dois pontos, justificada:
   "INEXIST." confere texto branco legível; conferido em desktop e
   mobile (375×812); sem erro no console.
 
+**"Péssimo" do Resultado Geral separado do roxo da Plataforma
+(2026-09-23, mesmo dia):** ela reparou que "Péssimo" tinha virado roxo —
+"pessimo fiou roxo, coloca um vermelhor bem forte", e no acompanhamento
+"no resultado final" confirmou que era especificamente o Resultado Geral
+(`CORES_ICM['Péssimo']`), não a Plataforma. Fazia sentido: aquele roxo
+(`COR_CRITICO`) nunca tinha sido pedido pra ela mesma pro Resultado
+Geral genérico — foi uma extensão minha no ajuste "6º ajuste" (documentada
+na época como inferência, não pedido explícito), e ela não gostou.
+
+- **`COR_PESSIMO_GERAL = '#D50000'`** (vermelho vívido/forte, Material
+  "Red A700") — cor NOVA, própria só do `CORES_ICM['Péssimo']`. Mais
+  escuro/saturado que `COR_DEFEITO` (`#E53935`, usado em "Ruim") pra
+  continuar lendo como "pior que Ruim" dentro do próprio Resultado
+  Geral.
+- **`COR_CRITICO` (roxo `#4A148C`) NÃO mudou** — continua só em
+  `plataforma[3]` ("Péssima (atoleiro/pto. crítico)"), que foi cor
+  escolhida pela própria usuária de propósito lá. As duas coisas se
+  chamam "Péssimo(a)" mas agora têm cores diferentes E significados de
+  fundo diferentes: Resultado Geral é uma MÉDIA de todos os aspectos
+  daquele segmento; Plataforma-atoleiro é um achado específico só
+  daquele aspecto — fazia sentido mesmo não serem a mesma cor.
+- Testado: busquei um segmento real com `icm.classe === 'Péssimo'`
+  (R12/2026-07, S.R.E. `296ETO0310`) e confirmei na gaveta que o selo
+  saiu `rgb(213, 0, 0)` com texto branco legível; confirmei que a barra
+  "Condição da Plataforma" continua com `rgb(74, 20, 140)` (roxo,
+  intocado) na posição "Péssima"; conferido em desktop e mobile
+  (375×812); sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado

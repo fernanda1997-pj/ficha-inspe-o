@@ -564,12 +564,19 @@ var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não paviment
 
 // Resultado geral (I.C.M./I.C.M.N.P.) — combinação normalizada de todos os
 // aspectos de cada segmento (ver converter_fichas.py::calcular_icm).
-// Cores alinhadas com as 4 faixas da paleta por aspecto (ver nota acima
-// sobre Péssimo/crítico ser uma extensão minha, não pedido explícito).
+// 'Péssimo' aqui tinha virado o mesmo roxo de 'Péssima (atoleiro)' da
+// Plataforma (`COR_CRITICO`) — extensão minha, não pedida — mas a
+// usuária não gostou: "pessimo fiou roxo, coloca um vermelhor bem
+// forte" (no Resultado Geral especificamente — "no resultado final").
+// Ganhou cor própria, `COR_PESSIMO_GERAL`, mais forte/escura que
+// `COR_DEFEITO` (o vermelho de "Ruim") pra continuar lendo como "pior
+// que Ruim" — sem reaproveitar o roxo da Plataforma, que ela deu de
+// propósito só pra "Péssima (atoleiro)" e continua roxo.
+var COR_PESSIMO_GERAL = '#D50000';
 var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
 var CORES_ICM = {
   'Bom': COR_BOM, 'Regular': COR_REGULAR, 'Ruim': COR_DEFEITO,
-  'Péssimo': COR_CRITICO, 'Sem Informação': COR_SEM_INFO,
+  'Péssimo': COR_PESSIMO_GERAL, 'Sem Informação': COR_SEM_INFO,
 };
 
 // Pontos Críticos (erosão, bueiro, talude etc. — dados/pontos_criticos.js,
