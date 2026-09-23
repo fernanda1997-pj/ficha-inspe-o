@@ -482,34 +482,71 @@
 'use strict';
 
 // ---------------------------------------------------------------------
-// Paleta de severidade: posição 0 = condição boa, cresce até a pior.
-// 4º ajuste na mesma paleta, ainda 2026-09-23 — a posição 1 (terracota,
-// #E2725B) especificamente não agradou: "esse terracorta que não esta
-// bom". Diagnóstico: terracota puxa pra ALARANJADO (mais verde no canal
-// G do que um vermelho "de verdade" deveria ter), destoando das 3
-// seguintes (romã/tijolo/vinho, que são vermelho puro sem nada de
-// laranja). Trocado por um vermelho empoeirado ("indian red", tom
-// clássico, sem viés de laranja — R e G/B claramente distantes só no
-// canal certo) — mesma função na progressão (é o mais claro dos 4), só
-// que agora sem o desvio de matiz que destoava do resto.
+// Paleta de severidade — 5º ajuste, 2026-09-23: a usuária mandou uma
+// paleta pronta, com uma cor por CATEGORIA/PALAVRA específica (BOM verde,
+// REGULAR âmbar, RUIM laranja escuro, PESSIMO vermelho, INAD roxo, SUJO
+// marrom, POUC ciano, BUR.I. vermelho vivo, BUR.L. vinho) — não é mais
+// "clareando/escurecendo o mesmo tom" (que gerou os 4 ajustes anteriores
+// nesta mesma paleta), é uma cor DISTINTA por tipo de achado.
+//
+// **Por que virou um objeto por aspecto, e não um dicionário de texto
+// exato:** o texto de `info.status` vem direto do cabeçalho da coluna na
+// planilha da ficha, e ele VARIA — mesmo campo aparece como "REGULAR",
+// "REG." ou "REG. (ATÉ 10 IRR./KM)" dependendo do arquivo; "BUR. I",
+// "BUR. I." ou "REM. I."; tem até o erro de digitação conhecido
+// "INADED." (ver `TIPO_VIA_DO_ASPECTO` acima). Um mapa `{texto: cor}`
+// quebraria (cairia no cinza de "sem cor") toda vez que uma ficha nova
+// escrevesse o mesmo achado com uma palavra ligeiramente diferente. Em
+// vez disso, a cor é indexada por `[grupoId][severidade]` — a MESMA
+// posição numérica (0,1,2...) que já usávamos antes e que o converter
+// sempre preenche de forma limpa, não importa como a ficha escreveu o
+// rótulo daquele mês.
+//
+// Isso também respeita a intenção da usuária: cada `grupoId` só usa uma
+// cor específica (roxo/marrom/ciano/vermelho-vivo/vinho) na posição que
+// ela realmente indicou (Inadequada, Sujos, Poucas, Buraco isolado,
+// Buraco em lâmina); as posições que ela NÃO especificou (Remendo
+// isolado/em lâmina do Pavimento; Adequada/Limpos/Limpa; Danificados;
+// Inexistente da Sinalização H/V; Obstruída/Ausente da Drenagem
+// Superficial) usam o gradiente genérico Bom→Regular→Ruim→Péssimo dela
+// mesma (verde/âmbar/laranja/vermelho) ou, quando o achado é "a coisa
+// simplesmente não existe" (Inexistente, Ausente), um cinza-azulado
+// escuro à parte — não é alerta quente, é um "vazio" (diferente do
+// cinza claro `#94A3B8` de "Sem Informação", que é FALTA DE DADO, não um
+// achado real). Nada disso foi pedido explicitamente; são escolhas
+// razoáveis pra completar o que ela não cobriu — avisado na entrega.
 // ---------------------------------------------------------------------
-var CORES_SEVERIDADE = ['#16A34A', '#CD5C5C', '#C0392B', '#922B21', '#641E16'];
+var COR_BOM = '#2E7D32', COR_REGULAR = '#FBC02D', COR_RUIM = '#E65100',
+    COR_PESSIMO = '#B71C1C', COR_INEXISTENTE = '#37474F';
+var CORES_SEVERIDADE = {
+  // Bom · Remendo isolado · Remendo em lâmina · Buraco isolado · Buraco em lâmina
+  pavimento: [COR_BOM, COR_REGULAR, COR_RUIM, '#FF1744', '#880E4F'],
+  // Adequada · Inadequada
+  vegetacao: [COR_BOM, '#8E24AA'],
+  // Limpos · Sujos · Danificados
+  drenagem: [COR_BOM, '#6D4C41', '#3E2723'],
+  // Bom · Regular · Inexistente
+  sinalizacao_horizontal: [COR_BOM, COR_REGULAR, COR_INEXISTENTE],
+  // Bom · Poucas · Inexistente
+  sinalizacao_vertical: [COR_BOM, '#00ACC1', COR_INEXISTENTE],
+  // Bom · Regular (até 10 irreg./km) · Ruim (+10 irreg./km) · Péssima
+  plataforma: [COR_BOM, COR_REGULAR, COR_RUIM, COR_PESSIMO],
+  // Limpa · Obstruída · Ausente
+  drenagem_superficial: [COR_BOM, COR_REGULAR, COR_INEXISTENTE],
+};
 
 var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não pavimentada'};
 
 // Resultado geral (I.C.M./I.C.M.N.P.) — combinação normalizada de todos os
-// aspectos de cada segmento (ver converter_fichas.py::calcular_icm). Paleta
-// de status (não é a mesma escala verde→vinho da severidade).
+// aspectos de cada segmento (ver converter_fichas.py::calcular_icm).
+// Alinhado em 2026-09-23 com o gradiente Bom/Regular/Ruim/Péssimo que a
+// usuária deu pra severidade por aspecto (mesma ideia, mesmas 4 cores) —
+// antes disso Regular e Péssimo aqui eram dois vermelhos diferentes,
+// sobra de ajustes anteriores feitos só nessa paleta.
 var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
 var CORES_ICM = {
-  // 'Regular' era amarelo (#fab219) — pedido da usuária: "quero mudar a
-  // cor o que esta em aamarelo deixar em vermelho" (2026-09-15). Usa um
-  // vermelho mais claro que o do 'Péssimo' (não o mesmo #d03b3b) pra
-  // continuar dando pra diferenciar as duas classes no mapa/legenda —
-  // ela confirmou essa opção quando avisei que a cor idêntica juntaria
-  // Regular com Péssimo visualmente.
-  'Bom': '#0ca30c', 'Regular': '#e05a5a', 'Ruim': '#ec835a',
-  'Péssimo': '#d03b3b', 'Sem Informação': '#94A3B8',
+  'Bom': COR_BOM, 'Regular': COR_REGULAR, 'Ruim': COR_RUIM,
+  'Péssimo': COR_PESSIMO, 'Sem Informação': '#94A3B8',
 };
 
 // Pontos Críticos (erosão, bueiro, talude etc. — dados/pontos_criticos.js,
@@ -602,7 +639,7 @@ function montarPopupPontoCritico(p){
     '<div class="popup-insp">' +
       '<h3>Ponto crítico '+p.id+' <span style="font-size:10.5px; font-weight:600; color:#64748B;">· '+nomeRegiao(p.regiao)+'</span></h3>' +
       '<div class="km">'+(p.rodovia||'—')+(p.trecho ? ' — '+p.trecho : '')+'</div>' +
-      '<div style="margin-bottom:8px;">Situação: <span class="badge" style="background:'+cor+'">'+(p.situacao_bruta && p.situacao_bruta !== '-' ? p.situacao_bruta : p.situacao_classe)+'</span></div>' +
+      '<div style="margin-bottom:8px;">Situação: <span class="badge" style="background:'+cor+'; color:'+corTextoContraste(cor)+'">'+(p.situacao_bruta && p.situacao_bruta !== '-' ? p.situacao_bruta : p.situacao_classe)+'</span></div>' +
       (p.descricao ? '<div style="font-size:12px; color:#334155; margin-bottom:8px; line-height:1.4;">'+p.descricao+'</div>' : '') +
       (historico ? '<table>'+historico+'</table>' : '') +
     '</div>'
@@ -1033,7 +1070,8 @@ function abrirDrawer(){
       var info = p[g.id] || {};
       var texto = (g.id === 'icm') ? (info.classe || '—') : (info.status || '—');
       if(info.marcados && info.marcados.length > 1){ texto = info.marcados.join(' + '); }
-      return '<td><span class="badge-tab" style="background:'+corDoSegmento(p, g.id)+'">'+texto+'</span></td>';
+      var corBadge = corDoSegmento(p, g.id);
+      return '<td><span class="badge-tab" style="background:'+corBadge+'; color:'+corTextoContraste(corBadge)+'">'+texto+'</span></td>';
     }).join('');
     return '<tr>' + (mostraTudo ? '<td>'+p.trecho_num+'</td><td>'+p.sre+'</td>' : '') +
       '<td>'+p.km_ini.toFixed(2).replace('.', ',')+'</td><td>'+p.km_fim.toFixed(2).replace('.', ',')+
@@ -1050,7 +1088,8 @@ function abrirDrawer(){
         '<div class="rotulo" style="margin-top:12px;">Evolução deste S.R.E.</div>' +
         '<table><thead><tr><th>Competência</th><th>Resultado geral</th></tr></thead><tbody>' +
         historico.map(function(h){
-          return '<tr><td>'+h.competencia_label+'</td><td><span class="badge-tab" style="background:'+CORES_ICM[h.classe]+'">'+h.classe+'</span></td></tr>';
+          var corHist = CORES_ICM[h.classe];
+          return '<tr><td>'+h.competencia_label+'</td><td><span class="badge-tab" style="background:'+corHist+'; color:'+corTextoContraste(corHist)+'">'+h.classe+'</span></td></tr>';
         }).join('') + '</tbody></table>';
     }
   }
@@ -1097,7 +1136,28 @@ function corDoSegmento(props, grupoId){
   }
   var info = props[grupoId];
   if(!info || info.severidade === null || info.severidade === undefined) return '#94A3B8';
-  return CORES_SEVERIDADE[Math.min(info.severidade, CORES_SEVERIDADE.length-1)];
+  var paleta = CORES_SEVERIDADE[grupoId] || [];
+  return paleta[Math.min(info.severidade, paleta.length-1)] || '#94A3B8';
+}
+
+// .badge/.badge-tab sempre tinham texto branco fixo (CSS) — funcionava
+// enquanto toda cor de fundo era escura o bastante. A paleta de
+// 2026-09-23 trouxe âmbar (#FBC02D) e ciano (#00ACC1) CLAROS pra alguns
+// selos ("Regular" do Resultado Geral, "Poucas" da Sinalização Vertical)
+// — texto branco em cima delas ficava quase ilegível (contraste ~1,7:1,
+// bem abaixo do mínimo de acessibilidade). Em vez de escurecer as cores
+// que a usuária pediu, o selo agora escolhe a cor de texto (branco ou
+// escuro) com mais contraste em cima do fundo que recebeu — funciona
+// pra qualquer cor futura, não só as de hoje.
+function corTextoContraste(hex){
+  hex = (hex || '').replace('#', '');
+  if(hex.length !== 6) return '#fff';
+  var r = parseInt(hex.substr(0,2),16)/255, g = parseInt(hex.substr(2,2),16)/255, b = parseInt(hex.substr(4,2),16)/255;
+  function lin(c){ return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); }
+  var L = 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b);
+  var contrasteBranco = 1.05 / (L + 0.05);
+  var contrastePreto = (L + 0.05) / 0.05;
+  return contrasteBranco >= contrastePreto ? '#fff' : '#1a1a1a';
 }
 
 // Estilo padrão de linha, com traço tracejado quando o segmento vem do
@@ -1114,7 +1174,7 @@ function montarPopup(props){
     var cor = corDoSegmento(props, g.id);
     var texto = info.status || '—';
     if(info.marcados && info.marcados.length > 1){ texto = info.marcados.join(' + '); }
-    return '<tr><td class="rot">'+g.nome+'</td><td><span class="badge" style="background:'+cor+'">'+texto+'</span></td></tr>';
+    return '<tr><td class="rot">'+g.nome+'</td><td><span class="badge" style="background:'+cor+'; color:'+corTextoContraste(cor)+'">'+texto+'</span></td></tr>';
   }).join('');
   var tipoVia = NOME_TIPO_VIA[props.tipo_via] || '';
   var classeIcm = props.icm && props.icm.classe;
@@ -1127,7 +1187,7 @@ function montarPopup(props){
         (props.sentido ? ' · sentido '+props.sentido : '')+
         '<br>Competência: '+props.competencia_label+
       '</div>'+
-      (classeIcm ? '<div style="margin-bottom:8px;">Resultado geral: <span class="badge" style="background:'+corIcm+'">'+classeIcm+'</span></div>' : '')+
+      (classeIcm ? '<div style="margin-bottom:8px;">Resultado geral: <span class="badge" style="background:'+corIcm+'; color:'+corTextoContraste(corIcm)+'">'+classeIcm+'</span></div>' : '')+
       '<table>'+linhas+'</table>'+
     '</div>'
   );
@@ -1274,9 +1334,10 @@ function somaPorAspecto(feats, grupoId){
   });
   var niveis = Object.keys(porNivel).map(Number).sort(function(a, b){ return a - b; });
   var somaPorClasse = {};
+  var paleta = CORES_SEVERIDADE[grupoId] || [];
   var ordemClasses = niveis.map(function(n){
     somaPorClasse[String(n)] = porNivel[n].km;
-    return {chave: String(n), nome: porNivel[n].rotulo, cor: CORES_SEVERIDADE[Math.min(n, CORES_SEVERIDADE.length-1)]};
+    return {chave: String(n), nome: porNivel[n].rotulo, cor: paleta[Math.min(n, paleta.length-1)] || '#94A3B8'};
   });
   somaPorClasse.sem_info = kmSemInfo;
   ordemClasses.push({chave: 'sem_info', nome: 'Sem Informação', cor: '#94A3B8'});

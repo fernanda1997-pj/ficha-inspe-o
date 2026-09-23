@@ -861,6 +861,94 @@ família.
   visualmente no dashboard "Todas" e na gaveta de S.R.E., desktop e
   mobile (375×812); sem erro no console.
 
+**Paleta virou categórica — uma cor por TIPO de achado, não mais um
+gradiente compartilhado (2026-09-23, mesmo dia, 5º e último ajuste dessa
+sequência):** a usuária mandou uma paleta pronta, com hex exato de cada
+categoria: BOM verde `#2E7D32`, REGULAR âmbar `#FBC02D`, RUIM laranja
+escuro `#E65100`, PESSIMO vermelho `#B71C1C`, INAD roxo `#8E24AA`, SUJO
+marrom `#6D4C41`, POUC ciano `#00ACC1`, BUR.I. vermelho vivo `#FF1744`,
+BUR.L. vinho `#880E4F` — ela mesma descreveu como "mantendo a lógica de
+gradiente — do melhor estado ao pior estado, seguido pelas categorias de
+ocorrência pontual". Isso é uma mudança de FILOSOFIA, não só de tom: os 4
+ajustes anteriores (2026-09-15 a mais cedo hoje) eram todos variações de
+"clarear/escurecer o mesmo vermelho"; esta é "cada tipo de problema tem
+sua própria identidade visual".
+
+- **De array plano pra objeto por aspecto**: `CORES_SEVERIDADE` deixou de
+  ser `['cor0','cor1',...]` (uma escala, compartilhada por todos os 7
+  aspectos) e virou `{pavimento:[...], vegetacao:[...], drenagem:[...],
+  ...}` — um array de cores PRÓPRIO por `grupoId`, mesmo tamanho da
+  paleta daquele aspecto. `corDoSegmento()` e `somaPorAspecto()` (os 2
+  únicos lugares que liam `CORES_SEVERIDADE[nivel]`) passaram a ler
+  `CORES_SEVERIDADE[grupoId][nivel]`.
+- **Por que indexar por posição numérica (`severidade`) e não por texto
+  exato (`status`)**: cheguei a considerar um dicionário `{texto: cor}`
+  direto, mas o texto de `info.status` vem do cabeçalho da própria
+  planilha da ficha e VARIA — o mesmo achado aparece como "REGULAR",
+  "REG." ou "REG. (ATÉ 10 IRR./KM)" dependendo do arquivo/região/mês;
+  "BUR. I", "BUR. I." ou "REM. I."; tem até o typo conhecido "INADED."
+  (ver `TIPO_VIA_DO_ASPECTO` mais acima). Confirmei rodando um grep em
+  todos os `dados/insp_*.js` reais — só pra "bom/regular/ruim" já
+  existiam 8+ variantes de texto. Um dicionário de texto exato quebraria
+  (caía no cinza de "sem cor") toda vez que uma ficha nova escrevesse o
+  mesmo achado com uma palavra ligeiramente diferente. `severidade` é a
+  posição numérica (0,1,2...) que o converter sempre preenche de forma
+  limpa, não importa a palavra exata — MUITO mais robusto pra essa
+  variação real dos dados.
+- **Só as posições que ela deu cor específica usam a cor dela**:
+  Inadequada (`vegetacao[1]`), Sujos (`drenagem[1]`), Poucas
+  (`sinalizacao_vertical[1]`), Buraco isolado (`pavimento[3]`), Buraco em
+  lâmina (`pavimento[4]`). **Posições que ela NÃO cobriu, preenchidas com
+  escolha própria** (avisado na entrega, não é pedido explícito):
+  - `pavimento[1]`/`pavimento[2]` (Remendo isolado/em lâmina) → reusam
+    âmbar/laranja do gradiente genérico dela (são a versão "leve"/"média"
+    do mesmo aspecto, cabem na lógica "melhor→pior" que ela descreveu).
+  - `drenagem[2]` (Danificados, pior nível desse aspecto de 3 níveis) →
+    marrom mais escuro (`#3E2723`), mesma família de "Sujos" mas mais
+    grave — mesma técnica que ela já usou em Buraco isolado→lâmina
+    (mesma família, mais escuro = mais grave).
+  - `sinalizacao_horizontal[2]`/`sinalizacao_vertical[2]` (Inexistente,
+    pior nível dos dois) e `drenagem_superficial[2]` (Ausente) → cinza-
+    azulado escuro `#37474F` (`COR_INEXISTENTE`), COMPARTILHADO entre os
+    3 — não é alerta "quente" (a coisa simplesmente não existe/não foi
+    encontrada), e precisava ser diferente do cinza claro `#94A3B8` já
+    usado pra "Sem Informação" (que é FALTA DE DADO, não um achado real
+    — misturar os dois confundiria "não sei" com "não existe").
+  - `sinalizacao_horizontal[1]`/`drenagem_superficial[1]` (Regular,
+    Obstruída) e todo `Bom`/`Adequada`/`Limpos`/`Limpa` → âmbar/verde do
+    gradiente genérico (são literalmente a palavra "Regular"/"Bom" ou o
+    equivalente "está tudo bem" daquele aspecto).
+- **`CORES_ICM` (Resultado Geral) alinhada junto**: como Bom/Regular/
+  Ruim/Péssimo do Resultado Geral são exatamente as mesmas 4 palavras
+  que abrem a lista dela, virou `{Bom:#2E7D32, Regular:#FBC02D,
+  Ruim:#E65100, Péssimo:#B71C1C}` — resolve de vez a inconsistência
+  registrada nas entradas anteriores (Regular e Péssimo eram 2 vermelhos
+  diferentes ali, sobra dos ajustes de 2026-09-15/23 feitos só nessa
+  paleta separada).
+- **Bug de contraste descoberto e corrigido nesta mesma rodada**: `.badge`/
+  `.badge-tab` (selos na gaveta/funil/popup) tinham `color:#fff` FIXO no
+  CSS. Âmbar (`#FBC02D`) e ciano (`#00ACC1`) são claros o bastante pra
+  texto branco em cima ficar quase ilegível (contraste ~1.7:1, bem abaixo
+  do mínimo de acessibilidade ~3:1) — só apareceu porque a paleta nova
+  introduziu essas 2 cores CLARAS; toda a paleta anterior (vermelhos/
+  verde escuro) era escura o bastante pra nunca ter dado pra notar.
+  Função nova `corTextoContraste(hex)` (perto de `corDoSegmento`) calcula
+  luminância relativa (fórmula WCAG) e escolhe branco ou `#1a1a1a`,
+  o que der mais contraste — aplicada nos 5 lugares que montam um selo
+  colorido (drawer, histórico do S.R.E., popup do trecho, popup de ponto
+  crítico). Resolve de vez pra qualquer cor futura, não só as de hoje —
+  não precisa lembrar de checar contraste manualmente da próxima vez que
+  uma cor mudar.
+- Testado: `getComputedStyle` confirma as 7 paletas por aspecto
+  renderizando as cores certas (inclusive roxo em Vegetação e ciano em
+  Sinalização Vertical, visíveis nas barras); confirmado que "Regular"
+  (âmbar) e "Poucas" (ciano) saem com texto ESCURO (`rgb(26,26,26)`)
+  enquanto "Bom"/"Inadequada"/"Sujo" seguem com texto branco — a função
+  de contraste escolhendo certo caso a caso; conferido visualmente no
+  dashboard "Todas", na gaveta de S.R.E. e no mapa (colorido por
+  Resultado Geral, mostrando o âmbar novo), desktop e mobile (375×812);
+  sem erro no console.
+
 Aparece em 2 lugares (⚠️ **desatualizado até 2026-09-10**: esta seção ainda
 citava `#regiao-barra`/`#regiao-legenda`/`ativosAspectoRegiao` como se
 existissem — mas esses foram removidos DE VEZ em 2026-09-03, ver "Resultado
