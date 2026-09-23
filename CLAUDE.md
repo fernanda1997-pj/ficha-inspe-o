@@ -664,6 +664,41 @@ do funil de uma região específica (que sempre teve `#sel-competencia`).
   independente do filtro. Voltar pra "Todas" restaurou o total original.
   Conferido em desktop e mobile (375×812); sem erro no console.
 
+**Sinalização H/V: "Regular"/"Poucas" saem do âmbar, viram vermelho
+vívido — só nesses 2 aspectos (2026-09-23):** print dos cards
+"Sinalização Horizontal" e "Sinalização Vertical" (âmbar em ambos) —
+"o que esta em amarelo coloca vermelho bem vermelho".
+
+- `sinalizacao_horizontal[1]`/`sinalizacao_vertical[1]` trocaram de
+  `COR_REGULAR` (âmbar `#FBC02D`) pra `COR_PESSIMO_GERAL` (vermelho
+  vívido `#D50000`, o mesmo "vermelho bem forte" já escolhido antes pro
+  Péssimo do Resultado Geral — reaproveitado por já ser exatamente o
+  tom que ela pediu da vez passada com a mesma expressão).
+- **Escopo deliberadamente estreito**: `COR_REGULAR` (a constante
+  compartilhada) NÃO mudou — só troquei os 2 lugares que ela mostrou no
+  print. `plataforma[1]` ("Regular") e `CORES_ICM['Regular']` (Resultado
+  Geral) continuam âmbar. Motivo: em Sinalização H/V (só 3 níveis: Bom·
+  Regular/Poucas·Inexistente), "Regular"/"Poucas" já É o pior defeito
+  quantificável — o próximo nível, Inexistente, é um "vazio" categórico,
+  não um defeito mais grave na mesma escala. Em Plataforma (4 níveis:
+  Bom·Regular·Ruim·Péssima), Regular é só o 2º degrau antes de dois
+  níveis mais graves — contexto diferente, mesma palavra, mereceu ficar
+  com cor diferente (já era assim por posição desde a paleta categórica
+  original, não por texto).
+- **Bug pego durante o teste, corrigido de graça**: `COR_PESSIMO_GERAL`
+  estava declarada DEPOIS de `CORES_SEVERIDADE` no arquivo (só usada por
+  `CORES_ICM`, que vem depois) — ao referenciar ela DENTRO de
+  `CORES_SEVERIDADE` pra esse pedido, a variável ainda não tinha valor
+  nesse ponto da execução (`var` só eleva a declaração, não a
+  atribuição) e a cor saía `undefined`. Corrigido movendo a declaração
+  de `COR_PESSIMO_GERAL` pra junto das outras constantes de cor (`COR_BOM`,
+  `COR_REGULAR` etc.), ANTES de `CORES_SEVERIDADE` — pegou no teste local
+  antes de ir pro ar, não chegou a quebrar em produção.
+- Testado: `getComputedStyle` confere `rgb(213,0,0)` nos dois cards
+  (Sinalização Horizontal e Vertical) e `rgb(251,192,45)` (âmbar,
+  intocado) em Plataforma; conferido em desktop e mobile (375×812); sem
+  erro no console.
+
 **"Comparativo por região" removido DE VEZ (2026-09-04, no dia seguinte):**
 "pode tirara: Comparativo por região (% na melhor classe)" — pedido direto,
 sem meio-termo. Aprendendo com o episódio do Resultado Geral da região (ver

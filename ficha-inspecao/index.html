@@ -567,7 +567,14 @@ var COR_BOM = '#2E7D32', COR_REGULAR = '#FBC02D', COR_DEFEITO = '#E53935',
     // Sujo/Obstruída era '#A1887F' (marrom-taupe claro) — pedido da
     // usuária: "MUDANÇA: Sujeira / Obstrução ... Marrom Escuro #4E2A1E"
     // (2026-09-23).
-    COR_SUJEIRA = '#4E2A1E';
+    COR_SUJEIRA = '#4E2A1E',
+    // Vermelho vívido reaproveitado em mais de um lugar (Resultado Geral
+    // "Péssimo" E, desde 2026-09-23, Sinalização H/V "Regular"/"Poucas")
+    // — precisa estar declarado ANTES de `CORES_SEVERIDADE` usar ele
+    // (senão fica `undefined` ali: `var` só eleva a declaração, não o
+    // valor — já rodou nessa ordem por engano numa edição e quebrou a
+    // cor até eu perceber no teste).
+    COR_PESSIMO_GERAL = '#D50000';
 var CORES_SEVERIDADE = {
   // Bom · Remendo isolado · Remendo em lâmina · Buraco isolado · Buraco em lâmina
   pavimento: [COR_BOM, '#FFB74D', '#FB8C00', '#D81B60', '#880E4F'],
@@ -575,10 +582,20 @@ var CORES_SEVERIDADE = {
   vegetacao: [COR_BOM, COR_DEFEITO],
   // Limpos · Sujos · Danificados
   drenagem: [COR_BOM, COR_SUJEIRA, COR_DEFEITO],
-  // Bom · Regular · Inexistente
-  sinalizacao_horizontal: [COR_BOM, COR_REGULAR, COR_AUSENTE],
-  // Bom · Poucas · Inexistente
-  sinalizacao_vertical: [COR_BOM, COR_REGULAR, COR_AUSENTE],
+  // Bom · Regular · Inexistente — "Regular" aqui era âmbar (COR_REGULAR,
+  // igual Plataforma) até a usuária pedir, com print desses 2 cards
+  // específicos: "o que esta em amarelo coloca vermelho bem vermelho"
+  // (2026-09-23). Trocado por COR_PESSIMO_GERAL (o vermelho vívido
+  // #D50000, mesmo tom já escolhido antes pra "vermelho bem forte") —
+  // só nestes 2 aspectos, NÃO no COR_REGULAR global (que continuaria
+  // ambar em Plataforma/Resultado Geral): aqui "Regular"/"Poucas" já É
+  // o pior defeito quantificável do aspecto (o próximo nível,
+  // Inexistente, é um "vazio" categoricamente diferente, não um defeito
+  // mais grave na mesma escala) — diferente de Plataforma, onde Regular
+  // é só o 2º de 4 degraus antes de Ruim e Péssima.
+  sinalizacao_horizontal: [COR_BOM, COR_PESSIMO_GERAL, COR_AUSENTE],
+  // Bom · Poucas · Inexistente (mesmo motivo acima)
+  sinalizacao_vertical: [COR_BOM, COR_PESSIMO_GERAL, COR_AUSENTE],
   // Bom · Regular (até 10 irreg./km) · Ruim (+10 irreg./km) · Péssima (atoleiro/pto. crítico)
   plataforma: [COR_BOM, COR_REGULAR, COR_DEFEITO, COR_CRITICO],
   // Limpa · Obstruída · Ausente
@@ -593,11 +610,12 @@ var NOME_TIPO_VIA = {pavimentada: 'Pavimentada', nao_pavimentada: 'Não paviment
 // Plataforma (`COR_CRITICO`) — extensão minha, não pedida — mas a
 // usuária não gostou: "pessimo fiou roxo, coloca um vermelhor bem
 // forte" (no Resultado Geral especificamente — "no resultado final").
-// Ganhou cor própria, `COR_PESSIMO_GERAL`, mais forte/escura que
+// Ganhou cor própria, `COR_PESSIMO_GERAL` (declarada mais acima, junto
+// das outras constantes de cor — precisa existir ANTES de
+// `CORES_SEVERIDADE`, que também passou a usá-la), mais forte/escura que
 // `COR_DEFEITO` (o vermelho de "Ruim") pra continuar lendo como "pior
 // que Ruim" — sem reaproveitar o roxo da Plataforma, que ela deu de
 // propósito só pra "Péssima (atoleiro)" e continua roxo.
-var COR_PESSIMO_GERAL = '#D50000';
 var CLASSES_ICM = ['Bom', 'Regular', 'Ruim', 'Péssimo', 'Sem Informação'];
 var CORES_ICM = {
   'Bom': COR_BOM, 'Regular': COR_REGULAR, 'Ruim': COR_DEFEITO,
