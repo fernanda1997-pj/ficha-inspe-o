@@ -17,6 +17,14 @@ window.MANIFEST_INSPECAO = [
     "ext_km": 964.6
   },
   {
+    "regiao": "R1",
+    "competencia": "2026-09",
+    "competencia_label": "Setembro/2026",
+    "arquivo": "insp_R1_2026-09.js",
+    "n_segmentos": 1002,
+    "ext_km": 964.6
+  },
+  {
     "regiao": "R11",
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
@@ -29,6 +37,14 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-08",
     "competencia_label": "Agosto/2026",
     "arquivo": "insp_R11_2026-08.js",
+    "n_segmentos": 1104,
+    "ext_km": 1093.1
+  },
+  {
+    "regiao": "R11",
+    "competencia": "2026-09",
+    "competencia_label": "Setembro/2026",
+    "arquivo": "insp_R11_2026-09.js",
     "n_segmentos": 1104,
     "ext_km": 1093.1
   },
@@ -49,6 +65,14 @@ window.MANIFEST_INSPECAO = [
     "ext_km": 1130.3
   },
   {
+    "regiao": "R12",
+    "competencia": "2026-09",
+    "competencia_label": "Setembro/2026",
+    "arquivo": "insp_R12_2026-09.js",
+    "n_segmentos": 1152,
+    "ext_km": 1130.3
+  },
+  {
     "regiao": "R13",
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
@@ -61,6 +85,14 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-08",
     "competencia_label": "Agosto/2026",
     "arquivo": "insp_R13_2026-08.js",
+    "n_segmentos": 1225,
+    "ext_km": 1201.8
+  },
+  {
+    "regiao": "R13",
+    "competencia": "2026-09",
+    "competencia_label": "Setembro/2026",
+    "arquivo": "insp_R13_2026-09.js",
     "n_segmentos": 1225,
     "ext_km": 1201.8
   },
@@ -81,6 +113,14 @@ window.MANIFEST_INSPECAO = [
     "ext_km": 1068.0
   },
   {
+    "regiao": "R2",
+    "competencia": "2026-09",
+    "competencia_label": "Setembro/2026",
+    "arquivo": "insp_R2_2026-09.js",
+    "n_segmentos": 1092,
+    "ext_km": 1068.0
+  },
+  {
     "regiao": "R3",
     "competencia": "2026-07",
     "competencia_label": "Julho/2026",
@@ -93,6 +133,14 @@ window.MANIFEST_INSPECAO = [
     "competencia": "2026-08",
     "competencia_label": "Agosto/2026",
     "arquivo": "insp_R3_2026-08.js",
+    "n_segmentos": 851,
+    "ext_km": 837.9
+  },
+  {
+    "regiao": "R3",
+    "competencia": "2026-09",
+    "competencia_label": "Setembro/2026",
+    "arquivo": "insp_R3_2026-09.js",
     "n_segmentos": 851,
     "ext_km": 837.9
   }

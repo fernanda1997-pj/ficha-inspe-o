@@ -1332,13 +1332,38 @@ Todo mês chegam **até 12 arquivos** (pavimentada + não pavimentada × 6 regi�
 precisa esperar todos — o converter processa o que tiver em `fichas/` e funde por
 região+competência (dá pra ir soltando os arquivos conforme chegam e rodar de novo).
 
-1. Salvar o(s) `.xlsx` em `ficha-inspecao/fichas/` (nome livre, mas o padrão até
-   agora é `ficha de inspeção_rodovias pavimentadas_R.<região> - <MÊS>.xlsx` e
-   `ficha de inspeção_rodovias não pavimentadas _R.<região> - <MÊS>.xlsx`)
-2. Rodar `python converter_fichas.py` de dentro de `ficha-inspecao/`
+1. Salvar o(s) `.xlsx` em `ficha-inspecao/fichas/` — **desde setembro/2026 as
+   fichas vêm organizadas por lote e mês** (`fichas/LOTE 01/{JULHO,AGOSTO,SETEMBRO}/`,
+   `fichas/LOTE 04/...`; LOTE 01 = R1/R2/R3, LOTE 04 = R11/R12/R13) e muitas vezes
+   chegam compactadas em **`.rar`**. O conversor lê `fichas/**/*.xlsx` recursivo,
+   então subpasta não importa — mas **`.rar` ele NÃO lê, precisa extrair antes**.
+   WinRAR está instalado no PC da usuária: `"C:\Program Files\WinRAR\Rar.exe" x -y
+   "fichas setembro lote 1.rar" SETEMBRO/` (rodar dentro da pasta do lote; `Rar.exe`
+   extrai, não precisa do `UnRAR.exe`). O nome do arquivo é livre (varia entre lotes:
+   `FICHA INSPEÇÃO SETEMBRO 2026_R1_PAVIMENTADAS.xlsx`, `SETEMBRO 2026_R11_...`,
+   `TESTE_JULHO2026_...`).
+2. Rodar `python converter_fichas.py` de dentro de `ficha-inspecao/` (~1-2 min)
 3. Checar `ficha-inspecao/relatorio_qualidade.txt` — S.R.E. não encontrado, geometria
-   com vão grande, extensão inspecionada muito diferente da extensão do shapefile
-4. `git add -A && git commit && git push`
+   com vão grande, extensão inspecionada muito diferente da extensão do shapefile.
+   Os mesmos ~63 avisos "km final difere do shapefile" + 3 "S.R.E. não encontrado"
+   se repetem todo mês (é o padrão, não é regressão) — vale comparar contagem por
+   mês, não ler linha a linha. **Vale também comparar o mês novo com o anterior,
+   segmento a segmento** (chave `sre+km_ini+km_fim+sentido+tipo_via`) pra pegar
+   ficha que veio quase igual à do mês passado: em set/2026 R1 e R11 mudaram só
+   7 e 13 segmentos (todos pavimento), vegetação/drenagem/sinalização 100%
+   idênticas a agosto — sinal de que o campo possivelmente não reavaliou esses
+   aspectos (copiou o mês anterior); não é erro do conversor, mas a usuária
+   precisa saber (fica parecendo "melhora" quando é só ausência de reavaliação).
+4. Commitar **por caminho**, não `git add -A`: a pasta do mês (`git add
+   "ficha-inspecao/fichas/LOTE 01/SETEMBRO"` etc. — **não** `fichas/` inteira, que
+   levaria o `.rar` junto) + `ficha-inspecao/dados`. A pasta `camadas/` do repo
+   costuma ter `.dbf/.shp` modificados por outra sessão (sincronização de
+   shapefiles) que não devem ir junto. **Não commitar o `.rar`** (duplica o `.xlsx`
+   extraído, só pesa) — só o AGOSTO do LOTE 01 tem `.rar` versionado, por acidente.
+   O conversor também reescreve `dados/pontos_criticos.js` a cada rodada (lê a
+   planilha de `../web/pontos criticos/`); se vier idêntico em conteúdo (mesmo nº
+   de pontos, 0 alterados — só muda ordem/formatação), descartar com `git checkout
+   HEAD -- ficha-inspecao/dados/pontos_criticos.js` pra não poluir o commit.
 
 Região e competência (mês/ano) são lidos de **dentro da planilha** (célula "REGIÃO:" e
 célula "DATA:" de cada aba de trecho), não do nome do arquivo — então o nome do arquivo
