@@ -50,14 +50,43 @@ CAMADAS_DIR = os.path.join(BASE, '..', 'camadas')  # compartilhado com ordens-se
 DADOS_DIR = os.path.join(BASE, 'dados')
 EPSG_METRICO = 31982  # SIRGAS 2000 / UTM 22S — mesmo do geoportal principal
 
-# Planilha de controle dos Pontos Críticos vive no OUTRO projeto (o geoportal
-# principal Folium, pasta "web"), não em "web - fichas" — é lá que a usuária
-# edita/atualiza o status mês a mês. Lida direto de lá (path absoluto) pra não
-# correr o risco de rodar com uma cópia desatualizada; só as geometrias
-# (camadas/R<n>_Pontos_Criticos.shp) é que foram copiadas pra web - fichas/camadas
-# porque essas praticamente não mudam.
+# Pontos Críticos: fonte única = pasta de trabalho (a que tem 00_PLANILHA e
+# LAYOUTS, hoje "LEV. PONTOS CRÍTICOS"), a mesma que o gerar_mapa.py do
+# geoportal principal lê. Planilha oficial em 00_PLANILHA e posição atual dos
+# pontos em GIS\Região NN\Shapes\1 - Todos os pontos (posição atual). Sem essa
+# pasta (outro computador), cai na planilha antiga de "web\pontos criticos" e
+# nos shapes copiados em camadas/, como era antes de 2026-10.
 WEB_PRINCIPAL_DIR = os.path.join(BASE, '..', '..', 'web')
-PLANILHA_PONTOS_CRITICOS = os.path.join(WEB_PRINCIPAL_DIR, 'pontos criticos', 'Controle Pontos Críticos .xlsx')
+
+
+def _achar_pasta_pontos():
+    base = os.path.join(BASE, '..', '..')
+    try:
+        for nome in sorted(os.listdir(base)):
+            d = os.path.join(base, nome)
+            if os.path.isdir(os.path.join(d, '00_PLANILHA')) and os.path.isdir(os.path.join(d, 'LAYOUTS')):
+                return d
+    except OSError:
+        pass
+    return None
+
+
+PASTA_PONTOS = _achar_pasta_pontos()
+_PLANILHA_PASTA = (os.path.join(PASTA_PONTOS, '00_PLANILHA', 'Controle Pontos Críticos.xlsx')
+                   if PASTA_PONTOS else None)
+PLANILHA_PONTOS_CRITICOS = (_PLANILHA_PASTA if _PLANILHA_PASTA and os.path.exists(_PLANILHA_PASTA)
+                            else os.path.join(WEB_PRINCIPAL_DIR, 'pontos criticos', 'Controle Pontos Críticos .xlsx'))
+
+
+def _shape_pontos_criticos(regiao):
+    """R<n>_Pontos_Criticos.shp da pasta de trabalho; senão a cópia em camadas/."""
+    if PASTA_PONTOS:
+        n = int(regiao[1:])
+        caminho = os.path.join(PASTA_PONTOS, 'GIS', f'Região {n:02d}', 'Shapes',
+                               '1 - Todos os pontos (posição atual)', f'{regiao}_Pontos_Criticos.shp')
+        if os.path.exists(caminho):
+            return caminho
+    return os.path.join(CAMADAS_DIR, f'{regiao}_Pontos_Criticos.shp')
 
 MESES_PT = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio',
             6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro',
@@ -927,6 +956,13 @@ def _mes_abrev_de(texto):
     return None
 
 
+def _ano_de(texto):
+    """Ano de 4 dígitos do cabeçalho ('Outubro/2025' -> '2025'), ou None.
+    Sem ele, 'Mapa Outubro/2026' tomava o lugar do link de 'Outubro/2025'."""
+    m = re.search(r'(20\d\d)', str(texto or ''))
+    return m.group(1) if m else None
+
+
 def _mes_da_coluna_mapa(header):
     """Só conta como coluna 'Mapa de <mês>' se o cabeçalho começar com
     'MAPA' — sem isso qualquer coluna de status cujo nome contenha um mês
@@ -987,12 +1023,25 @@ def _ler_planilha_pontos_criticos():
         # abre a ficha do mês em PDF (mapa de localização + fotos, hospedada
         # no Drive da usuária, privada — por isso só link, nunca embutimos
         # a imagem direto).
+        # Casa por mês+ano quando o cabeçalho tem ano; só pelo mês quando um
+        # dos lados não tem ano e aquele mês tem uma coluna de mapa só.
         col_mapas_por_mes = {}
+        col_mapas_so_mes = {}
         if col_situacao:
             for c in range(col_situacao + 1, ws.max_column + 1):
                 abrev = _mes_da_coluna_mapa(header[c - 1])
                 if abrev:
-                    col_mapas_por_mes[abrev] = c
+                    col_mapas_por_mes[(abrev, _ano_de(header[c - 1]))] = c
+                    col_mapas_so_mes.setdefault(abrev, []).append(c)
+
+        def _coluna_mapa(nome_mes, abrev_mes):
+            if not abrev_mes:
+                return None
+            exata = col_mapas_por_mes.get((abrev_mes, _ano_de(nome_mes)))
+            if exata:
+                return exata
+            so_mes = col_mapas_so_mes.get(abrev_mes, [])
+            return so_mes[0] if len(so_mes) == 1 else None
 
         pontos = {}
         for r in range(2, ws.max_row + 1):
@@ -1008,7 +1057,7 @@ def _ler_planilha_pontos_criticos():
                 v = ws.cell(row=r, column=c).value
                 v = str(v).strip() if v is not None else ''
                 mapa_url = None
-                col_mapa = col_mapas_por_mes.get(abrev_mes) if abrev_mes else None
+                col_mapa = _coluna_mapa(nome_mes, abrev_mes)
                 if col_mapa:
                     cell_mapa = ws.cell(row=r, column=col_mapa)
                     if cell_mapa.hyperlink:
@@ -1041,7 +1090,7 @@ def gerar_pontos_criticos():
     dados_planilha = _ler_planilha_pontos_criticos()
     features = []
     for regiao in REGIOES_PONTOS_CRITICOS:
-        caminho = os.path.join(CAMADAS_DIR, f'{regiao}_Pontos_Criticos.shp')
+        caminho = _shape_pontos_criticos(regiao)
         if not os.path.exists(caminho):
             continue
         gdf = gpd.read_file(caminho)
