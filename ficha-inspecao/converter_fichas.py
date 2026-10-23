@@ -34,6 +34,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 import unicodedata
 from collections import OrderedDict
@@ -48,6 +49,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 FICHAS_DIR = os.path.join(BASE, 'fichas')
 CAMADAS_DIR = os.path.join(BASE, '..', 'camadas')  # compartilhado com ordens-servico/
 DADOS_DIR = os.path.join(BASE, 'dados')
+FICHAS_SAIDA_DIR = os.path.join(DADOS_DIR, 'fichas')  # cópia das fichas originais pra download no site
 EPSG_METRICO = 31982  # SIRGAS 2000 / UTM 22S — mesmo do geoportal principal
 
 # Pontos Críticos: fonte única = pasta de trabalho (a que tem 00_PLANILHA e
@@ -1130,8 +1132,34 @@ def gerar_pontos_criticos():
     print(f'dados/pontos_criticos.js escrito com {len(features)} ponto(s) crítico(s).')
 
 
+def copiar_fichas_originais(regiao, competencia, caminhos_tipos):
+    """Copia as fichas .xlsx originais de uma região+competência pra
+    dados/fichas/ (fichas/ não vai pro ar, dados/ vai) com nome ASCII estável,
+    e devolve a lista pro manifest: [{arquivo, nome_original, tipos}]."""
+    saida = []
+    for caminho, tipos in caminhos_tipos.items():
+        tipos = sorted(tipos)
+        sufixo = tipos[0] if len(tipos) == 1 else 'misto'
+        nome = f'ficha_{regiao}_{competencia}_{sufixo}.xlsx'
+        n = 2
+        while any(f['arquivo'] == f'fichas/{nome}' for f in saida):
+            nome = f'ficha_{regiao}_{competencia}_{sufixo}_{n}.xlsx'
+            n += 1
+        shutil.copy2(caminho, os.path.join(FICHAS_SAIDA_DIR, nome))
+        saida.append({
+            'arquivo': f'fichas/{nome}',
+            'nome_original': os.path.basename(caminho),
+            'tipos': tipos,
+        })
+    saida.sort(key=lambda f: 'nao_pavimentada' in f['tipos'])  # pavimentada primeiro
+    return saida
+
+
 def main():
     os.makedirs(DADOS_DIR, exist_ok=True)
+    # dados/fichas/ é 100% gerado — recria do zero pra não sobrar ficha velha
+    shutil.rmtree(FICHAS_SAIDA_DIR, ignore_errors=True)
+    os.makedirs(FICHAS_SAIDA_DIR)
     gerar_regioes()
     gerar_limites_municipais()
     gerar_localidades()
@@ -1144,6 +1172,9 @@ def main():
         return
 
     por_regiao_competencia = OrderedDict()  # (regiao,competencia) -> lista de segmentos crus
+    # (regiao,competencia) -> {caminho da ficha original: {tipos de via}} — pro
+    # botão "Baixar ficha (.xlsx)" do site, que entrega o arquivo como veio do campo.
+    fontes = {}
 
     for caminho in arquivos:
         try:
@@ -1154,6 +1185,8 @@ def main():
         for bloco in saida:
             chave = (bloco['regiao'], bloco['competencia'])
             por_regiao_competencia.setdefault(chave, []).extend(bloco['segmentos'])
+            tipos = fontes.setdefault(chave, OrderedDict()).setdefault(caminho, set())
+            tipos.update(s.get('tipo_via') for s in bloco['segmentos'] if s.get('tipo_via'))
 
     cache_linhas = {}
     manifest = []
@@ -1268,6 +1301,7 @@ def main():
             'arquivo': nome_arquivo,
             'n_segmentos': len(features),
             'ext_km': round(ext_total, 1),
+            'fichas': copiar_fichas_originais(regiao, competencia, fontes.get((regiao, competencia), {})),
         })
 
     manifest.sort(key=lambda m: (m['regiao'], m['competencia']))

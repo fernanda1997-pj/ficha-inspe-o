@@ -52,6 +52,7 @@ caminho em `BASE_RODS_2023` no `converter_fichas.py`) e rodar `python converter_
 de novo — não precisa mexer em mais nada.
 | `ficha-inspecao/dados/insp_<REGIAO>_<AAAA-MM>.js` | Um GeoJSON (dentro de `window.DADOS_INSPECAO[regiao][competencia]`) por região+competência, gerado pelo converter — **não editar à mão** |
 | `ficha-inspecao/dados/manifest.js` | Lista de todas as combinações região/competência disponíveis (`window.MANIFEST_INSPECAO`) + os 5 grupos de condição (`window.GRUPOS_INSPECAO`) — o `index.html` usa isso pra montar os selects e injetar os `<script>` dos arquivos `insp_*.js` sob demanda |
+| `ficha-inspecao/dados/fichas/ficha_<REGIAO>_<AAAA-MM>_<tipo>.xlsx` | Cópia das fichas originais (2026-10-23, pedido da usuária: "dar a opção da pessoa já baixar a planilha"). O converter apaga e recria a pasta a cada rodada e lista cada cópia em `item.fichas` do manifest (`arquivo`, `nome_original`, `tipos`). No painel da região, abaixo de Competência, `montarDownloadFichas()` mostra um botão por ficha; o `download` devolve o nome original. `fichas/` continua fora do deploy — só essas cópias ficam públicas |
 | `logo/` (raiz, compartilhado) | Logos RTA + MSI (copiados de `web - Mapas/logo/`) |
 | `ficha-inspecao/relatorio_qualidade.txt` | Gerado a cada rodada do converter (gitignored) — aponta S.R.E. da ficha que não bateu com o shapefile, geometrias em partes desconexas, extensão inspecionada muito diferente da extensão real etc. |
 

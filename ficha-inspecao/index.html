@@ -299,6 +299,11 @@
   }
   .btn-utilitario:hover{background:var(--fundo);}
 
+  /* ---------- Baixar ficha original (painel da região) ---------- */
+  #fichas-download{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  #fichas-download:empty{display:none;}
+  #fichas-download a.btn-utilitario{text-decoration:none; display:inline-block;}
+
   /* ---------- Botão hamburguer (mobile) ---------- */
   #btn-menu{
     display:none; position:absolute; top:10px; left:10px; z-index:1300; width:38px; height:38px;
@@ -393,6 +398,11 @@
 
       <label class="rotulo" for="sel-competencia">Competência (mês da ficha)</label>
       <select id="sel-competencia"></select>
+
+      <!-- Baixar a ficha original (.xlsx, como veio do campo) da região +
+           competência escolhidas — o converter copia pra dados/fichas/ e
+           lista no manifest (item.fichas). Montado em carregarSelecionado(). -->
+      <div id="fichas-download"></div>
 
       <!-- Os 2 ajustes anteriores mexeram na coisa errada: eu tinha
            movido a `.dica` (texto de ajuda) pra cima, mas a usuária
@@ -894,6 +904,7 @@ function carregarSelecionado(){
   var regiao = selRegiao.value;
   var competencia = selCompetencia.value;
   var item = MANIFEST.find(function(m){ return m.regiao===regiao && m.competencia===competencia; });
+  montarDownloadFichas(item);
   if(!item) return;
 
   if(arquivosCarregados[item.arquivo]){
@@ -908,6 +919,20 @@ function carregarSelecionado(){
       item.competencia_label + ' (arquivo "' + item.arquivo + '" não encontrado).');
   };
   document.body.appendChild(s);
+}
+
+// Um botão por ficha original (pavimentada / não pavimentada) da região +
+// competência atuais. O atributo download devolve o nome do arquivo como
+// veio do campo, não o nome ASCII da cópia em dados/fichas/.
+function montarDownloadFichas(item){
+  var alvo = document.getElementById('fichas-download');
+  var fichas = (item && item.fichas) || [];
+  alvo.innerHTML = fichas.map(function(f){
+    var rotulo = f.tipos.length === 1 ? NOME_TIPO_VIA[f.tipos[0]] : 'Ficha';
+    var nome = f.nome_original.replace(/"/g, '');
+    return '<a class="btn-utilitario" href="dados/'+f.arquivo+'" download="'+nome+'" title="Baixar '+nome+'">' +
+           '⬇️ Ficha ' + rotulo.toLowerCase() + ' (.xlsx)</a>';
+  }).join('');
 }
 
 function aoCarregarDados(item){
