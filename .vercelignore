@@ -1,6 +1,7 @@
 # só o site vai pro ar: index.html, dados/*.js e logo/
 camadas/
-fichas/
+# ancorado: sem a barra inicial também pegaria dados/fichas/ (as cópias pra download)
+/ficha-inspecao/fichas/
 converter_fichas.py
 relatorio_qualidade.txt
 CLAUDE.md
