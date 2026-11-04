@@ -1355,6 +1355,13 @@ região+competência (dá pra ir soltando os arquivos conforme chegam e rodar de
    idênticas a agosto — sinal de que o campo possivelmente não reavaliou esses
    aspectos (copiou o mês anterior); não é erro do conversor, mas a usuária
    precisa saber (fica parecendo "melhora" quando é só ausência de reavaliação).
+   Em out/2026 o padrão se repetiu e piorou: drenagem e sinalização vertical/horizontal
+   saíram 100% iguais a setembro nas pavimentadas de R1/R2/R3/R12/R13 (R1 pav. mudou só
+   6%, R13 pav. 4%). **Comparar pela `severidade`, não pelo texto**: em out/2026 o LOTE 01
+   passou a usar rótulos abreviados (`SUJOS`→`SUJO`, `LIMPOS`→`LIMP.`, `DAN.`→`DANIF.`,
+   `POUCAS`→`POUC.`, `INEXIST.`→`INEX.`) — comparar texto dá 100% "alterado" falso.
+   O mapa já colore/agrupa por severidade, então não quebrou nada; só o histórico do
+   popup mostra os dois textos lado a lado.
 4. Commitar **por caminho**, não `git add -A`: a pasta do mês (`git add
    "ficha-inspecao/fichas/LOTE 01/SETEMBRO"` etc. — **não** `fichas/` inteira, que
    levaria o `.rar` junto) + `ficha-inspecao/dados`. A pasta `camadas/` do repo
